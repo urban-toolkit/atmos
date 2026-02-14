@@ -1,0 +1,5 @@
+pip install -r requirements-dev.txt
+pip install -e ".[dev]" or pip install -r requirements-dev.txt
+pip-compile pyproject.toml
+
+

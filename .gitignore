@@ -1,0 +1,85 @@
+# =========================
+# Python bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# Virtual environments
+# (works for Windows, Linux, macOS)
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Editable install artifacts
+# =========================
+pip-wheel-metadata/
+
+# =========================
+# Test / coverage
+# =========================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# =========================
+# Type checkers / linters (future-proof)
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# =========================
+# IDE / editors
+# =========================
+
+## VS Code
+.vscode/
+
+## PyCharm / IntelliJ
+.idea/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Local environment files
+# =========================
+.env
+.env.*
+
+# =========================
+# Runtime artifacts (VERY IMPORTANT for atmos-server)
+# =========================
+artifacts/
+cache/
+data/
+
+# =========================
+# Temporary files
+# =========================
+tmp/
+temp/
+*.tmp
