@@ -10,7 +10,7 @@ transforms, and geometry building to produce artifacts for visualization clients
 ## What this repo is
 - A spec validator and interpreter (runtime)
 - A data processing engine (NetCDF/CSV/GeoJSON, transforms, derived fields)
-- An HTTP API (optional) to serve processed artifacts
+- An HTTP API to serve processed artifacts
 
 ## What this repo is NOT
 - The Atmos grammar / schema source of truth (see `atmos`)
@@ -19,4 +19,3 @@ transforms, and geometry building to produce artifacts for visualization clients
 ## Schema version pinning
 This repo pins a bundled Atmos schema in `schemas/` (e.g., `schemas/atmos-v0.1.schema.json`)
 to ensure reproducible behavior.
-# atmos-server
