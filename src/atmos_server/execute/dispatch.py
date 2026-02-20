@@ -10,7 +10,7 @@ from atmos_server.io.netcdf import open_netcdf_handle
 from atmos_server.plan.types import Step
 from atmos_server.execute.context import ExecutionContext
 
-from pathlib import Path
+import json
 import xarray as xr
 
 from atmos_server.data.model import DataObject
@@ -86,6 +86,62 @@ def _apply_geojson_feature_transform(
         props[out_field] = compute_fn(props[u_field], props[v_field])
 
     return out
+
+def _mesh_to_geojson(
+    ds: xr.Dataset,
+    *,
+    var_key: str,
+    lat_key: str,
+    lon_key: str,
+    out_field: str,
+    target_cells: int = 5000,
+) -> dict[str, Any]:
+    lat = ds[lat_key].values
+    lon = ds[lon_key].values
+    val = ds[var_key].values
+
+    # squeeze to 2D if needed
+    while getattr(val, "ndim", 0) > 2:
+        val = val[0]
+
+    ny, nx = lat.shape[-2], lat.shape[-1]
+    ncells = max(0, (ny - 1) * (nx - 1))
+
+    if ncells <= 0:
+        return {"type": "FeatureCollection", "features": []}
+
+    # stride so we don't explode file size
+    stride = 1
+    if ncells > target_cells:
+        # crude stride: sqrt ratio
+        import math as _math
+        stride = int(_math.ceil(_math.sqrt(ncells / target_cells)))
+
+    features: list[dict[str, Any]] = []
+    for j in range(0, ny - 1, stride):
+        for i in range(0, nx - 1, stride):
+            v = float(val[j, i])
+            if v != v:  # NaN check
+                continue
+
+            # cell corners (j,i) (j,i+1) (j+1,i+1) (j+1,i)
+            coords = [
+                [float(lon[j, i]), float(lat[j, i])],
+                [float(lon[j, i + 1]), float(lat[j, i + 1])],
+                [float(lon[j + 1, i + 1]), float(lat[j + 1, i + 1])],
+                [float(lon[j + 1, i]), float(lat[j + 1, i])],
+                [float(lon[j, i]), float(lat[j, i])],
+            ]
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "properties": {out_field: v},
+                    "geometry": {"type": "Polygon", "coordinates": [coords]},
+                }
+            )
+
+    return {"type": "FeatureCollection", "features": features}
 
 def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = None) -> Any:
     """
@@ -213,4 +269,47 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
         raise NotImplementedError(f"Transform '{ttype}' not implemented for upstream type in step {step.id}")
 
     # geometry etc later
+    if step.kind == "geometry":
+        if ctx is None:
+            raise RuntimeError("Geometry execution requires an ExecutionContext")
+
+        g = step.params or {}
+        gtype = g.get("type")
+
+        if not step.depends_on:
+            raise ValueError(f"Geometry step '{step.id}' has no depends_on")
+
+        upstream_step = step.depends_on[-1]
+        upstream_obj = ctx.get(upstream_step)
+
+        # polygon: passthrough GeoJSON
+        if gtype == "polygon":
+            if not (isinstance(upstream_obj, dict) and upstream_obj.get("type") == "FeatureCollection"):
+                raise TypeError(f"polygon geometry expects GeoJSON FeatureCollection upstream (step {step.id})")
+            return upstream_obj
+
+        # mesh: DataObject(xarray) -> GeoJSON grid
+        if gtype == "mesh":
+            if not isinstance(upstream_obj, DataObject):
+                raise TypeError(f"mesh geometry expects DataObject upstream (step {step.id})")
+
+            resolved = g.get("_resolved") or {}
+            if not isinstance(resolved, dict):
+                resolved = {}
+
+            var_key = resolved.get("variableKey")
+            lat_key = resolved.get("latKey")
+            lon_key = resolved.get("lonKey")
+            var_id = (resolved.get("variableId") or "value")
+
+            if not isinstance(var_key, str) or not var_key:
+                raise ValueError(f"mesh geometry missing resolved variableKey (step {step.id})")
+            if not isinstance(lat_key, str) or not isinstance(lon_key, str) or not lat_key or not lon_key:
+                raise ValueError(f"mesh geometry missing resolved latKey/lonKey (step {step.id})")
+
+            ds = upstream_obj.dataset
+            return _mesh_to_geojson(ds, var_key=var_key, lat_key=lat_key, lon_key=lon_key, out_field=str(var_id))
+
+        raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")
+    
     return None

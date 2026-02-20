@@ -34,12 +34,14 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
     # ---- Data -> load steps
     data_items = spec.get("data") or []
     data_id_to_upstream_step: dict[str, str] = {}
+    data_by_id: dict[str, dict[str, Any]] = {}
 
     for i, d in enumerate(data_items):
         if not isinstance(d, dict):
             continue
         data_id = _safe_id("data_", d.get("id"), i)
         inputs.append(InputRef(data_id=data_id))
+        data_by_id[data_id] = d
 
         step_id = f"load:{data_id}"
         data_id_to_upstream_step[data_id] = step_id
@@ -108,37 +110,88 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
         transform_id_to_step[tid] = step_id
         last_transform_step = step_id
 
-    # ---- Geometry -> artifact declarations
-    geometries = spec.get("geometry") or []
-    upstream_for_geometry = last_transform_step or (steps[0].id if steps else "")
 
-    for i, g in enumerate(geometries):
-        if not isinstance(g, dict):
-            continue
+    # ---- Geometry from composition/views/layers (v0.1 examples)
+    composition = spec.get("composition") or {}
+    views = composition.get("views") or []
 
-        gid = _safe_id("g", g.get("id"), i)
-        gtype = g.get("type") or "unknown"
+    for vi, view in enumerate(views):
+      if not isinstance(view, dict):
+          continue
+      view_id = _safe_id("view", view.get("id"), vi)
 
-        geom_step_id = f"geometry:{gid}"
-        steps.append(
-            Step(
-                id=geom_step_id,
-                kind="geometry",
-                depends_on=(upstream_for_geometry,) if upstream_for_geometry else (),
-                params=g,
-            )
-        )
+      layers = view.get("layers") or []
+      for li, layer in enumerate(layers):
+          if not isinstance(layer, dict):
+              continue
+          layer_id = _safe_id("layer", layer.get("id"), li)
 
-        default_format = "geojson" if gtype in {"isoline", "isoband", "points", "polygons"} else "json"
-        artifacts.append(
-            Artifact(
-                id=f"artifact:{gid}",
-                format=default_format,  # type: ignore[assignment]
-                producer_step=geom_step_id,
-                path=f"{gid}.{default_format}",
-                metadata={"geometryType": gtype},
-            )
-        )
+          geom = layer.get("geometry")
+          if not isinstance(geom, dict):
+              continue
+
+          gtype = geom.get("type") or "unknown"
+          geom_step_id = f"geometry:{view_id}:{layer_id}"
+
+          # Resolve upstream by geometry.input.data (if provided)
+          ginput = geom.get("input") or {}
+          upstream_step = default_upstream_step
+          if isinstance(ginput, dict):
+              input_data = ginput.get("data")
+              if isinstance(input_data, str) and input_data in data_id_to_upstream_step:
+                  upstream_step = data_id_to_upstream_step[input_data]
+
+          # Enrich mesh geometry with resolved NetCDF keys (var, lat, lon)
+          geom_params = dict(geom)
+          geom_params["_viewId"] = view_id
+          geom_params["_layerId"] = layer_id
+
+          if gtype == "mesh" and isinstance(ginput, dict):
+              input_data = ginput.get("data")
+              input_var = ginput.get("variable")
+
+              if isinstance(input_data, str) and input_data in data_by_id:
+                  d = data_by_id[input_data]
+                  dims = d.get("dimensions") or {}
+                  lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
+                  lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+
+                  var_key = None
+                  vars_ = d.get("variables") or []
+                  if isinstance(input_var, str) and isinstance(vars_, list):
+                      for vv in vars_:
+                          if isinstance(vv, dict) and vv.get("id") == input_var:
+                              var_key = vv.get("key")
+                              break
+
+                  geom_params["_resolved"] = {
+                      "dataId": input_data,
+                      "variableId": input_var,
+                      "variableKey": var_key,
+                      "latKey": lat_key,
+                      "lonKey": lon_key,
+                  }
+
+          steps.append(
+              Step(
+                  id=geom_step_id,
+                  kind="geometry",
+                  depends_on=(upstream_step,) if upstream_step else (),
+                  params=geom_params,
+              )
+          )
+
+          # For prototype: always GeoJSON outputs for mesh/polygon
+          out_name = f"{view_id}-{layer_id}"
+          artifacts.append(
+              Artifact(
+                  id=f"artifact:{view_id}:{layer_id}",
+                  format="geojson",  # type: ignore[assignment]
+                  producer_step=geom_step_id,
+                  path=f"{out_name}.geojson",
+                  metadata={"geometryType": gtype, "viewId": view_id, "layerId": layer_id},
+              )
+          )
 
     return Plan(
         meta=meta,

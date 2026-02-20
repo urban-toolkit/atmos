@@ -57,8 +57,11 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
                     result = execute_step(step, repo_root=root, ctx=ctx)
                     ctx.put(step.id, result)
                     status = "ok"
+                elif step.kind == "geometry":
+                    result = execute_step(step, repo_root=root, ctx=ctx)
+                    ctx.put(step.id, result)
+                    status = "ok"
                 else:
-                    # transform/geometry execution comes next
                     status = "todo"
             except Exception as e:
                 status = "error"
@@ -76,22 +79,39 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
             }
         )
 
+    # Materialize artifacts (prototype: geojson only for now)
+    materialized: list[dict[str, Any]] = []
+    for a in plan.artifacts:
+        if step_status.get(a.producer_step) != "ok":
+            continue
+
+        obj = ctx.get(a.producer_step)
+        out_path = out / a.path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if a.format == "geojson":
+            if not isinstance(obj, dict):
+                raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
+            out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+            materialized.append(
+                {
+                    "id": a.id,
+                    "format": a.format,
+                    "path": a.path,
+                    "producerStep": a.producer_step,
+                    "metadata": a.metadata,
+                }
+            )
+        else:
+            raise NotImplementedError(f"Artifact format not supported yet: {a.format}")
+    
     manifest: dict[str, Any] = {
         "kind": "atmos-server-manifest",
         "schemaVersion": plan.meta.schema_version,
         "specId": plan.meta.spec_id,
         "inputs": [{"dataId": i.data_id} for i in plan.inputs],
         "steps": executed,
-        "artifacts": [
-            {
-                "id": a.id,
-                "format": a.format,
-                "path": a.path,
-                "producerStep": a.producer_step,
-                "metadata": a.metadata,
-            }
-            for a in plan.artifacts
-        ],
+        "artifacts": materialized,
     }
 
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

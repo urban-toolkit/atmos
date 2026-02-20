@@ -83,3 +83,8 @@ Desktop.ini
 tmp/
 temp/
 *.tmp
+
+# =========================
+# Heavy data
+# =========================
+/tests/data/wrfout*
