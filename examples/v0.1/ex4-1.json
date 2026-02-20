@@ -1,0 +1,152 @@
+{
+  "data": [
+    {
+      "id": "wrf_ens",
+      "kind": "collection",
+
+      "members": {
+        "count": 20,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "data/ens/{id}/wrfout_d01_2011-01-12_00_00_00.nc"
+      },
+
+      "memberDimension": "member",
+
+      "dimensions": {
+        "latitude": { "key": "XLAT" },
+        "longitude": { "key": "XLONG" },
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
+      },
+
+      "variables": [
+        { "id": "temp_2m", "key": "T2", "kind": "grid" },
+        { "id": "rain", "key": "RAIN", "kind": "grid" }
+      ],
+
+      "description": "WRF ensemble: 20 members stored as separate NetCDF files."
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "reduce",
+      "input": "temp_2m",
+      "across": "member",
+      "op": "mean",
+      "as": {
+        "id": "temp_2m_mean"
+      },
+      "missing": "skip"
+    },
+    {
+      "type": "reduce",
+      "input": "rain",
+      "across": "member",
+      "op": "prob",
+      "predicate": { "op": "gt", "args": [{ "var": "rain" }, { "value": 10 }] },
+      "as": {
+        "id": "rain_prob"
+      },
+      "missing": "skip"
+    }
+  ],
+
+  "composition": {
+    "layout": {
+      "columns": 4,
+      "rows": 5
+    },
+
+    "time": {"type": "index", "value": 0},
+    
+    "context": {
+      "controls": [
+        {
+          "type": "slider",
+          "bind": "time"
+        }
+      ]
+    },
+    
+    "views": [
+      {
+        "id": "view1",
+        "frame": {
+          "type": "map"
+        },
+
+        "layers": [
+          {
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "rain_prob", "variable": "temp_2m_mean" },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [270, 275, 280, 285, 290]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "temp_2m_mean",
+                    "scale": {
+                      "scheme": "RdYlBu"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "view2",
+        "frame": {
+          "type": "map"
+        },
+
+        "layers": [
+          {
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "rain_prob", "variable": "rain_prob" },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [270, 275, 280, 285, 290]
+                  }
+                }
+              ],
+              "encoding": {
+                "type": "isoband",
+                "channels": {
+                  "fill": {
+                    "field": "rain_prob",
+                    "scale": {
+                      "scheme": "RdYlBu"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

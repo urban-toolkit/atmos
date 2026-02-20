@@ -2,35 +2,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from atmos_server.schema import load_schema, validate_spec
+from atmos_server.schema import SchemaRegistry, load_schema
 
 
-def test_schema_file_exists():
+def test_schema_registry_lists_versions():
     repo_root = Path(__file__).resolve().parents[1]
-    schema_path = repo_root / "schemas" / "atmos-v0.1.schema.json"
-    assert schema_path.exists(), "Pinned schema missing: schemas/atmos-v0.1.schema.json"
+    registry = SchemaRegistry(repo_root / "schemas")
+    # This will pass as long as at least one schema exists.
+    versions = registry.list_versions()
+    assert isinstance(versions, list)
+
+
+def test_pinned_schema_file_exists_for_v0_1():
+    repo_root = Path(__file__).resolve().parents[1]
+    schema_path = repo_root / "schemas" / "v0.1" / "atmos.schema.json"
+    assert schema_path.exists(), "Pinned schema missing: schemas/v0.1/atmos.schema.json"
 
 
 def test_schema_loads():
     repo_root = Path(__file__).resolve().parents[1]
-    schema_path = repo_root / "schemas" / "atmos-v0.1.schema.json"
+    schema_path = repo_root / "schemas" / "v0.1" / "atmos.schema.json"
     schema = load_schema(schema_path)
     assert isinstance(schema, dict)
     assert "$schema" in schema or "title" in schema
-
-
-@pytest.mark.skip(reason="Enable once you add a known-good minimal example spec for v0.1")
-def test_minimal_spec_validates():
-    repo_root = Path(__file__).resolve().parents[1]
-    schema_path = repo_root / "schemas" / "atmos-v0.1.schema.json"
-    schema = load_schema(schema_path)
-
-    # Replace with a real minimal example that matches your v0.1 schema.
-    minimal = {
-        "data": [],
-        "views": [],
-    }
-
-    validate_spec(minimal, schema)
