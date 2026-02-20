@@ -73,9 +73,9 @@ Desktop.ini
 # =========================
 # Runtime artifacts (VERY IMPORTANT for atmos-server)
 # =========================
-artifacts/
-cache/
-data/
+/artifacts/
+/cache/
+/data/
 
 # =========================
 # Temporary files

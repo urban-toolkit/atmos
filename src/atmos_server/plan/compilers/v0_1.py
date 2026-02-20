@@ -33,7 +33,7 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
 
     # ---- Data -> load steps
     data_items = spec.get("data") or []
-    data_id_to_load_step: dict[str, str] = {}
+    data_id_to_upstream_step: dict[str, str] = {}
 
     for i, d in enumerate(data_items):
         if not isinstance(d, dict):
@@ -42,7 +42,7 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
         inputs.append(InputRef(data_id=data_id))
 
         step_id = f"load:{data_id}"
-        data_id_to_load_step[data_id] = step_id
+        data_id_to_upstream_step[data_id] = step_id
 
         steps.append(
             Step(
@@ -58,12 +58,26 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
             )
         )
 
+        # Inject default time slicing for NetCDF (Option A: always index 0)
+        source = d.get("source") or {}
+        if isinstance(source, dict) and source.get("type") == "netcdf":
+            time_step_id = f"time:{data_id}"
+            steps.append(
+                Step(
+                    id=time_step_id,
+                    kind="transform",
+                    depends_on=(step_id,),
+                    params={"type": "select_time_index", "index": 0},
+                )
+            )
+            data_id_to_upstream_step[data_id] = time_step_id
+
     # ---- Transforms (global, v0.1)
     transforms = spec.get("transform") or []
     transform_id_to_step: dict[str, str] = {}
 
     default_upstream_data_id = inputs[0].data_id if inputs else None
-    default_upstream_step = data_id_to_load_step.get(default_upstream_data_id, "") if default_upstream_data_id else ""
+    default_upstream_step = data_id_to_upstream_step.get(default_upstream_data_id, "") if default_upstream_data_id else ""
 
     last_transform_step = default_upstream_step
 
@@ -75,8 +89,8 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
 
         upstream = t.get("input")
         depends: list[str] = []
-        if isinstance(upstream, str) and upstream in data_id_to_load_step:
-            depends = [data_id_to_load_step[upstream]]
+        if isinstance(upstream, str) and upstream in data_id_to_upstream_step:
+            depends = [data_id_to_upstream_step[upstream]]
         elif isinstance(upstream, str) and upstream in transform_id_to_step:
             depends = [transform_id_to_step[upstream]]
         elif last_transform_step:

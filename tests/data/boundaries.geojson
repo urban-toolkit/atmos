@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "test-boundary" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-78.90, 38.43],
+          [-78.89, 38.43],
+          [-78.89, 38.44],
+          [-78.90, 38.44],
+          [-78.90, 38.43]
+        ]]
+      }
+    }
+  ]
+}
