@@ -14,7 +14,7 @@
     },
     {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/boundaries.geojson" },
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
       "properties": {
         "geoid": { "key": "GEOID" }
       }
