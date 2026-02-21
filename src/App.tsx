@@ -123,6 +123,15 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const handleResize = () => {
+      mapRef.current?.resize()
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  useEffect(() => {
     const map = mapRef.current
     if (!map) return
     if (!tempGeo || !boundGeo) return

@@ -68,6 +68,11 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   const emptyValue: unknown = Array.isArray(initialData) ? [] : null
 
   // UseEffect
+  useEffect(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new Event("resize"))
+    }, 250)
+  }, [isOpen])
 
   useEffect(() => {
     resetEditorData(initialData)
@@ -82,7 +87,8 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   // Render
   
   return (
-    <div id="editor-wrapper" className={isOpen ? 'open' : ''}>
+    // <div id="editor-wrapper" className={isOpen ? 'open' : ''}>
+    <div id="editor-wrapper" className={isOpen ? "open" : "closed"}>
 
       {/* Alert */}
       <Snackbar
