@@ -1,0 +1,75 @@
+{
+  "kind": "atmos-server-manifest",
+  "schemaVersion": "v0.1",
+  "specId": null,
+  "inputs": [
+    {
+      "dataId": "r001"
+    },
+    {
+      "dataId": "boundaries"
+    }
+  ],
+  "steps": [
+    {
+      "id": "load:r001",
+      "kind": "load",
+      "dependsOn": [],
+      "status": "ok"
+    },
+    {
+      "id": "load:boundaries",
+      "kind": "load",
+      "dependsOn": [],
+      "status": "ok"
+    },
+    {
+      "id": "time:r001",
+      "kind": "transform",
+      "dependsOn": [
+        "load:r001"
+      ],
+      "status": "ok"
+    },
+    {
+      "id": "geometry:view1:bound",
+      "kind": "geometry",
+      "dependsOn": [
+        "load:boundaries"
+      ],
+      "status": "ok"
+    },
+    {
+      "id": "geometry:view1:temp",
+      "kind": "geometry",
+      "dependsOn": [
+        "time:r001"
+      ],
+      "status": "ok"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "artifact:view1:temp",
+      "format": "geojson",
+      "path": "view1-temp.geojson",
+      "producerStep": "geometry:view1:temp",
+      "metadata": {
+        "geometryType": "mesh",
+        "viewId": "view1",
+        "layerId": "temp"
+      }
+    },
+    {
+      "id": "artifact:view1:bound",
+      "format": "geojson",
+      "path": "view1-bound.geojson",
+      "producerStep": "geometry:view1:bound",
+      "metadata": {
+        "geometryType": "polygon",
+        "viewId": "view1",
+        "layerId": "bound"
+      }
+    }
+  ]
+}
