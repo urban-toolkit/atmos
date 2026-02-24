@@ -2,8 +2,8 @@ import xarray as xr
 import numpy as np
 from pathlib import Path
 
-from atmos_server.execute import run_plan
-from atmos_server.plan.types import Plan, PlanMeta, Step, InputRef
+from atmos_server.executor import run_plan
+from atmos_server.compiler.types import Plan, PlanMeta, Step, InputRef
 
 
 def test_real_netcdf_loader(tmp_path: Path):

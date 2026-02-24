@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from atmos_server.schema import SchemaRegistry, validate_spec
-from atmos_server.plan import compile_plan
-from atmos_server.execute import run_plan
+from atmos_server.compiler import compile_plan
+from atmos_server.executor import run_plan
 
 app = FastAPI(title="atmos-server", version="0.1.0")
 

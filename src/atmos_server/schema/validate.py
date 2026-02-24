@@ -4,7 +4,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from atmos_server.errors import SpecValidationError, ValidationIssue
+from atmos_server.runtime.errors import SpecValidationError, ValidationIssue
 
 
 def _json_pointer_from_error_path(path_parts: list[Any]) -> str:

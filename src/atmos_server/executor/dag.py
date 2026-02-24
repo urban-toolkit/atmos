@@ -4,8 +4,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Iterable
 
-from atmos_server.errors import AtmosServerError
-from atmos_server.plan.types import Step
+from atmos_server.runtime.errors import AtmosServerError
+from atmos_server.compiler.types import Step
 
 
 class DagError(AtmosServerError):

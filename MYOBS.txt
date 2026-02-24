@@ -11,6 +11,6 @@ atmos-server run your_spec.json --version v0.1 --out artifacts/
 atmos-server validate tests/fixtures/v0.1/ex1-1.json --version v0.1
 atmos-server run tests/fixtures/v0.1/ex1-1.json --version v0.1 --out artifacts/
 
-uvicorn atmos_server.http.app:app --reload --port 8000
-uvicorn atmos_server.http.app:app --port 8000
+uvicorn atmos_server.api.app:app --reload --port 8000
+uvicorn atmos_server.api.app:app --port 8000
 http://127.0.0.1:8000/api/health

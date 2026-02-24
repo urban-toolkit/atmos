@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from atmos_server.plan.compilers.registry import get_compiler
-from atmos_server.plan.types import Plan
+from atmos_server.compiler.registry import get_compiler
+from atmos_server.compiler.types import Plan
 
 
 def compile_plan(spec: dict[str, Any], *, schema_version: str) -> Plan:

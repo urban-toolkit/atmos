@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from atmos_server.execute import run_plan
-from atmos_server.plan.types import Artifact, InputRef, Plan, PlanMeta, Step
+from atmos_server.executor import run_plan
+from atmos_server.compiler.types import Artifact, InputRef, Plan, PlanMeta, Step
 
 
 def test_wind_speed_and_direction_on_geojson(tmp_path: Path):

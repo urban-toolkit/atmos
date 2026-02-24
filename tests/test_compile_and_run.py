@@ -6,10 +6,10 @@ from typing import Iterator
 
 import pytest
 
-from atmos_server.execute import run_plan
-from atmos_server.plan import compile_plan
+from atmos_server.executor import run_plan
+from atmos_server.compiler import compile_plan
 from atmos_server.schema import SchemaRegistry, validate_spec
-from atmos_server.schema.load import load_json_file
+from atmos_server.io.readers.json_loader import load_json_file
 
 
 def repo_root() -> Path:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from atmos_server.plan.types import (
+from atmos_server.compiler.types import (
     Artifact,
     InputRef,
     Plan,
