@@ -15,7 +15,7 @@ class SchemaRef:
     path: Path
 
 
-class SchemaRegistry:
+class SchemaProvider:
     """
     Server-local registry for pinned Atmos schema versions.
 

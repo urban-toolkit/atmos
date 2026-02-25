@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from atmos_server.compiler.registry import get_compiler
+from atmos_server.compiler.selector import get_compiler
 from atmos_server.compiler.types import Plan
 
 

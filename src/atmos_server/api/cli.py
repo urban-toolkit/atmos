@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 from atmos_server.runtime.errors import AtmosServerError, SpecValidationError
-from atmos_server.schema import SchemaRegistry, load_json_file, load_schema, validate_spec
-
+from atmos_server.schema import SchemaProvider, load_schema, validate_spec
+from atmos_server.io.readers.json_loader import load_json_file
 import json
 from atmos_server.compiler import compile_plan
 from atmos_server.executor import run_plan
@@ -14,14 +14,14 @@ from atmos_server.executor import run_plan
 
 def _repo_root() -> Path:
     # src/atmos_server/cli.py -> repo root
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[3]
 
 
-def _default_registry() -> SchemaRegistry:
-    return SchemaRegistry(_repo_root() / "schemas")
+def _default_registry() -> SchemaProvider:
+    return SchemaProvider(_repo_root() / "schemas")
 
 
-def _default_version(registry: SchemaRegistry) -> str:
+def _default_version(registry: SchemaProvider) -> str:
     """
     Default to the highest available version by lexical sort.
     Since versions are 'v0.1', 'v0.2', this is usually fine.

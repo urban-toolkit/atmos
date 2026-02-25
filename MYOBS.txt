@@ -1,12 +1,14 @@
+python -m pip install pip-tools
+python -m piptools compile pyproject.toml
 pip install -e ".[dev]" or pip install -r requirements-dev.txt
 pip-compile pyproject.toml
 
 
 pytest
 atmos-server versions
-atmos-server validate your_spec.json --version v0.1
-atmos-server compile your_spec.json --version v0.1 --out out/plan.json
-atmos-server run your_spec.json --version v0.1 --out artifacts/
+atmos-server validate tests/fixtures/v0.1/ex1-1.json --version v0.1
+atmos-server compile tests/fixtures/v0.1/ex1-1.json --version v0.1 --out out/plan.json
+atmos-server run tests/fixtures/v0.1/ex1-1.json --version v0.1 --out artifacts/
 
 atmos-server validate tests/fixtures/v0.1/ex1-1.json --version v0.1
 atmos-server run tests/fixtures/v0.1/ex1-1.json --version v0.1 --out artifacts/

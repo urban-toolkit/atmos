@@ -8,15 +8,17 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from atmos_server.schema import SchemaRegistry, validate_spec
+from atmos_server.schema import SchemaProvider, validate_spec
 from atmos_server.compiler import compile_plan
 from atmos_server.executor import run_plan
+
+from atmos_server.constants.paths import REPO_ROOT, SCHEMAS_DIR
 
 app = FastAPI(title="atmos-server", version="0.1.0")
 
 # Resolve repo root (…/atmos-server)
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SCHEMAS_DIR = REPO_ROOT / "schemas"
+# REPO_ROOT = Path(__file__).resolve().parents[3]
+# SCHEMAS_DIR = REPO_ROOT / "schemas"
 
 # Where runs go (committed? NO. keep ignored.)
 RUNS_DIR = REPO_ROOT / "artifacts" / "runs"
@@ -51,7 +53,7 @@ def api_run(
         raise HTTPException(status_code=400, detail="'spec' must be a JSON object")
 
     # Load schema
-    registry = SchemaRegistry(SCHEMAS_DIR)
+    registry = SchemaProvider(SCHEMAS_DIR)
     try:
         schema = registry.load(version)
     except Exception as e:

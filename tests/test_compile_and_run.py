@@ -8,7 +8,7 @@ import pytest
 
 from atmos_server.executor import run_plan
 from atmos_server.compiler import compile_plan
-from atmos_server.schema import SchemaRegistry, validate_spec
+from atmos_server.schema import SchemaProvider, validate_spec
 from atmos_server.io.readers.json_loader import load_json_file
 
 
@@ -60,7 +60,7 @@ def test_compile_and_run_fixtures(version: str, name: str, spec_path: Path, tmp_
     """
     root = repo_root()
 
-    registry = SchemaRegistry(root / "schemas")
+    registry = SchemaProvider(root / "schemas")
     schema = registry.load(version)
 
     spec = load_json_file(spec_path)

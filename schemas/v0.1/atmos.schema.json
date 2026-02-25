@@ -2094,7 +2094,6 @@
                                                               "additionalProperties": false,
                                                               "required": [
                                                                 "type",
-                                                                "domain",
                                                                 "range"
                                                               ],
                                                               "properties": {
@@ -2158,24 +2157,53 @@
                                                               "allOf": [
                                                                 {
                                                                   "if": {
-                                                                    "properties": {
-                                                                      "domain": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                          "type": {
-                                                                            "const": "explicit"
-                                                                          }
-                                                                        },
-                                                                        "required": [
-                                                                          "type"
-                                                                        ]
-                                                                      }
-                                                                    },
                                                                     "required": [
                                                                       "domain"
                                                                     ]
                                                                   },
                                                                   "then": {
+                                                                    "allOf": [
+                                                                      {
+                                                                        "if": {
+                                                                          "properties": {
+                                                                            "domain": {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "type": {
+                                                                                  "const": "explicit"
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "type"
+                                                                              ]
+                                                                            }
+                                                                          }
+                                                                        },
+                                                                        "then": {
+                                                                          "properties": {
+                                                                            "range": {
+                                                                              "oneOf": [
+                                                                                {
+                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/0"
+                                                                                },
+                                                                                {
+                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          }
+                                                                        },
+                                                                        "else": {
+                                                                          "properties": {
+                                                                            "range": {
+                                                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    ]
+                                                                  },
+                                                                  "else": {
                                                                     "properties": {
                                                                       "range": {
                                                                         "oneOf": [
@@ -2197,43 +2225,36 @@
                                                                             }
                                                                           },
                                                                           {
-                                                                            "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range"
-                                                                          }
-                                                                        ]
-                                                                      }
-                                                                    }
-                                                                  },
-                                                                  "else": {
-                                                                    "properties": {
-                                                                      "range": {
-                                                                        "type": "object",
-                                                                        "additionalProperties": false,
-                                                                        "required": [
-                                                                          "stops"
-                                                                        ],
-                                                                        "properties": {
-                                                                          "stops": {
-                                                                            "type": "array",
-                                                                            "minItems": 2,
-                                                                            "items": {
-                                                                              "type": "object",
-                                                                              "additionalProperties": false,
-                                                                              "required": [
-                                                                                "value",
-                                                                                "color"
-                                                                              ],
-                                                                              "properties": {
-                                                                                "value": {
-                                                                                  "type": "number"
-                                                                                },
-                                                                                "color": {
-                                                                                  "type": "string",
-                                                                                  "minLength": 1
+                                                                            "type": "object",
+                                                                            "additionalProperties": false,
+                                                                            "required": [
+                                                                              "stops"
+                                                                            ],
+                                                                            "properties": {
+                                                                              "stops": {
+                                                                                "type": "array",
+                                                                                "minItems": 2,
+                                                                                "items": {
+                                                                                  "type": "object",
+                                                                                  "additionalProperties": false,
+                                                                                  "required": [
+                                                                                    "value",
+                                                                                    "color"
+                                                                                  ],
+                                                                                  "properties": {
+                                                                                    "value": {
+                                                                                      "type": "number"
+                                                                                    },
+                                                                                    "color": {
+                                                                                      "type": "string",
+                                                                                      "minLength": 1
+                                                                                    }
+                                                                                  }
                                                                                 }
                                                                               }
                                                                             }
                                                                           }
-                                                                        }
+                                                                        ]
                                                                       }
                                                                     }
                                                                   }

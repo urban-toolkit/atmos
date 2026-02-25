@@ -4,7 +4,7 @@ from pathlib import Path
 
 from atmos_server.executor import run_plan
 from atmos_server.compiler import compile_plan
-from atmos_server.schema import SchemaRegistry, validate_spec
+from atmos_server.schema import SchemaProvider, validate_spec
 from atmos_server.io.readers.json_loader import load_json_file
 
 
@@ -26,7 +26,7 @@ def test_run_executes_geojson_load(tmp_path: Path):
             if d["source"].get("type") == "geojson":
                 d["source"]["path"] = "tests/data/boundaries.geojson"
 
-    registry = SchemaRegistry(root / "schemas")
+    registry = SchemaProvider(root / "schemas")
     schema = registry.load("v0.1")
     validate_spec(spec, schema)
 

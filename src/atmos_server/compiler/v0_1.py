@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeGuard
 
 from atmos_server.compiler.types import (
     Artifact,
@@ -16,6 +16,151 @@ def _safe_id(prefix: str, raw: Any, fallback_i: int) -> str:
         return raw.strip()
     return f"{prefix}{fallback_i}"
 
+def _is_dict(x: Any) -> TypeGuard[dict[str, Any]]:
+    return isinstance(x, dict)
+
+def _get_number_constant(ch: Any) -> float | None:
+    # NumberConstant: {"value": number}
+    if _is_dict(ch) and isinstance(ch.get("value"), (int, float)):
+        return float(ch["value"])
+    return None
+
+def _get_color_constant(ch: Any) -> str | None:
+    # ColorConstant: {"value": string}
+    if _is_dict(ch) and isinstance(ch.get("value"), str) and ch["value"].strip():
+        return ch["value"].strip()
+    return None
+
+def _build_render_from_encoding(
+    gtype: str,
+    encoding: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """
+    Convert Atmos encoding (v0.1-ish) into a runtime render block for the manifest.
+    The interface can then translate to renderer-specific expressions (e.g., MapLibre).
+    """
+    if not encoding or not isinstance(encoding, dict):
+        return None
+
+    channels = encoding.get("channels") or {}
+    if not isinstance(channels, dict):
+        channels = {}
+
+    style = encoding.get("style") or {}
+    if not isinstance(style, dict):
+        style = {}
+
+    # We currently generate GeoJSON sources and render them as MapLibre "fill" layers
+    # for both mesh and polygon (polygons may be filled transparently with outlines).
+    render: dict[str, Any] = {
+        "renderer": "maplibre",
+        "layerType": "fill",
+        "paint": {},
+    }
+    paint: dict[str, Any] = render["paint"]
+
+    # ---- Opacity (NumberConstant only for now)
+    opacity = _get_number_constant(channels.get("opacity"))
+    if opacity is not None:
+        paint["fill-opacity"] = opacity
+
+    # ---- Stroke outline (ColorConstant)
+    stroke_color = _get_color_constant(channels.get("stroke"))
+    if stroke_color is not None:
+        paint["fill-outline-color"] = stroke_color
+
+    # ---- Fill color
+    fill = channels.get("fill")
+
+    # (A) constant fill
+    fill_const = _get_color_constant(fill)
+    if fill_const is not None:
+        paint["fill-color"] = fill_const
+    else:
+        # (B) field-driven fill (ColorField)
+        if _is_dict(fill) and isinstance(fill.get("field"), str) and fill["field"].strip():
+            field = fill["field"].strip()
+            scale = fill.get("scale")
+            if _is_dict(scale):
+                # We prefer stops when present (range.stops could be palette or value-stops)
+                range_ = scale.get("range")
+                stops_payload: list[dict[str, Any]] | None = None
+
+                if _is_dict(range_) and isinstance(range_.get("stops"), list):
+                    raw_stops = range_["stops"]
+
+                    # Two legal-ish shapes in your schema:
+                    # - palette stops: ["#...", "#...", ...]
+                    # - value stops: [{"value": n, "color": "#..."}, ...]
+                    if raw_stops and all(isinstance(s, str) for s in raw_stops):
+                        # Palette only (no values): keep it as palette, interface decides mapping
+                        paint["fill-color"] = {
+                            "kind": "color-palette",
+                            "field": field,
+                            "type": scale.get("type", "linear"),
+                            "palette": [s for s in raw_stops if isinstance(s, str)],
+                            "clamp": bool(scale.get("clamp", False)),
+                        }
+                    else:
+                        # Value/color stops
+                        stops_payload = []
+                        for s in raw_stops:
+                            if not _is_dict(s):
+                                continue
+                            v = s.get("value")
+                            c = s.get("color")
+                            if isinstance(v, (int, float)) and isinstance(c, str) and c.strip():
+                                stops_payload.append({"value": float(v), "color": c.strip()})
+
+                        if stops_payload:
+                            # nodataColor commonly lives under style.mesh.nodataColor
+                            nodata_color = None
+                            mesh_style_any = style.get("mesh")
+                            mesh_style: dict[str, Any] | None = mesh_style_any if isinstance(mesh_style_any, dict) else None
+                            if mesh_style is not None and isinstance(mesh_style.get("nodataColor"), str):
+                                nodata_color = mesh_style["nodataColor"]
+
+                            paint["fill-color"] = {
+                                "kind": "color-stops",
+                                "field": field,
+                                "type": scale.get("type", "linear"),
+                                "stops": stops_payload,
+                                "clamp": bool(scale.get("clamp", False)),
+                                **({"nodataColor": nodata_color} if nodata_color else {}),
+                            }
+                else:
+                    scale_any = fill.get("scale")
+                    scale: dict[str, Any] | None = scale_any if isinstance(scale_any, dict) else None
+
+                    if scale is not None:
+                        range_any = scale.get("range")
+                        range_: dict[str, Any] | None = range_any if isinstance(range_any, dict) else None
+
+                        # stops path...
+                        if range_ is not None:
+                            stops_any = range_.get("stops")
+                            if isinstance(stops_any, list):
+                                raw_stops = stops_any
+                                ...
+                        else:
+                            scheme_any = scale.get("scheme")
+                            if isinstance(scheme_any, str) and scheme_any.strip():
+                                domain_any = scale.get("domain")
+                                paint["fill-color"] = {
+                                    "kind": "color-scheme",
+                                    "field": field,
+                                    "scheme": scheme_any.strip(),
+                                    "type": scale.get("type"),
+                                    **({"domain": domain_any} if domain_any is not None else {}),
+                                    "reverse": bool(scale.get("reverse", False)),
+                                    "clamp": bool(scale.get("clamp", False)),
+                                }
+
+    # If we ended up with no paint keys, omit render entirely
+    if not paint:
+        return None
+
+    return render
 
 def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
     """
@@ -116,82 +261,96 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
     views = composition.get("views") or []
 
     for vi, view in enumerate(views):
-      if not isinstance(view, dict):
-          continue
-      view_id = _safe_id("view", view.get("id"), vi)
+        if not isinstance(view, dict):
+            continue
+        view_id = _safe_id("view", view.get("id"), vi)
 
-      layers = view.get("layers") or []
-      for li, layer in enumerate(layers):
-          if not isinstance(layer, dict):
-              continue
-          layer_id = _safe_id("layer", layer.get("id"), li)
+        layers = view.get("layers") or []
+        for li, layer in enumerate(layers):
+            if not isinstance(layer, dict):
+                continue
+            layer_id = _safe_id("layer", layer.get("id"), li)
 
-          geom = layer.get("geometry")
-          if not isinstance(geom, dict):
-              continue
+            geom = layer.get("geometry")
+            if not isinstance(geom, dict):
+                continue
 
-          gtype = geom.get("type") or "unknown"
-          geom_step_id = f"geometry:{view_id}:{layer_id}"
+            gtype = geom.get("type") or "unknown"
+            geom_step_id = f"geometry:{view_id}:{layer_id}"
 
-          # Resolve upstream by geometry.input.data (if provided)
-          ginput = geom.get("input") or {}
-          upstream_step = default_upstream_step
-          if isinstance(ginput, dict):
-              input_data = ginput.get("data")
-              if isinstance(input_data, str) and input_data in data_id_to_upstream_step:
-                  upstream_step = data_id_to_upstream_step[input_data]
+            # Resolve upstream by geometry.input.data (if provided)
+            ginput = geom.get("input") or {}
+            upstream_step = default_upstream_step
+            if isinstance(ginput, dict):
+                input_data = ginput.get("data")
+                if isinstance(input_data, str) and input_data in data_id_to_upstream_step:
+                    upstream_step = data_id_to_upstream_step[input_data]
 
-          # Enrich mesh geometry with resolved NetCDF keys (var, lat, lon)
-          geom_params = dict(geom)
-          geom_params["_viewId"] = view_id
-          geom_params["_layerId"] = layer_id
+            # Enrich mesh geometry with resolved NetCDF keys (var, lat, lon)
+            geom_params = dict(geom)
+            geom_params["_viewId"] = view_id
+            geom_params["_layerId"] = layer_id
 
-          if gtype == "mesh" and isinstance(ginput, dict):
-              input_data = ginput.get("data")
-              input_var = ginput.get("variable")
+            if gtype == "mesh" and isinstance(ginput, dict):
+                input_data = ginput.get("data")
+                input_var = ginput.get("variable")
 
-              if isinstance(input_data, str) and input_data in data_by_id:
-                  d = data_by_id[input_data]
-                  dims = d.get("dimensions") or {}
-                  lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
-                  lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+                if isinstance(input_data, str) and input_data in data_by_id:
+                    d = data_by_id[input_data]
+                    dims = d.get("dimensions") or {}
+                    lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
+                    lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
 
-                  var_key = None
-                  vars_ = d.get("variables") or []
-                  if isinstance(input_var, str) and isinstance(vars_, list):
-                      for vv in vars_:
-                          if isinstance(vv, dict) and vv.get("id") == input_var:
-                              var_key = vv.get("key")
-                              break
+                    var_key = None
+                    vars_ = d.get("variables") or []
+                    if isinstance(input_var, str) and isinstance(vars_, list):
+                        for vv in vars_:
+                            if isinstance(vv, dict) and vv.get("id") == input_var:
+                                var_key = vv.get("key")
+                                break
 
-                  geom_params["_resolved"] = {
-                      "dataId": input_data,
-                      "variableId": input_var,
-                      "variableKey": var_key,
-                      "latKey": lat_key,
-                      "lonKey": lon_key,
-                  }
+                    geom_params["_resolved"] = {
+                        "dataId": input_data,
+                        "variableId": input_var,
+                        "variableKey": var_key,
+                        "latKey": lat_key,
+                        "lonKey": lon_key,
+                    }
 
-          steps.append(
-              Step(
-                  id=geom_step_id,
-                  kind="geometry",
-                  depends_on=(upstream_step,) if upstream_step else (),
-                  params=geom_params,
-              )
-          )
+            steps.append(
+                Step(
+                    id=geom_step_id,
+                    kind="geometry",
+                    depends_on=(upstream_step,) if upstream_step else (),
+                    params=geom_params,
+                )
+            )
 
-          # For prototype: always GeoJSON outputs for mesh/polygon
-          out_name = f"{view_id}-{layer_id}"
-          artifacts.append(
-              Artifact(
-                  id=f"artifact:{view_id}:{layer_id}",
-                  format="geojson",  # type: ignore[assignment]
-                  producer_step=geom_step_id,
-                  path=f"{out_name}.geojson",
-                  metadata={"geometryType": gtype, "viewId": view_id, "layerId": layer_id},
-              )
-          )
+            # ---- Artifact + manifest metadata (now includes render info)
+            out_name = f"{view_id}-{layer_id}"
+
+            geom_dict: dict[str, Any] = geom  # after `if not isinstance(geom, dict): continue`
+            encoding_any = geom_dict.get("encoding")
+            encoding_dict: dict[str, Any] | None = encoding_any if isinstance(encoding_any, dict) else None
+            render = _build_render_from_encoding(gtype=gtype, encoding=encoding_dict)
+
+            metadata: dict[str, Any] = {
+                "geometryType": gtype,
+                "viewId": view_id,
+                "layerId": layer_id,
+            }
+            if render is not None:
+                metadata["render"] = render
+
+            artifacts.append(
+                Artifact(
+                    id=f"artifact:{view_id}:{layer_id}",
+                    format="geojson",  # type: ignore[assignment]
+                    producer_step=geom_step_id,
+                    path=f"{out_name}.geojson",
+                    metadata=metadata,
+                )
+            )
 
     return Plan(
         meta=meta,

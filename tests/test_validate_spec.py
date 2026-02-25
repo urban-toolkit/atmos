@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from atmos_server.schema import SchemaRegistry, load_schema
+from atmos_server.schema import SchemaProvider, load_schema
 
 
 def test_schema_registry_lists_versions():
     repo_root = Path(__file__).resolve().parents[1]
-    registry = SchemaRegistry(repo_root / "schemas")
+    registry = SchemaProvider(repo_root / "schemas")
     # This will pass as long as at least one schema exists.
     versions = registry.list_versions()
     assert isinstance(versions, list)
