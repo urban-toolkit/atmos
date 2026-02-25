@@ -87,7 +87,6 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   // Render
   
   return (
-    // <div id="editor-wrapper" className={isOpen ? 'open' : ''}>
     <div id="editor-wrapper" className={isOpen ? "open" : "closed"}>
 
       {/* Alert */}

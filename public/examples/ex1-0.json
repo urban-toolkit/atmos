@@ -1,0 +1,103 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dimensions": {
+        "latitude": { "key": "XLAT" },
+        "longitude": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+      "variables": [
+        { "id": "temp_2m", "key": "T2", "kind": "grid" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "properties": {
+        "geoid": { "key": "GEOID" }
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 5,
+      "repeatView": [
+        {
+          "type": "timestep",
+          "indices": [0, 3, 4, 6, 8],
+          "targetView": "view1",
+          "targetLayer": "temp"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "temp",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "r001", "variable": "temp_2m" },
+              "interpolate": "bilinear",
+              "encoding": {
+                "type": "mesh",
+                "channels": {
+                  "fill": {
+                    "field": "temp_2m",
+                    "scale": {
+                      "type": "linear",
+                      "range": {
+                        "stops": [
+                          { "value": 290.0, "color": "#a50026" },
+                          { "value": 290.5, "color": "#de402e" },
+                          { "value": 291.0, "color": "#f98e52" },
+                          { "value": 291.5, "color": "#fed485" },
+                          { "value": 292.0, "color": "#feffc0" },
+                          { "value": 292.5, "color": "#d1ecf4" },
+                          { "value": 293.0, "color": "#8ec2dc" },
+                          { "value": 293.5, "color": "#4f81ba" },
+                          { "value": 294.0, "color": "#313695" }
+                        ]
+                      },
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                },
+                "style": {
+                  "mesh": {
+                    "nodataColor": "rgba(0,0,0,0)"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                },
+                "style": {
+                  "polygon": {
+                    "strokeWidth": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
