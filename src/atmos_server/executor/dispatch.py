@@ -195,6 +195,45 @@ def _isoband_to_geojson(
 
     return {"type": "FeatureCollection", "features": features}
 
+def _isoline_to_geojson(
+    ds: xr.Dataset,
+    *,
+    var_key: str,
+    lat_key: str,
+    lon_key: str,
+    levels: list[float],
+    out_field: str,
+) -> dict[str, Any]:
+    import matplotlib.pyplot as plt
+
+    lat = ds[lat_key].values
+    lon = ds[lon_key].values
+    val = ds[var_key].values
+    while getattr(val, "ndim", 0) > 2:
+        val = val[0]
+
+    cs = plt.contour(lon, lat, val, levels=levels)
+
+    features: list[dict[str, Any]] = []
+
+    # Avoid indexing cs.levels (typed as Iterable in stubs)
+    for level, segs in zip(cs.levels, cs.allsegs):
+        lvl = float(level)
+        for seg in segs:
+            coords = [[float(x), float(y)] for x, y in seg]
+            if len(coords) < 2:
+                continue
+            features.append(
+                {
+                    "type": "Feature",
+                    "properties": {out_field: lvl},
+                    "geometry": {"type": "LineString", "coordinates": coords},
+                }
+            )
+
+    plt.close()
+    return {"type": "FeatureCollection", "features": features}
+
 def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = None) -> Any:
     """
     Execute a single step.
@@ -410,6 +449,67 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
                 levels=levels,
                 out_field=str(var_id),
             )
+        
+        if gtype == "isoline":
+            if not isinstance(upstream_obj, DataObject):
+                raise TypeError(f"isoline geometry expects DataObject upstream (step {step.id})")
+
+            resolved = g.get("_resolved") or {}
+            if not isinstance(resolved, dict):
+                resolved = {}
+
+            # ---- Extract levels (same logic as isoband)
+            levels_obj = g.get("levels")
+
+            if levels_obj is None:
+                build = g.get("build")
+                if isinstance(build, list):
+                    for item in build:
+                        if isinstance(item, dict) and "levels" in item:
+                            levels_obj = item["levels"]
+                            break
+
+            levels: list[float] | None = None
+
+            if isinstance(levels_obj, list):
+                levels = [float(x) for x in levels_obj]
+
+            elif isinstance(levels_obj, dict):
+                values = levels_obj.get("values")
+                if isinstance(values, list):
+                    levels = [float(x) for x in values]
+
+            if not levels or len(levels) < 1:
+                raise ValueError("isoline requires explicit levels (at least one value)")
+
+            # ---- Resolve dataset keys
+            var_key = resolved.get("variableKey")
+            lat_key = resolved.get("latKey")
+            lon_key = resolved.get("lonKey")
+            var_id = resolved.get("variableId") or "value"
+
+            if not isinstance(var_key, str) or not var_key:
+                raise ValueError(f"isoline geometry missing resolved variableKey (step {step.id})")
+
+            if (
+                not isinstance(lat_key, str)
+                or not lat_key
+                or not isinstance(lon_key, str)
+                or not lon_key
+            ):
+                raise ValueError(f"isoline geometry missing resolved latKey/lonKey (step {step.id})")
+
+            ds = upstream_obj.dataset
+
+            return _isoline_to_geojson(
+                ds,
+                var_key=var_key,
+                lat_key=lat_key,
+                lon_key=lon_key,
+                levels=levels,
+                out_field=str(var_id),
+            )
+
         
         raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")
     
