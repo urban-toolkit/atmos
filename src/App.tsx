@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { runSpec } from "./api/api"
 
 import { interpretManifestToMapLayers } from "./interpreters/manifestInterpreter"
@@ -29,24 +29,73 @@ export default function App() {
 
   const [showAlert, setShowAlert] = useState(false)
   const [spec, setSpec] = useState<any>(null)
+  const [appliedSpec, setAppliedSpec] = useState<any>(null)
   const [baseUrl, setBaseUrl] = useState<string>("/artifacts/") // default for now
+
+  const loadedRef = useRef(false)
+  const firstExampleRef = useRef<any>(null)
+
+  const firstSnapshotRef = useRef<null | {
+    spec: any
+    manifest: Manifest
+    mapLayers: MapLayerRuntime[]
+    geoByLayerId: Record<string, any>
+    baseUrl: string
+  }>(null)
 
   async function handleApply(nextSpec: any) {
     try {
       const result = await runSpec(nextSpec, "v0.1")
 
-      const effectiveBaseUrl = result.baseUrl ?? baseUrl  // compute once
+      // const effectiveBaseUrl = result.baseUrl ?? baseUrl
+      
+      const nextBaseUrl = result.baseUrl ?? baseUrl
+      setBaseUrl(nextBaseUrl)
 
       setManifest(result.manifest)
-      if (result.baseUrl) setBaseUrl(result.baseUrl)
+      // if (result.baseUrl) setBaseUrl(result.baseUrl)
+      
 
-      const layers = interpretManifestToMapLayers(result.manifest, effectiveBaseUrl)
+      const layers = interpretManifestToMapLayers(result.manifest, nextBaseUrl)
       setMapLayers(layers)
+
+      setAppliedSpec(nextSpec)
 
     } catch (e) {
       console.error(e)
       setShowAlert(true)
     }
+  }
+
+  // function handleResetLocal() {
+  //   const original = firstExampleRef.current
+
+  //   // clears map + manifest + fetched geojson cache + alerts
+  //   setManifest(null)
+  //   setMapLayers([])
+  //   setGeoByLayerId({})
+  //   setShowAlert(false)
+
+  //   // // baseline: "nothing applied"
+  //   // setAppliedSpec(null)
+  //   // setSpec(null)
+    
+  //   // set baselines so Apply becomes disabled after reset
+  //   setSpec(original)
+  //   setAppliedSpec(original)
+  // }
+
+  function handleResetLocal() {
+    const snap = firstSnapshotRef.current
+    if (!snap) return
+
+    setShowAlert(false)
+    setAppliedSpec(snap.spec)
+
+    setBaseUrl(snap.baseUrl)
+    setManifest(snap.manifest)
+    setMapLayers(snap.mapLayers)
+    setGeoByLayerId(snap.geoByLayerId)
   }
 
   useEffect(() => {
@@ -71,14 +120,41 @@ export default function App() {
   }, [mapLayers])
 
   useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+
     fetch("/examples/ex1-0-0.json")
       .then((r) => r.json())
       .then((data) => {
+        firstExampleRef.current = data
         setSpec(data)
+        setAppliedSpec(data)
         handleApply(data)
       })
       .catch((e) => console.error("Failed to load example spec:", e))
   }, [])
+
+  useEffect(() => {
+    if (firstSnapshotRef.current) return
+    if (!firstExampleRef.current) return
+    if (!manifest) return
+    if (!mapLayers.length) return
+
+    // wait until geojsons are all fetched
+    const allLoaded =
+      Object.keys(geoByLayerId).length === mapLayers.length &&
+      mapLayers.every((l) => geoByLayerId[l.layerId])
+
+    if (!allLoaded) return
+
+    firstSnapshotRef.current = {
+      spec: firstExampleRef.current,
+      manifest,
+      mapLayers,
+      geoByLayerId,
+      baseUrl,
+    }
+  }, [manifest, mapLayers, geoByLayerId, baseUrl])
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
@@ -96,6 +172,9 @@ export default function App() {
 
       <Editor
         initialData={spec}
+        appliedData={appliedSpec}
+        resetData={firstExampleRef.current}
+        onResetLocal={handleResetLocal}
         onApply={handleApply}
         showAlert={showAlert}
         setShowAlert={setShowAlert}

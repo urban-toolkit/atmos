@@ -14,7 +14,10 @@ type ParsedSpec = unknown
 
 interface EditorProps {
   onApply: (editorData: ParsedSpec | ParsedSpec[] | null) => void
+  onResetLocal: () => void
   initialData: ParsedSpec | ParsedSpec[] | null
+  appliedData: ParsedSpec | ParsedSpec[] | null
+  resetData: ParsedSpec | ParsedSpec[] | null
   showAlert: boolean
   setShowAlert: (alert: boolean) => void
 }
@@ -25,7 +28,7 @@ const LS_KEY = "atmos.editorWidth"
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
-const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setShowAlert }) => {
+const Editor: React.FC<EditorProps> = ({ onApply, onResetLocal, initialData, appliedData, resetData, showAlert, setShowAlert }) => {
 
   // State management
   const [isOpen, setIsOpen] = useState(true)
@@ -69,10 +72,12 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
     return false
   }
 
-  // const emptyValue: ParsedSpec | ParsedSpec[] | null = Array.isArray(initialData) ? [] : null
-  const emptyValue: unknown = Array.isArray(initialData) ? [] : null
+  // const emptyValue: unknown = Array.isArray(initialData) ? [] : null
 
   // UseEffect
+  useEffect(() => {
+    resetEditorData(initialData)
+  }, [initialData, resetEditorData])
 
   useEffect(() => {
     localStorage.setItem(LS_KEY, String(editorWidth))
@@ -127,10 +132,12 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   }, [initialData, resetEditorData])
 
   useEffect(() => {
-    const dataIsDifferent = JSON.stringify(editorData) !== JSON.stringify(initialData)
+    const baseline = appliedData
+    // const dataIsDifferent = JSON.stringify(editorData) !== JSON.stringify(initialData)
+    const dataIsDifferent = JSON.stringify(editorData) !== JSON.stringify(baseline)
     setHasUnsavedChanges(dataIsDifferent)
   
-  }, [editorData, initialData])
+  }, [editorData, appliedData])
 
   // Render
   
@@ -219,7 +226,8 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
             color="error"
             style={{ fontSize: '12px', outline: 'none' }}
             size='small'
-            onClick={() => { resetEditorData(emptyValue); onApply(emptyValue) }}
+            // onClick={() => { resetEditorData(emptyValue); onResetLocal() }}
+            onClick={() => { resetEditorData(resetData); onResetLocal() }}
             disabled={isEmpty(editorData)}
           >
             Reset
