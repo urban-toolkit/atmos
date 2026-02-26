@@ -67,24 +67,6 @@ export default function App() {
     }
   }
 
-  // function handleResetLocal() {
-  //   const original = firstExampleRef.current
-
-  //   // clears map + manifest + fetched geojson cache + alerts
-  //   setManifest(null)
-  //   setMapLayers([])
-  //   setGeoByLayerId({})
-  //   setShowAlert(false)
-
-  //   // // baseline: "nothing applied"
-  //   // setAppliedSpec(null)
-  //   // setSpec(null)
-    
-  //   // set baselines so Apply becomes disabled after reset
-  //   setSpec(original)
-  //   setAppliedSpec(original)
-  // }
-
   function handleResetLocal() {
     const snap = firstSnapshotRef.current
     if (!snap) return
