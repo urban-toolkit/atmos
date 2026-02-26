@@ -88,10 +88,47 @@ export function toFillColorExpression(fillColor: any) {
   return fillColor
 }
 
-export function convertPaint(paint: any) {
-  if (!paint || typeof paint !== "object") return paint
-  const out: any = { ...paint }
+function toMapLibreColorExpr(spec: any): any {
+  if (!spec || typeof spec !== "object") return spec
 
-  if ("fill-color" in out) out["fill-color"] = toFillColorExpression(out["fill-color"])
+  if (spec.kind === "color-stops") {
+    const field = spec.field
+    const stops = Array.isArray(spec.stops) ? spec.stops : []
+    if (!field || stops.length === 0) return spec
+
+    const interp: any[] = ["interpolate", ["linear"], ["to-number", ["get", field]]]
+    for (const s of stops) {
+      if (typeof s?.value === "number" && typeof s?.color === "string") {
+        interp.push(s.value, s.color)
+      }
+    }
+
+    // nodata handling
+    if (spec.nodataColor) {
+      return [
+        "case",
+        ["any", ["==", ["get", field], null], ["!", ["has", field]]],
+        spec.nodataColor,
+        interp,
+      ]
+    }
+    return interp
+  }
+
+  // (Optional) support your other kinds later:
+  // - color-palette
+  // - color-scheme
+  return spec
+}
+
+export function convertPaint(paint: Record<string, any> | undefined) {
+  if (!paint || typeof paint !== "object") return paint
+
+  const out: Record<string, any> = {}
+  for (const [k, v] of Object.entries(paint)) {
+    // Convert color-stops objects for ANY paint property:
+    // fill-color, line-color, circle-color, etc.
+    out[k] = toMapLibreColorExpr(v)
+  }
   return out
 }

@@ -153,6 +153,7 @@ function removeSourceIfExists(map: Map, id: string) {
   if (map.getSource(id)) map.removeSource(id)
 }
 
+
 /**
  * When paint/layout changes, MapLibre doesn’t have a “replaceLayer” API,
  * so we remove + add. This is simple and reliable for now.
