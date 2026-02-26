@@ -42,8 +42,16 @@
           {
             "id": "temp",
             "geometry": {
-              "type": "mesh",
+              "type": "isoband",
               "input": { "data": "r001", "variable": "temp_2m" },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [290, 290.5, 291.0, 291.5, 292.0, 292.5, 293.0, 293.5, 294.0, 294.5, 295, 295.5, 296, 296.5, 297, 297.5, 298]
+                  }
+                }
+              ],
               "encoding": {
                 "channels": {
                   "fill": {

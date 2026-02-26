@@ -1730,6 +1730,10 @@ export interface AtmosSpec {
                             enabled?: boolean;
                             format?: string;
                           };
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -2295,6 +2299,10 @@ export interface AtmosSpec {
                           bandOpacity?: number;
                           edgeStroke?: boolean;
                           strokeWidth?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -2811,6 +2819,10 @@ export interface AtmosSpec {
                            */
                           strokeWidth?: number;
                           shape?: 'circle' | 'square' | 'triangle' | 'diamond' | 'cross' | 'x';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -3914,6 +3926,10 @@ export interface AtmosSpec {
                           glyphScale?: number;
                           pivot?: 'tail' | 'middle' | 'tip';
                           skip?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -4442,6 +4458,10 @@ export interface AtmosSpec {
                           headMarker?: boolean;
                           stepSize?: number;
                           maxSteps?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -4960,6 +4980,10 @@ export interface AtmosSpec {
                            * Optional simplification tolerance (implementation-defined units).
                            */
                           simplify?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -5489,6 +5513,10 @@ export interface AtmosSpec {
                           speedFactor?: number;
                           fade?: number;
                           blendMode?: 'normal' | 'add' | 'multiply' | 'screen' | 'overlay';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -6163,6 +6191,10 @@ export interface AtmosSpec {
                             enabled?: boolean;
                             format?: string;
                           };
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -6728,6 +6760,10 @@ export interface AtmosSpec {
                           bandOpacity?: number;
                           edgeStroke?: boolean;
                           strokeWidth?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -7244,6 +7280,10 @@ export interface AtmosSpec {
                            */
                           strokeWidth?: number;
                           shape?: 'circle' | 'square' | 'triangle' | 'diamond' | 'cross' | 'x';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -8347,6 +8387,10 @@ export interface AtmosSpec {
                           glyphScale?: number;
                           pivot?: 'tail' | 'middle' | 'tip';
                           skip?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -8875,6 +8919,10 @@ export interface AtmosSpec {
                           headMarker?: boolean;
                           stepSize?: number;
                           maxSteps?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -9393,6 +9441,10 @@ export interface AtmosSpec {
                            * Optional simplification tolerance (implementation-defined units).
                            */
                           simplify?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -9922,6 +9974,10 @@ export interface AtmosSpec {
                           speedFactor?: number;
                           fade?: number;
                           blendMode?: 'normal' | 'add' | 'multiply' | 'screen' | 'overlay';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -11038,6 +11094,10 @@ export interface AtmosSpec {
                             enabled?: boolean;
                             format?: string;
                           };
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -11603,6 +11663,10 @@ export interface AtmosSpec {
                           bandOpacity?: number;
                           edgeStroke?: boolean;
                           strokeWidth?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -12119,6 +12183,10 @@ export interface AtmosSpec {
                            */
                           strokeWidth?: number;
                           shape?: 'circle' | 'square' | 'triangle' | 'diamond' | 'cross' | 'x';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -13222,6 +13290,10 @@ export interface AtmosSpec {
                           glyphScale?: number;
                           pivot?: 'tail' | 'middle' | 'tip';
                           skip?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -13750,6 +13822,10 @@ export interface AtmosSpec {
                           headMarker?: boolean;
                           stepSize?: number;
                           maxSteps?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -14268,6 +14344,10 @@ export interface AtmosSpec {
                            * Optional simplification tolerance (implementation-defined units).
                            */
                           simplify?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -14797,6 +14877,10 @@ export interface AtmosSpec {
                           speedFactor?: number;
                           fade?: number;
                           blendMode?: 'normal' | 'add' | 'multiply' | 'screen' | 'overlay';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -15471,6 +15555,10 @@ export interface AtmosSpec {
                             enabled?: boolean;
                             format?: string;
                           };
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -16036,6 +16124,10 @@ export interface AtmosSpec {
                           bandOpacity?: number;
                           edgeStroke?: boolean;
                           strokeWidth?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -16552,6 +16644,10 @@ export interface AtmosSpec {
                            */
                           strokeWidth?: number;
                           shape?: 'circle' | 'square' | 'triangle' | 'diamond' | 'cross' | 'x';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -17655,6 +17751,10 @@ export interface AtmosSpec {
                           glyphScale?: number;
                           pivot?: 'tail' | 'middle' | 'tip';
                           skip?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -18183,6 +18283,10 @@ export interface AtmosSpec {
                           headMarker?: boolean;
                           stepSize?: number;
                           maxSteps?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -18701,6 +18805,10 @@ export interface AtmosSpec {
                            * Optional simplification tolerance (implementation-defined units).
                            */
                           simplify?: number;
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };
@@ -19230,6 +19338,10 @@ export interface AtmosSpec {
                           speedFactor?: number;
                           fade?: number;
                           blendMode?: 'normal' | 'add' | 'multiply' | 'screen' | 'overlay';
+                          /**
+                           * CSS color or hex.
+                           */
+                          nodataColor?: string;
                         };
                         [k: string]: unknown;
                       };

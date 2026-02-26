@@ -2572,6 +2572,10 @@
                                                           "type": "string"
                                                         }
                                                       }
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -2661,6 +2665,10 @@
                                                     "strokeWidth": {
                                                       "type": "number",
                                                       "minimum": 0
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -2727,6 +2735,10 @@
                                                         "x"
                                                       ],
                                                       "default": "circle"
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -2965,6 +2977,10 @@
                                                     "skip": {
                                                       "type": "integer",
                                                       "minimum": 0
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -3056,6 +3072,10 @@
                                                     "maxSteps": {
                                                       "type": "integer",
                                                       "minimum": 0
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -3123,6 +3143,10 @@
                                                       "type": "number",
                                                       "minimum": 0,
                                                       "description": "Optional simplification tolerance (implementation-defined units)."
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -3198,6 +3222,10 @@
                                                         "screen",
                                                         "overlay"
                                                       ]
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
                                                     }
                                                   },
                                                   "additionalProperties": false
