@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { runSpec } from "./api/api"
 
 import { interpretManifestToMapLayers } from "./interpreters/manifestInterpreter"
@@ -30,24 +30,6 @@ export default function App() {
   const [showAlert, setShowAlert] = useState(false)
   const [spec, setSpec] = useState<any>(null)
   const [baseUrl, setBaseUrl] = useState<string>("/artifacts/") // default for now
-
-  // async function handleApply(nextSpec: any) {
-  //   try {
-  //     // setSpec(nextSpec)
-  //     const result = await runSpec(nextSpec, "v0.1")
-
-  //     // Expecting server to return { manifest, baseUrl }
-  //     setManifest(result.manifest)
-  //     if (result.baseUrl) setBaseUrl(result.baseUrl)
-      
-  //       const layers = interpretManifestToMapLayers(result.manifest, result.baseUrl ?? baseUrl)
-  //     setMapLayers(layers)
-
-  //   } catch (e) {
-  //     console.error(e)
-  //     setShowAlert(true)
-  //   }
-  // }
 
   async function handleApply(nextSpec: any) {
     try {
@@ -107,7 +89,6 @@ export default function App() {
             {manifest ? `${manifest.kind} • ${manifest.schemaVersion}` : "No run yet"}
           </div>
         </div>
-        {/* <AtmosMap tempGeo={tempGeo} boundGeo={boundGeo}/> */}
         <AtmosMap
           layers={mapLayers.map((l) => ({ ...l, geojson: geoByLayerId[l.layerId] }))}
         />

@@ -1,5 +1,5 @@
 import './Editor.css'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 import { JsonEditor, githubLightTheme } from 'json-edit-react'
 
@@ -10,16 +10,7 @@ import { faFileCode } from '@fortawesome/free-regular-svg-icons'
 import useUndo from 'use-undo'
 import { Alert, Button, Snackbar, type SnackbarCloseReason } from '@mui/material'
 
-// import type { ParsedSpec } from "atmos"
 type ParsedSpec = unknown
-
-// initialData: the original JSON data that was provided to the editor when it first opened. 
-// It is the baseline or starting point, the original file or configuration before the user makes edits.
-
-// editorData: current content of the JSON editor. Everything the user has typed or modified, including any changes that haven’t been applied yet. It is what is applied.
-
-// hasUnsavedChanges: A boolean flag that tells you whether editorData is different from initialData.
-
 
 interface EditorProps {
   onApply: (editorData: ParsedSpec | ParsedSpec[] | null) => void
@@ -28,10 +19,24 @@ interface EditorProps {
   setShowAlert: (alert: boolean) => void
 }
 
+const MIN_W = 320
+const MAX_W = 900
+const LS_KEY = "atmos.editorWidth"
+
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
+
 const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setShowAlert }) => {
 
   // State management
   const [isOpen, setIsOpen] = useState(true)
+  
+  const [editorWidth, setEditorWidth] = useState(() => {
+    const raw = localStorage.getItem(LS_KEY)
+    const n = raw ? Number(raw) : 500
+    return Number.isFinite(n) ? clamp(n, MIN_W, MAX_W) : 500
+  })
+
+  const draggingRef = useRef(false)
   
   const [
     { present: editorData},
@@ -68,6 +73,49 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   const emptyValue: unknown = Array.isArray(initialData) ? [] : null
 
   // UseEffect
+
+  useEffect(() => {
+    localStorage.setItem(LS_KEY, String(editorWidth))
+  }, [editorWidth])
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!draggingRef.current) return
+      // left anchored panel => width is pointerX
+      const next = clamp(e.clientX, MIN_W, Math.min(MAX_W, window.innerWidth - 120))
+      setEditorWidth(next)
+      // make map react immediately
+      window.dispatchEvent(new Event("resize"))
+    }
+
+    const onUp = () => {
+      if (!draggingRef.current) return
+      draggingRef.current = false
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onUp)
+
+    return () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      window.removeEventListener("pointercancel", onUp)
+    }
+  }, [])
+
+  const onHandlePointerDown = (e: React.PointerEvent) => {
+    if (!isOpen) return
+    draggingRef.current = true
+    // capture pointer for smoother drag even if you leave the handle
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    e.preventDefault()
+  }
+
   useEffect(() => {
     setTimeout(() => {
       window.dispatchEvent(new Event("resize"))
@@ -87,8 +135,10 @@ const Editor: React.FC<EditorProps> = ({ onApply, initialData, showAlert, setSho
   // Render
   
   return (
-    <div id="editor-wrapper" className={isOpen ? "open" : "closed"}>
-
+    <div id="editor-wrapper" className={isOpen ? "open" : "closed"} style={{ width: editorWidth}}>
+      {/* Resize handle */}
+      <div className="editor-resize-handle" onPointerDown={onHandlePointerDown} />
+      
       {/* Alert */}
       <Snackbar
         open={showAlert}

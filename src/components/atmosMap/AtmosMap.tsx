@@ -1,119 +1,287 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import maplibregl, { Map } from "maplibre-gl"
-import { convertPaint, schemeToColors } from "../../helpers/colors"
+import { convertPaint } from "../../helpers/colors"
 
-type RenderSpec =
+/**
+ * -------------------------------------------
+ * Types (grow these as Atmos grows)
+ * -------------------------------------------
+ */
+
+type GeoJSONFeatureCollection = GeoJSON.FeatureCollection
+
+type MapLayerRole = "field" | "boundary" | "unknown"
+
+// MapLibre layer types we’ll use (expand later as needed)
+type MapLibreLayerType = "fill" | "line" | "circle" | "symbol"
+
+type MapLibreRenderSpec =
   | {
       renderer: "maplibre"
+      layers: Array<{
+        id?: string
+        type: MapLibreLayerType
+        paint?: Record<string, any>
+        layout?: Record<string, any>
+        filter?: any[]
+        minzoom?: number
+        maxzoom?: number
+        "source-layer"?: string
+        beforeId?: string
+      }>
+    }
+  | {
+      renderer: "maplibre"
+      // OLD (legacy)
       layerType: "fill" | "line" | "circle"
       paint?: Record<string, any>
       layout?: Record<string, any>
     }
-  | undefined
 
-type AtmosMapProps = {
-  layers: Array<{
-    layerId: string
-    role: "field" | "boundary" | "unknown"
-    geojson: any
-    render?: RenderSpec
-  }>
+type RenderSpec = MapLibreRenderSpec | undefined
+
+export type AtmosMapLayer = {
+  layerId: string
+  role: MapLayerRole
+  geojson: GeoJSONFeatureCollection
+  render?: RenderSpec
 }
 
-// type AtmosMapProps = {
-//   layers: Array<{
-//     layerId: string
-//     role: "field" | "boundary" | "unknown"
-//     geojson: any
-//     fill?: FillChannel
-//     opacity?: number
-//   }>
-// }
-
-type FillScale =
-  | { type: "sequential"; scheme?: string; domain?: [number, number]; steps?: number }
-  | { type: "sequential"; stops: Array<[number, string]> }
-
-type FillChannel = {
-  field: string
-  scale: FillScale
+export type AtmosMapProps = {
+  layers: AtmosMapLayer[]
+  /**
+   * If true, will fit bounds whenever layers change (using first non-empty bbox).
+   * If you later add Atmos "view" camera, you can disable this by default.
+   */
+  autoFitBounds?: boolean
+  /**
+   * MapLibre style URL or JSON (optional)
+   */
+  mapStyle?: string | any
 }
 
-export default function AtmosMap({ layers }: AtmosMapProps) {
+/**
+ * -------------------------------------------
+ * ID helpers (namespacing prevents collisions)
+ * -------------------------------------------
+ */
+function srcId(layerId: string) {
+  return `src:${layerId}`
+}
 
+function lyrId(layerId: string, local?: string) {
+  // local lets one Atmos layer produce many MapLibre layers
+  return local ? `lyr:${layerId}:${local}` : `lyr:${layerId}`
+}
+
+function isAtmosSource(id: string) {
+  return id.startsWith("src:")
+}
+
+function isAtmosLayer(id: string) {
+  return id.startsWith("lyr:")
+}
+
+/**
+ * -------------------------------------------
+ * Geo helpers
+ * -------------------------------------------
+ */
+type BBox = [number, number, number, number]
+
+function bboxFromFeatureCollection(fc: any): BBox | null {
+  if (!fc || fc.type !== "FeatureCollection" || !Array.isArray(fc.features)) return null
+
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity
+
+  const push = (x: number, y: number) => {
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+  }
+
+  const walk = (coords: any) => {
+    if (!coords) return
+    if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+      push(coords[0], coords[1])
+      return
+    }
+    for (const c of coords) walk(c)
+  }
+
+  for (const f of fc.features) {
+    const coords = f?.geometry?.coordinates
+    if (coords) walk(coords)
+  }
+
+  if (!isFinite(minX)) return null
+  return [minX, minY, maxX, maxY]
+}
+
+function firstNonEmptyBBox(layers: AtmosMapLayer[]): BBox | null {
+  for (const l of layers) {
+    const bb = bboxFromFeatureCollection(l.geojson)
+    if (bb) return bb
+  }
+  return null
+}
+
+/**
+ * -------------------------------------------
+ * MapLibre upsert utilities
+ * -------------------------------------------
+ */
+function upsertGeoJSONSource(map: Map, id: string, data: GeoJSONFeatureCollection) {
+  const existing = map.getSource(id) as any
+  if (!existing) {
+    map.addSource(id, { type: "geojson", data })
+    return
+  }
+  // GeoJSONSource has setData
+  if (typeof existing.setData === "function") existing.setData(data)
+}
+
+function removeLayerIfExists(map: Map, id: string) {
+  if (map.getLayer(id)) map.removeLayer(id)
+}
+
+function removeSourceIfExists(map: Map, id: string) {
+  if (map.getSource(id)) map.removeSource(id)
+}
+
+/**
+ * When paint/layout changes, MapLibre doesn’t have a “replaceLayer” API,
+ * so we remove + add. This is simple and reliable for now.
+ */
+function replaceLayer(map: Map, layerDef: any, beforeId?: string) {
+  removeLayerIfExists(map, layerDef.id)
+  map.addLayer(layerDef, beforeId)
+}
+
+/**
+ * -------------------------------------------
+ * Renderer adapters (future: deck.gl, etc.)
+ * -------------------------------------------
+ */
+const renderers = {
+  maplibre: {
+    buildLayers(atmosLayer: AtmosMapLayer): Array<{ id: string; def: any; beforeId?: string }> {
+      const render = atmosLayer.render
+      if (!render || render.renderer !== "maplibre") return []
+
+      const source = srcId(atmosLayer.layerId)
+
+      // Normalize to the NEW array form
+      const layers =
+        "layers" in render
+          ? render.layers
+          : [
+              {
+                id: "main",
+                type: render.layerType,
+                paint: render.paint,
+                layout: render.layout,
+              },
+            ]
+
+      return layers.map((l, i) => {
+        const id = lyrId(atmosLayer.layerId, l.id ?? String(i))
+
+        const def: any = {
+          id,
+          type: l.type,
+          source,
+        }
+
+        if (l.paint) def.paint = convertPaint(l.paint)
+        if (l.layout) def.layout = l.layout
+        if (l.filter) def.filter = l.filter
+        if (typeof l.minzoom === "number") def.minzoom = l.minzoom
+        if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
+        if (l["source-layer"]) def["source-layer"] = l["source-layer"]
+
+        return { id, def, beforeId: (l as any).beforeId }
+      })
+    },
+  },
+} as const
+
+/**
+ * -------------------------------------------
+ * Cleanup logic
+ * -------------------------------------------
+ */
+function reconcileAtmosObjects(map: Map, keepLayerIds: Set<string>, keepSourceIds: Set<string>) {
+  // Remove stale layers first (safe: layers reference sources)
+  const style = map.getStyle()
+  const existingLayers = style.layers ?? []
+  for (const l of existingLayers) {
+    if (isAtmosLayer(l.id) && !keepLayerIds.has(l.id)) {
+      removeLayerIfExists(map, l.id)
+    }
+  }
+
+  // Then remove stale sources
+  const existingSources = style.sources ?? {}
+  for (const id of Object.keys(existingSources)) {
+    if (isAtmosSource(id) && !keepSourceIds.has(id)) {
+      removeSourceIfExists(map, id)
+    }
+  }
+}
+
+/**
+ * -------------------------------------------
+ * Main component
+ * -------------------------------------------
+ */
+export default function AtmosMap({
+  layers,
+  autoFitBounds = true,
+  mapStyle = "https://demotiles.maplibre.org/style.json",
+}: AtmosMapProps) {
   const mapRef = useRef<Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  function bboxFromFeatureCollection(fc: any): [number, number, number, number] | null {
-    if (!fc || fc.type !== "FeatureCollection" || !Array.isArray(fc.features)) return null
+  // Precompute “what MapLibre layers should exist” (pure, testable)
+  const plan = useMemo(() => {
+    const sourceIds = new Set<string>()
+    const layerIds = new Set<string>()
+    const ops: Array<
+      | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
+      | { kind: "layer"; id: string; def: any; beforeId?: string }
+    > = []
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    const pushCoord = (x: number, y: number) => {
-      if (x < minX) minX = x
-      if (y < minY) minY = y
-      if (x > maxX) maxX = x
-      if (y > maxY) maxY = y
-    }
+    for (const l of layers ?? []) {
+      if (!l?.layerId || !l?.geojson) continue
 
-    const walk = (coords: any) => {
-      if (!coords) return
-      if (typeof coords[0] === "number" && typeof coords[1] === "number") {
-        pushCoord(coords[0], coords[1])
-        return
+      const sid = srcId(l.layerId)
+      sourceIds.add(sid)
+      ops.push({ kind: "source", id: sid, data: l.geojson })
+
+      // If no explicit render given yet, you can choose a default later based on role/type.
+      // For now: render only if provided.
+      const built = renderers.maplibre.buildLayers(l)
+      for (const b of built) {
+        layerIds.add(b.id)
+        ops.push({ kind: "layer", id: b.id, def: b.def, beforeId: b.beforeId })
       }
-      for (const c of coords) walk(c)
     }
 
-    for (const f of fc.features) {
-      if (f?.geometry?.coordinates) walk(f.geometry.coordinates)
-    }
+    return { sourceIds, layerIds, ops }
+  }, [layers])
 
-    if (!isFinite(minX)) return null
-    return [minX, minY, maxX, maxY]
-  }
-
-  function buildFillColorExpr(fill: FillChannel) {
-    const field = fill.field;
-
-    // handle nodata safely
-    const valueExpr: any[] = ["coalesce", ["get", field], 0];
-
-    // Case 1: explicit stops (best)
-    if ("stops" in fill.scale) {
-      const stops = fill.scale.stops;
-      return [
-        "interpolate",
-        ["linear"],
-        valueExpr,
-        ...stops.flatMap(([v, c]) => [v, c]),
-      ];
-    }
-
-    // Case 2: domain + steps (needs a scheme->colors function)
-    const domain = fill.scale.domain;
-    const steps = fill.scale.steps ?? 7;
-    if (!domain) {
-      throw new Error(`fill.scale.domain is required when scale.stops is not provided`);
-    }
-
-    const [d0, d1] = domain;
-    const vals = Array.from({ length: steps }, (_, i) => d0 + (i * (d1 - d0)) / (steps - 1));
-
-    const colors = schemeToColors(fill.scale.scheme ?? "RdYlBu", steps); // you implement
-    return [
-      "interpolate",
-      ["linear"],
-      valueExpr,
-      ...vals.flatMap((v, i) => [v, colors[i]]),
-    ];
-  }
-
+  // Create map once
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://demotiles.maplibre.org/style.json",
+      style: mapStyle,
       center: [-78.9, 38.43],
       zoom: 6,
     })
@@ -125,74 +293,47 @@ export default function AtmosMap({ layers }: AtmosMapProps) {
       map.remove()
       mapRef.current = null
     }
-  }, [])  
+  }, [mapStyle])
 
+  // Resize listener
   useEffect(() => {
-    const handleResize = () => {
-      mapRef.current?.resize()
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
+    const onResize = () => mapRef.current?.resize()
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
   }, [])
 
+  // Apply plan whenever layers change
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    if (!layers?.length) return
-    if (layers.some((l) => !l.geojson)) return
 
     const apply = () => {
-      const keepLayerIds = new Set(layers.map(l => `lyr-${l.layerId}`))
-      const keepSourceIds = new Set(layers.map(l => `src-${l.layerId}`))
+      // Remove stale Atmos objects
+      reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
 
-      for (const id of map.getStyle().layers?.map(x => x.id) ?? []) {
-        if (id.startsWith("lyr-") && !keepLayerIds.has(id)) map.removeLayer(id)
-      }
-      for (const id of Object.keys(map.getStyle().sources ?? {})) {
-        if (id.startsWith("src-") && !keepSourceIds.has(id)) map.removeSource(id)
+      // Upsert sources first
+      for (const op of plan.ops) {
+        if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
       }
 
-      for (const l of layers) {
-        const SRC = `src-${l.layerId}`
-        const LYR = `lyr-${l.layerId}`
+      // Then replace layers (paint/layout changes)
+      for (const op of plan.ops) {
+        if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
+      }
 
-        if (!map.getSource(SRC)) map.addSource(SRC, { type: "geojson", data: l.geojson })
-        else (map.getSource(SRC) as any).setData(l.geojson)
-
-        if (map.getLayer(LYR)) map.removeLayer(LYR)
-
-        const render = (l as any).render
-        if (render?.renderer === "maplibre") {
-          const SRC = `src-${l.layerId}`
-          const LYR = `lyr-${l.layerId}`
-
-          if (!map.getSource(SRC)) map.addSource(SRC, { type: "geojson", data: l.geojson })
-          else (map.getSource(SRC) as any).setData(l.geojson)
-
-          // ensure updates apply if paint changes
-          if (map.getLayer(LYR)) map.removeLayer(LYR)
-
-          const layerDef: any = {
-            id: LYR,
-            type: render.layerType,
-            source: SRC,
-            paint: convertPaint(render.paint ?? {}),
-          }
-
-          if (render.layout && typeof render.layout === "object") {
-            layerDef.layout = render.layout
-          }
-
-          map.addLayer(layerDef)
-          continue
+      // Optional fit bounds
+      if (autoFitBounds) {
+        const bb = firstNonEmptyBBox(layers ?? [])
+        if (bb) {
+          map.fitBounds(
+            [
+              [bb[0], bb[1]],
+              [bb[2], bb[3]],
+            ],
+            { padding: 30, duration: 400 }
+          )
         }
       }
-
-      // fit bounds (use first layer that exists)
-      const anyGeo = layers[0]?.geojson
-      const bb = bboxFromFeatureCollection(anyGeo)
-      if (bb) map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
     }
 
     if (!map.isStyleLoaded()) {
@@ -200,8 +341,7 @@ export default function AtmosMap({ layers }: AtmosMapProps) {
       return
     }
     apply()
-  }, [layers])
-  
+  }, [plan, layers, autoFitBounds])
 
-  return <div ref={containerRef} />
+  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 }
