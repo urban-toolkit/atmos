@@ -10,8 +10,6 @@ atmos-server validate tests/fixtures/v0.1/ex1-1.json --version v0.1
 atmos-server compile tests/fixtures/v0.1/ex1-1.json --version v0.1 --out out/plan.json
 atmos-server run tests/fixtures/v0.1/ex1-1.json --version v0.1 --out artifacts/
 
-atmos-server validate tests/fixtures/v0.1/ex1-1.json --version v0.1
-atmos-server run tests/fixtures/v0.1/ex1-1.json --version v0.1 --out artifacts/
 
 uvicorn atmos_server.api.app:app --reload --port 8000
 uvicorn atmos_server.api.app:app --port 8000

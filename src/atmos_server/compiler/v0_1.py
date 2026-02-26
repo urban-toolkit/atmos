@@ -291,7 +291,7 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
             geom_params["_viewId"] = view_id
             geom_params["_layerId"] = layer_id
 
-            if gtype == "mesh" and isinstance(ginput, dict):
+            if gtype in ("mesh", "isoband", "isoline") and isinstance(ginput, dict):
                 input_data = ginput.get("data")
                 input_var = ginput.get("variable")
 

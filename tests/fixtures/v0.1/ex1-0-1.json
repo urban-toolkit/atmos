@@ -1,8 +1,8 @@
 {
   "data": [
-        {
+    {
       "id": "r001",
-      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "source": { "type": "netcdf", "path": "data/wrfout_d01_2011-01-12_00_00_00.nc" },
       "dimensions": {
         "latitude": { "key": "XLAT" },
         "longitude": { "key": "XLONG" },
@@ -14,7 +14,7 @@
     },
     {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "source": { "type": "geojson", "path": "data/boundaries.geojson" },
       "properties": {
         "geoid": { "key": "GEOID" }
       }
@@ -42,11 +42,17 @@
           {
             "id": "temp",
             "geometry": {
-              "type": "mesh",
+              "type": "isoband",
               "input": { "data": "r001", "variable": "temp_2m" },
-              "interpolate": "bilinear",
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [290, 290.5, 291.0, 291.5, 292.0, 292.5, 293.0, 293.5, 294.0]
+                  }
+                }
+              ],
               "encoding": {
-                "type": "mesh",
                 "channels": {
                   "fill": {
                     "field": "temp_2m",

@@ -12,6 +12,8 @@ from atmos_server.executor.context import ExecutionContext
 
 import json
 import xarray as xr
+import matplotlib
+matplotlib.use("Agg")  # headless backend (no NSWindow)
 
 from atmos_server.runtime.model import DataObject
 
@@ -140,6 +142,56 @@ def _mesh_to_geojson(
                     "geometry": {"type": "Polygon", "coordinates": [coords]},
                 }
             )
+
+    return {"type": "FeatureCollection", "features": features}
+
+def _isoband_to_geojson(
+    ds: xr.Dataset,
+    *,
+    var_key: str,
+    lat_key: str,
+    lon_key: str,
+    levels: list[float],
+    out_field: str,
+) -> dict[str, Any]:
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    lat = ds[lat_key].values
+    lon = ds[lon_key].values
+    val = ds[var_key].values
+
+    while getattr(val, "ndim", 0) > 2:
+        val = val[0]
+
+    cs = plt.contourf(lon, lat, val, levels=levels)
+
+    features = []
+    
+    allsegs = cs.allsegs  # band-indexed polygons
+    for i, segs in enumerate(allsegs):
+        lo = levels[i]
+        hi = levels[i + 1]
+        mid = (lo + hi) / 2.0
+
+        for seg in segs:
+            # seg is Nx2 array-like of lon/lat vertices
+            poly = [[float(x), float(y)] for x, y in seg]
+            if len(poly) < 4:
+                continue
+            # close ring if needed
+            if poly[0] != poly[-1]:
+                poly.append(poly[0])
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "properties": {out_field: mid, f"{out_field}_lo": lo, f"{out_field}_hi": hi},
+                    "geometry": {"type": "Polygon", "coordinates": [poly]},
+                }
+            )
+    plt.close()
 
     return {"type": "FeatureCollection", "features": features}
 
@@ -310,6 +362,55 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
             ds = upstream_obj.dataset
             return _mesh_to_geojson(ds, var_key=var_key, lat_key=lat_key, lon_key=lon_key, out_field=str(var_id))
 
+        if gtype == "isoband":
+            if not isinstance(upstream_obj, DataObject):
+                raise TypeError("isoband geometry expects DataObject upstream")
+
+            resolved = g.get("_resolved") or {}
+            if not isinstance(resolved, dict):
+                resolved = {}
+
+            # levels may be flattened by compiler, or live inside build
+            levels_obj = g.get("levels")
+            if levels_obj is None:
+                build = g.get("build")
+                if isinstance(build, list):
+                    for item in build:
+                        if isinstance(item, dict) and "levels" in item:
+                            levels_obj = item["levels"]
+                            break
+
+            levels: list[float] | None = None
+            if isinstance(levels_obj, list):
+                levels = [float(x) for x in levels_obj]
+            elif isinstance(levels_obj, dict):
+                values = levels_obj.get("values")
+                if isinstance(values, list):
+                    levels = [float(x) for x in values]
+
+            if not levels or len(levels) < 2:
+                raise ValueError("isoband requires explicit levels (levels must be a list or {values:[...]})")
+
+            var_key = resolved.get("variableKey")
+            lat_key = resolved.get("latKey")
+            lon_key = resolved.get("lonKey")
+            var_id = resolved.get("variableId") or "value"
+
+            if not isinstance(var_key, str) or not var_key:
+                raise ValueError(f"isoband geometry missing resolved variableKey (step {step.id})")
+            if not isinstance(lat_key, str) or not lat_key or not isinstance(lon_key, str) or not lon_key:
+                raise ValueError(f"isoband geometry missing resolved latKey/lonKey (step {step.id})")
+
+            ds = upstream_obj.dataset
+            return _isoband_to_geojson(
+                ds,
+                var_key=var_key,
+                lat_key=lat_key,
+                lon_key=lon_key,
+                levels=levels,
+                out_field=str(var_id),
+            )
+        
         raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")
     
     return None

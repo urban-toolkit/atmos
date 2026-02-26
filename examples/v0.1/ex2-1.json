@@ -2,7 +2,7 @@
   "data": [
     {
       "id": "r001",
-      "source": { "type": "netcdf", "path": "data/wrfout_d01_2011-01-12_00_00_00.nc" },
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
       "dimensions": {
         "latitude": { "key": "XLAT" },
         "longitude": { "key": "XLONG" },
@@ -15,7 +15,7 @@
     },
     {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "data/boundaries.geojson" },
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
       "properties": {
         "geoid": { "key": "GEOID" }
       }

@@ -20,8 +20,6 @@ cftime==1.6.5
     # via netcdf4
 click==8.3.1
     # via uvicorn
-colorama==0.4.6
-    # via click
 fastapi==0.133.1
     # via atmos-server (pyproject.toml)
 h11==0.16.0
@@ -77,8 +75,6 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-tzdata==2025.3
-    # via pandas
 uvicorn==0.41.0
     # via atmos-server (pyproject.toml)
 xarray==2026.2.0
