@@ -135,6 +135,7 @@ function firstNonEmptyBBox(layers: AtmosMapLayer[]): BBox | null {
  * MapLibre upsert utilities
  * -------------------------------------------
  */
+
 function upsertGeoJSONSource(map: Map, id: string, data: GeoJSONFeatureCollection) {
   const existing = map.getSource(id) as any
   if (!existing) {
@@ -158,9 +159,47 @@ function removeSourceIfExists(map: Map, id: string) {
  * When paint/layout changes, MapLibre doesn’t have a “replaceLayer” API,
  * so we remove + add. This is simple and reliable for now.
  */
+// function replaceLayer(map: Map, layerDef: any, beforeId?: string) {
+//   removeLayerIfExists(map, layerDef.id)
+//   map.addLayer(layerDef, beforeId)
+// }
 function replaceLayer(map: Map, layerDef: any, beforeId?: string) {
   removeLayerIfExists(map, layerDef.id)
-  map.addLayer(layerDef, beforeId)
+
+  const safeBeforeId =
+    beforeId && map.getLayer(beforeId) ? beforeId : undefined
+
+  const src = layerDef.source
+
+  // 🚨 If the source isn't ready yet, don't try to add the layer
+  if (typeof src === "string" && !map.getSource(src)) {
+    console.warn("Skipping addLayer because source missing (will retry later)", {
+      layerId: layerDef.id,
+      source: src,
+    })
+    return
+  }
+
+  try {
+    map.addLayer(layerDef, safeBeforeId)
+  } catch (e) {
+    console.warn("addLayer failed; retrying without beforeId", {
+      id: layerDef.id,
+      beforeId,
+      safeBeforeId,
+      e,
+    })
+
+    try {
+      map.addLayer(layerDef)
+    } catch (e2) {
+      console.warn("addLayer still failed", {
+        id: layerDef.id,
+        source: src,
+        e2,
+      })
+    }
+  }
 }
 
 /**
@@ -308,40 +347,54 @@ export default function AtmosMap({
     const map = mapRef.current
     if (!map) return
 
+    let cancelled = false
+
     const apply = () => {
-      // Remove stale Atmos objects
-      reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
+      if (cancelled) return
+      if (!map.isStyleLoaded()) return // still not ready
 
-      // Upsert sources first
-      for (const op of plan.ops) {
-        if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
-      }
+      try {
+        reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
 
-      // Then replace layers (paint/layout changes)
-      for (const op of plan.ops) {
-        if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
-      }
-
-      // Optional fit bounds
-      if (autoFitBounds) {
-        const bb = firstNonEmptyBBox(layers ?? [])
-        if (bb) {
-          map.fitBounds(
-            [
-              [bb[0], bb[1]],
-              [bb[2], bb[3]],
-            ],
-            { padding: 30, duration: 400 }
-          )
+        // sources first
+        for (const op of plan.ops) {
+          if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
         }
+
+        // then layers
+        for (const op of plan.ops) {
+          if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
+        }
+
+        // Optional fit bounds
+        if (autoFitBounds) {
+          const bb = firstNonEmptyBBox(layers ?? [])
+          if (bb) {
+            map.fitBounds([[bb[0], bb[1]],[bb[2], bb[3]]], { padding: 30, duration: 400 })
+          }
+        }
+      } catch (e) {
+        // If style is in flux, sources/layers can throw. Retry on next styledata tick.
+        console.warn("apply failed; will retry on styledata", e)
+        map.once("styledata", apply)
       }
     }
+
+    // Always: ensure we apply after style events too
+    const onStyleData = () => apply()
 
     if (!map.isStyleLoaded()) {
       map.once("load", apply)
-      return
+    } else {
+      apply()
     }
-    apply()
+
+    map.on("styledata", onStyleData)
+
+    return () => {
+      cancelled = true
+      map.off("styledata", onStyleData)
+    }
   }, [plan, layers, autoFitBounds])
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />

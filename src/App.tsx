@@ -19,7 +19,6 @@ type Manifest = {
   }>
 }
 
-// const firstExamplePath = "/examples/ex1-0-1.json"
 const firstExamplePath = "/examples/ex1-0-mesh.json"
 
 export default function App() {

@@ -188,7 +188,7 @@ const Editor: React.FC<EditorProps> = ({ onApply, onResetLocal, initialData, app
               }
             }
           ]}
-          rootFontSize={12}
+          rootFontSize={16}
           showCollectionCount={"when-closed"}
           showArrayIndices={false}
         />
