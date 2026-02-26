@@ -97,6 +97,7 @@ def _mesh_to_geojson(
     lon_key: str,
     out_field: str,
     target_cells: int = 5000,
+    footprint: float = 1.0,   # NEW
 ) -> dict[str, Any]:
     lat = ds[lat_key].values
     lon = ds[lon_key].values
@@ -112,10 +113,16 @@ def _mesh_to_geojson(
     if ncells <= 0:
         return {"type": "FeatureCollection", "features": []}
 
+    # Clamp footprint to [0, 1]
+    fp = float(footprint)
+    if fp < 0.0:
+        fp = 0.0
+    elif fp > 1.0:
+        fp = 1.0
+
     # stride so we don't explode file size
     stride = 1
     if ncells > target_cells:
-        # crude stride: sqrt ratio
         import math as _math
         stride = int(_math.ceil(_math.sqrt(ncells / target_cells)))
 
@@ -126,14 +133,22 @@ def _mesh_to_geojson(
             if v != v:  # NaN check
                 continue
 
-            # cell corners (j,i) (j,i+1) (j+1,i+1) (j+1,i)
-            coords = [
-                [float(lon[j, i]), float(lat[j, i])],
-                [float(lon[j, i + 1]), float(lat[j, i + 1])],
-                [float(lon[j + 1, i + 1]), float(lat[j + 1, i + 1])],
-                [float(lon[j + 1, i]), float(lat[j + 1, i])],
-                [float(lon[j, i]), float(lat[j, i])],
-            ]
+            # corners
+            p00 = (float(lon[j, i]),         float(lat[j, i]))
+            p10 = (float(lon[j, i + 1]),     float(lat[j, i + 1]))
+            p11 = (float(lon[j + 1, i + 1]), float(lat[j + 1, i + 1]))
+            p01 = (float(lon[j + 1, i]),     float(lat[j + 1, i]))
+
+            # center
+            cx = (p00[0] + p10[0] + p11[0] + p01[0]) / 4.0
+            cy = (p00[1] + p10[1] + p11[1] + p01[1]) / 4.0
+
+            # shrink toward center (fp=1 -> same cell; fp<1 -> gaps)
+            def shrink(p):
+                return [cx + fp * (p[0] - cx), cy + fp * (p[1] - cy)]
+
+            coords = [shrink(p00), shrink(p10), shrink(p11), shrink(p01)]
+            coords.append(coords[0])  # close ring
 
             features.append(
                 {
@@ -324,6 +339,46 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
                 ds2 = ds.isel({time_dim: idx})
                 return DataObject(id=upstream_obj.id, dataset=ds2)
 
+            if ttype in ("derive_wind_speed", "derive_wind_direction"):
+                resolved = t.get("_resolved") or {}
+                if not isinstance(resolved, dict):
+                    resolved = {}
+
+                u_key = resolved.get("uKey") or t.get("u")
+                v_key = resolved.get("vKey") or t.get("v")
+                out_id = (t.get("as") or {}).get("id")
+                out_key = resolved.get("outKey") or out_id
+
+                if not isinstance(u_key, str) or not u_key:
+                    raise ValueError(f"{ttype}: missing uKey (step {step.id})")
+                if not isinstance(v_key, str) or not v_key:
+                    raise ValueError(f"{ttype}: missing vKey (step {step.id})")
+                if not isinstance(out_key, str) or not out_key:
+                    raise ValueError(f"{ttype}: missing as.id/outKey (step {step.id})")
+
+                import numpy as np
+
+                ds = upstream_obj.dataset
+                if u_key not in ds or v_key not in ds:
+                    raise KeyError(f"{ttype}: variables not found in dataset: u={u_key}, v={v_key} (step {step.id})")
+
+                u = ds[u_key]
+                v = ds[v_key]
+
+                if ttype == "derive_wind_speed":
+                    out = np.sqrt(u * u + v * v)
+
+                else:
+                    # Direction reference: north_clockwise
+                    # Direction convention: "from"
+                    # u = eastward, v = northward
+                    # direction_to = atan2(u, v) in degrees (0=N, 90=E)
+                    direction_to = (np.degrees(np.arctan2(u, v)) + 360.0) % 360.0
+                    out = (direction_to + 180.0) % 360.0
+
+                ds2 = ds.assign({out_key: out})
+                return DataObject(id=upstream_obj.id, dataset=ds2)
+            
             raise NotImplementedError(
                 f"Transform '{ttype}' not implemented for xarray DataObject in step {step.id}"
             )
@@ -381,25 +436,60 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
 
         # mesh: DataObject(xarray) -> GeoJSON grid
         if gtype == "mesh":
-            if not isinstance(upstream_obj, DataObject):
-                raise TypeError(f"mesh geometry expects DataObject upstream (step {step.id})")
+          if not isinstance(upstream_obj, DataObject):
+              raise TypeError(f"mesh geometry expects DataObject upstream (step {step.id})")
 
-            resolved = g.get("_resolved") or {}
-            if not isinstance(resolved, dict):
-                resolved = {}
+          resolved = g.get("_resolved") or {}
+          if not isinstance(resolved, dict):
+              resolved = {}
 
-            var_key = resolved.get("variableKey")
-            lat_key = resolved.get("latKey")
-            lon_key = resolved.get("lonKey")
-            var_id = (resolved.get("variableId") or "value")
+          var_key = resolved.get("variableKey")
+          lat_key = resolved.get("latKey")
+          lon_key = resolved.get("lonKey")
+          var_id = (resolved.get("variableId") or "value")
 
-            if not isinstance(var_key, str) or not var_key:
-                raise ValueError(f"mesh geometry missing resolved variableKey (step {step.id})")
-            if not isinstance(lat_key, str) or not isinstance(lon_key, str) or not lat_key or not lon_key:
-                raise ValueError(f"mesh geometry missing resolved latKey/lonKey (step {step.id})")
+          if not isinstance(var_key, str) or not var_key:
+              raise ValueError(f"mesh geometry missing resolved variableKey (step {step.id})")
+          if not isinstance(lat_key, str) or not isinstance(lon_key, str) or not lat_key or not lon_key:
+              raise ValueError(f"mesh geometry missing resolved latKey/lonKey (step {step.id})")
 
-            ds = upstream_obj.dataset
-            return _mesh_to_geojson(ds, var_key=var_key, lat_key=lat_key, lon_key=lon_key, out_field=str(var_id))
+          # ---- NEW: read build params (mesh)
+          build = g.get("build")
+          build0 = build[0] if isinstance(build, list) and build and isinstance(build[0], dict) else {}
+
+          # Defaults (match your schema defaults)
+          interpolate = build0.get("interpolate", "bilinear")  # not used yet unless you implement it
+          target_cells = build0.get("targetCells", 5000)
+          cell_footprint = build0.get("cellFootprint", 1.0)
+
+          # Type-safe coercion
+          try:
+              target_cells = int(target_cells)
+          except Exception:
+              target_cells = 5000
+          if target_cells < 1:
+              target_cells = 1
+
+          try:
+              cell_footprint = float(cell_footprint)
+          except Exception:
+              cell_footprint = 1.0
+          if cell_footprint < 0:
+              cell_footprint = 0.0
+          if cell_footprint > 1:
+              cell_footprint = 1.0
+
+          ds = upstream_obj.dataset
+          return _mesh_to_geojson(
+              ds,
+              var_key=var_key,
+              lat_key=lat_key,
+              lon_key=lon_key,
+              out_field=str(var_id),
+              target_cells=target_cells,
+              footprint=cell_footprint,
+              # interpolate=interpolate,  # only add if/when you implement it
+          )
 
         if gtype == "isoband":
             if not isinstance(upstream_obj, DataObject):

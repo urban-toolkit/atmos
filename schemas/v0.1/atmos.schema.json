@@ -2013,604 +2013,7 @@
                                         },
                                         "encoding": {
                                           "description": "Visual encoding for this geometry.",
-                                          "type": "object",
-                                          "properties": {
-                                            "id": {
-                                              "type": "string",
-                                              "description": "Unique identifier for this encoding (used for referencing in view.layers)."
-                                            },
-                                            "channels": {
-                                              "type": "object",
-                                              "description": "Validated set of core visual channels with typed values. Extension channels live under `ext`.",
-                                              "properties": {
-                                                "fill": {
-                                                  "description": "A channel whose visual output is a color (e.g., fill/stroke).",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "value": {
-                                                          "type": "string",
-                                                          "description": "Constant color string (e.g., '#ff0000', 'rgba(0,0,0,0.5)')."
-                                                        }
-                                                      },
-                                                      "required": [
-                                                        "value"
-                                                      ],
-                                                      "additionalProperties": false
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "field": {
-                                                          "type": "string"
-                                                        },
-                                                        "scale": {
-                                                          "description": "Color scale definition. Supports either scheme-based scales (recommended) or explicit domain/range stops.",
-                                                          "oneOf": [
-                                                            {
-                                                              "type": "object",
-                                                              "additionalProperties": false,
-                                                              "required": [
-                                                                "scheme"
-                                                              ],
-                                                              "properties": {
-                                                                "scheme": {
-                                                                  "type": "string",
-                                                                  "minLength": 1,
-                                                                  "description": "Named color scheme/palette (e.g., 'RdYlBu', 'Viridis')."
-                                                                },
-                                                                "type": {
-                                                                  "type": "string",
-                                                                  "enum": [
-                                                                    "sequential",
-                                                                    "diverging",
-                                                                    "categorical"
-                                                                  ],
-                                                                  "description": "Optional hint for the scheme family. Renderer may ignore."
-                                                                },
-                                                                "reverse": {
-                                                                  "type": "boolean",
-                                                                  "default": false,
-                                                                  "description": "If true, reverse the scheme order."
-                                                                },
-                                                                "domain": {
-                                                                  "type": "array",
-                                                                  "items": {
-                                                                    "type": "number"
-                                                                  },
-                                                                  "minItems": 2,
-                                                                  "description": "Optional numeric domain override (e.g., [min, max]). If omitted, renderer infers from data."
-                                                                },
-                                                                "clamp": {
-                                                                  "type": "boolean",
-                                                                  "default": false,
-                                                                  "description": "Clamp values outside the domain."
-                                                                }
-                                                              }
-                                                            },
-                                                            {
-                                                              "type": "object",
-                                                              "additionalProperties": false,
-                                                              "required": [
-                                                                "type",
-                                                                "range"
-                                                              ],
-                                                              "properties": {
-                                                                "type": {
-                                                                  "type": "string",
-                                                                  "enum": [
-                                                                    "linear",
-                                                                    "log",
-                                                                    "sqrt",
-                                                                    "pow",
-                                                                    "quantile",
-                                                                    "quantize",
-                                                                    "threshold",
-                                                                    "ordinal"
-                                                                  ]
-                                                                },
-                                                                "domain": {
-                                                                  "oneOf": [
-                                                                    {
-                                                                      "type": "object",
-                                                                      "properties": {
-                                                                        "type": {
-                                                                          "type": "string",
-                                                                          "const": "explicit"
-                                                                        },
-                                                                        "values": {
-                                                                          "type": "array",
-                                                                          "items": {
-                                                                            "type": "number"
-                                                                          },
-                                                                          "minItems": 2
-                                                                        }
-                                                                      },
-                                                                      "required": [
-                                                                        "type",
-                                                                        "values"
-                                                                      ],
-                                                                      "additionalProperties": false
-                                                                    },
-                                                                    {
-                                                                      "type": "object",
-                                                                      "properties": {
-                                                                        "type": {
-                                                                          "type": "string",
-                                                                          "const": "extent"
-                                                                        }
-                                                                      },
-                                                                      "required": [
-                                                                        "type"
-                                                                      ],
-                                                                      "additionalProperties": false
-                                                                    }
-                                                                  ]
-                                                                },
-                                                                "range": {},
-                                                                "clamp": {
-                                                                  "type": "boolean",
-                                                                  "default": false
-                                                                }
-                                                              },
-                                                              "allOf": [
-                                                                {
-                                                                  "if": {
-                                                                    "required": [
-                                                                      "domain"
-                                                                    ]
-                                                                  },
-                                                                  "then": {
-                                                                    "allOf": [
-                                                                      {
-                                                                        "if": {
-                                                                          "properties": {
-                                                                            "domain": {
-                                                                              "type": "object",
-                                                                              "properties": {
-                                                                                "type": {
-                                                                                  "const": "explicit"
-                                                                                }
-                                                                              },
-                                                                              "required": [
-                                                                                "type"
-                                                                              ]
-                                                                            }
-                                                                          }
-                                                                        },
-                                                                        "then": {
-                                                                          "properties": {
-                                                                            "range": {
-                                                                              "oneOf": [
-                                                                                {
-                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/0"
-                                                                                },
-                                                                                {
-                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
-                                                                                }
-                                                                              ]
-                                                                            }
-                                                                          }
-                                                                        },
-                                                                        "else": {
-                                                                          "properties": {
-                                                                            "range": {
-                                                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
-                                                                            }
-                                                                          }
-                                                                        }
-                                                                      }
-                                                                    ]
-                                                                  },
-                                                                  "else": {
-                                                                    "properties": {
-                                                                      "range": {
-                                                                        "oneOf": [
-                                                                          {
-                                                                            "type": "object",
-                                                                            "additionalProperties": false,
-                                                                            "required": [
-                                                                              "stops"
-                                                                            ],
-                                                                            "properties": {
-                                                                              "stops": {
-                                                                                "type": "array",
-                                                                                "minItems": 2,
-                                                                                "items": {
-                                                                                  "type": "string",
-                                                                                  "minLength": 1
-                                                                                }
-                                                                              }
-                                                                            }
-                                                                          },
-                                                                          {
-                                                                            "type": "object",
-                                                                            "additionalProperties": false,
-                                                                            "required": [
-                                                                              "stops"
-                                                                            ],
-                                                                            "properties": {
-                                                                              "stops": {
-                                                                                "type": "array",
-                                                                                "minItems": 2,
-                                                                                "items": {
-                                                                                  "type": "object",
-                                                                                  "additionalProperties": false,
-                                                                                  "required": [
-                                                                                    "value",
-                                                                                    "color"
-                                                                                  ],
-                                                                                  "properties": {
-                                                                                    "value": {
-                                                                                      "type": "number"
-                                                                                    },
-                                                                                    "color": {
-                                                                                      "type": "string",
-                                                                                      "minLength": 1
-                                                                                    }
-                                                                                  }
-                                                                                }
-                                                                              }
-                                                                            }
-                                                                          }
-                                                                        ]
-                                                                      }
-                                                                    }
-                                                                  }
-                                                                }
-                                                              ]
-                                                            }
-                                                          ]
-                                                        }
-                                                      },
-                                                      "required": [
-                                                        "field"
-                                                      ],
-                                                      "additionalProperties": false
-                                                    }
-                                                  ]
-                                                },
-                                                "stroke": {
-                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill"
-                                                },
-                                                "opacity": {
-                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/size"
-                                                },
-                                                "width": {
-                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/size"
-                                                },
-                                                "size": {
-                                                  "description": "A channel whose visual output is numeric (e.g., size/opacity/width/rotation).",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "value": {
-                                                          "type": "number"
-                                                        }
-                                                      },
-                                                      "required": [
-                                                        "value"
-                                                      ],
-                                                      "additionalProperties": false
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "field": {
-                                                          "type": "string"
-                                                        },
-                                                        "scale": {
-                                                          "allOf": [
-                                                            {
-                                                              "type": "object",
-                                                              "description": "Maps data values (domain) to visual values (range).",
-                                                              "properties": {
-                                                                "type": {
-                                                                  "type": "string",
-                                                                  "enum": [
-                                                                    "linear",
-                                                                    "log",
-                                                                    "symlog",
-                                                                    "sqrt",
-                                                                    "pow",
-                                                                    "quantize",
-                                                                    "quantile",
-                                                                    "threshold",
-                                                                    "ordinal"
-                                                                  ]
-                                                                },
-                                                                "domain": {
-                                                                  "oneOf": [
-                                                                    {
-                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/0"
-                                                                    },
-                                                                    {
-                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/1"
-                                                                    }
-                                                                  ]
-                                                                },
-                                                                "clamp": {
-                                                                  "type": "boolean",
-                                                                  "default": false
-                                                                }
-                                                              },
-                                                              "required": [
-                                                                "type",
-                                                                "domain"
-                                                              ]
-                                                            },
-                                                            {
-                                                              "type": "object",
-                                                              "properties": {
-                                                                "range": {
-                                                                  "type": "object",
-                                                                  "properties": {
-                                                                    "values": {
-                                                                      "type": "array",
-                                                                      "items": {
-                                                                        "type": "number"
-                                                                      },
-                                                                      "minItems": 2
-                                                                    }
-                                                                  },
-                                                                  "required": [
-                                                                    "values"
-                                                                  ],
-                                                                  "additionalProperties": false
-                                                                }
-                                                              },
-                                                              "required": [
-                                                                "range"
-                                                              ]
-                                                            }
-                                                          ],
-                                                          "unevaluatedProperties": false
-                                                        }
-                                                      },
-                                                      "required": [
-                                                        "field"
-                                                      ],
-                                                      "additionalProperties": false
-                                                    }
-                                                  ]
-                                                },
-                                                "rotation": {
-                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1/properties/encoding/properties/channels/properties/size"
-                                                },
-                                                "dash": {
-                                                  "description": "Dash pattern for strokes. Kept constant-only for simplicity and broad renderer compatibility.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "value": {
-                                                          "type": "array",
-                                                          "description": "Dash pattern array, e.g., [4,2].",
-                                                          "minItems": 2,
-                                                          "items": {
-                                                            "type": "number",
-                                                            "minimum": 0
-                                                          }
-                                                        }
-                                                      },
-                                                      "required": [
-                                                        "value"
-                                                      ],
-                                                      "additionalProperties": false
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false,
-                                              "minProperties": 1
-                                            },
-                                            "style": {
-                                              "description": "Geometry-type-specific styling (validated). Use the block matching the target geometry layer type.",
-                                              "type": "object",
-                                              "properties": {
-                                                "point": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "strokeWidth": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "description": "Outline width for point glyphs (px)."
-                                                    },
-                                                    "shape": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "circle",
-                                                        "square",
-                                                        "triangle",
-                                                        "diamond",
-                                                        "cross",
-                                                        "x"
-                                                      ],
-                                                      "default": "circle"
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "mesh": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "interpolation": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "nearest",
-                                                        "bilinear",
-                                                        "bicubic"
-                                                      ]
-                                                    },
-                                                    "nodataColor": {
-                                                      "type": "string",
-                                                      "description": "CSS color or hex."
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "isoline": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "smooth": {
-                                                      "type": "boolean"
-                                                    },
-                                                    "dash": {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "number",
-                                                        "minimum": 0
-                                                      },
-                                                      "minItems": 2
-                                                    },
-                                                    "strokeWidth": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "label": {
-                                                      "type": "object",
-                                                      "additionalProperties": false,
-                                                      "properties": {
-                                                        "enabled": {
-                                                          "type": "boolean"
-                                                        },
-                                                        "format": {
-                                                          "type": "string"
-                                                        }
-                                                      }
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "isoband": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "bandOpacity": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "maximum": 1
-                                                    },
-                                                    "edgeStroke": {
-                                                      "type": "boolean"
-                                                    },
-                                                    "strokeWidth": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "vector": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "glyph": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "arrow",
-                                                        "barb"
-                                                      ]
-                                                    },
-                                                    "glyphScale": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "description": "Global multiplier for glyph size (not data-driven)."
-                                                    },
-                                                    "pivot": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "tail",
-                                                        "middle",
-                                                        "tip"
-                                                      ]
-                                                    },
-                                                    "skip": {
-                                                      "type": "integer",
-                                                      "minimum": 0
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "particle": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "count": {
-                                                      "type": "integer",
-                                                      "minimum": 0
-                                                    },
-                                                    "lifetime": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "speedFactor": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "fade": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "maximum": 1
-                                                    },
-                                                    "blendMode": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "normal",
-                                                        "add",
-                                                        "multiply",
-                                                        "screen",
-                                                        "overlay"
-                                                      ]
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "trajectory": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "tailLength": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "headMarker": {
-                                                      "type": "boolean"
-                                                    },
-                                                    "stepSize": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "maxSteps": {
-                                                      "type": "integer",
-                                                      "minimum": 0
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                },
-                                                "polygon": {
-                                                  "type": "object",
-                                                  "properties": {
-                                                    "strokeWidth": {
-                                                      "type": "number",
-                                                      "minimum": 0
-                                                    },
-                                                    "simplify": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "description": "Optional simplification tolerance (implementation-defined units)."
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
-                                                }
-                                              },
-                                              "minProperties": 1,
-                                              "maxProperties": 1,
-                                              "additionalProperties": false
-                                            }
-                                          },
-                                          "required": [
-                                            "channels"
-                                          ],
-                                          "unevaluatedItems": false
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
                                         }
                                       },
                                       "required": [
@@ -2619,6 +2022,7 @@
                                       ]
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "type": "object",
@@ -2735,6 +2139,446 @@
                                             ],
                                             "additionalProperties": false
                                           }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "type": "object",
+                                              "description": "Visual encoding for a geometry layer (channels + optional geometry-scoped style).",
+                                              "properties": {
+                                                "channels": {
+                                                  "description": "Channel mappings (e.g., fill, stroke, opacity).",
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "fill": {
+                                                      "description": "A channel whose visual output is a color (e.g., fill/stroke).",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "string",
+                                                              "description": "Constant color string (e.g., '#ff0000', 'rgba(0,0,0,0.5)')."
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "field": {
+                                                              "type": "string"
+                                                            },
+                                                            "scale": {
+                                                              "description": "Color scale definition. Supports either scheme-based scales (recommended) or explicit domain/range stops.",
+                                                              "oneOf": [
+                                                                {
+                                                                  "type": "object",
+                                                                  "additionalProperties": false,
+                                                                  "required": [
+                                                                    "scheme"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "scheme": {
+                                                                      "type": "string",
+                                                                      "minLength": 1,
+                                                                      "description": "Named color scheme/palette (e.g., 'RdYlBu', 'Viridis')."
+                                                                    },
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "sequential",
+                                                                        "diverging",
+                                                                        "categorical"
+                                                                      ],
+                                                                      "description": "Optional hint for the scheme family. Renderer may ignore."
+                                                                    },
+                                                                    "reverse": {
+                                                                      "type": "boolean",
+                                                                      "default": false,
+                                                                      "description": "If true, reverse the scheme order."
+                                                                    },
+                                                                    "domain": {
+                                                                      "type": "array",
+                                                                      "items": {
+                                                                        "type": "number"
+                                                                      },
+                                                                      "minItems": 2,
+                                                                      "description": "Optional numeric domain override (e.g., [min, max]). If omitted, renderer infers from data."
+                                                                    },
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false,
+                                                                      "description": "Clamp values outside the domain."
+                                                                    }
+                                                                  }
+                                                                },
+                                                                {
+                                                                  "type": "object",
+                                                                  "additionalProperties": false,
+                                                                  "required": [
+                                                                    "type",
+                                                                    "range"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "linear",
+                                                                        "log",
+                                                                        "sqrt",
+                                                                        "pow",
+                                                                        "quantile",
+                                                                        "quantize",
+                                                                        "threshold",
+                                                                        "ordinal"
+                                                                      ]
+                                                                    },
+                                                                    "domain": {
+                                                                      "oneOf": [
+                                                                        {
+                                                                          "type": "object",
+                                                                          "properties": {
+                                                                            "type": {
+                                                                              "type": "string",
+                                                                              "const": "explicit"
+                                                                            },
+                                                                            "values": {
+                                                                              "type": "array",
+                                                                              "items": {
+                                                                                "type": "number"
+                                                                              },
+                                                                              "minItems": 2
+                                                                            }
+                                                                          },
+                                                                          "required": [
+                                                                            "type",
+                                                                            "values"
+                                                                          ],
+                                                                          "additionalProperties": false
+                                                                        },
+                                                                        {
+                                                                          "type": "object",
+                                                                          "properties": {
+                                                                            "type": {
+                                                                              "type": "string",
+                                                                              "const": "extent"
+                                                                            }
+                                                                          },
+                                                                          "required": [
+                                                                            "type"
+                                                                          ],
+                                                                          "additionalProperties": false
+                                                                        }
+                                                                      ]
+                                                                    },
+                                                                    "range": {},
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false
+                                                                    }
+                                                                  },
+                                                                  "allOf": [
+                                                                    {
+                                                                      "if": {
+                                                                        "required": [
+                                                                          "domain"
+                                                                        ]
+                                                                      },
+                                                                      "then": {
+                                                                        "allOf": [
+                                                                          {
+                                                                            "if": {
+                                                                              "properties": {
+                                                                                "domain": {
+                                                                                  "type": "object",
+                                                                                  "properties": {
+                                                                                    "type": {
+                                                                                      "const": "explicit"
+                                                                                    }
+                                                                                  },
+                                                                                  "required": [
+                                                                                    "type"
+                                                                                  ]
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                            "then": {
+                                                                              "properties": {
+                                                                                "range": {
+                                                                                  "oneOf": [
+                                                                                    {
+                                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/0"
+                                                                                    },
+                                                                                    {
+                                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                            "else": {
+                                                                              "properties": {
+                                                                                "range": {
+                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        ]
+                                                                      },
+                                                                      "else": {
+                                                                        "properties": {
+                                                                          "range": {
+                                                                            "oneOf": [
+                                                                              {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "required": [
+                                                                                  "stops"
+                                                                                ],
+                                                                                "properties": {
+                                                                                  "stops": {
+                                                                                    "type": "array",
+                                                                                    "minItems": 2,
+                                                                                    "items": {
+                                                                                      "type": "string",
+                                                                                      "minLength": 1
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              },
+                                                                              {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "required": [
+                                                                                  "stops"
+                                                                                ],
+                                                                                "properties": {
+                                                                                  "stops": {
+                                                                                    "type": "array",
+                                                                                    "minItems": 2,
+                                                                                    "items": {
+                                                                                      "type": "object",
+                                                                                      "additionalProperties": false,
+                                                                                      "required": [
+                                                                                        "value",
+                                                                                        "color"
+                                                                                      ],
+                                                                                      "properties": {
+                                                                                        "value": {
+                                                                                          "type": "number"
+                                                                                        },
+                                                                                        "color": {
+                                                                                          "type": "string",
+                                                                                          "minLength": 1
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "field"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    },
+                                                    "stroke": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill"
+                                                    },
+                                                    "opacity": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/size"
+                                                    },
+                                                    "width": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/size"
+                                                    },
+                                                    "size": {
+                                                      "description": "A channel whose visual output is numeric (e.g., size/opacity/width/rotation).",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "number"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "field": {
+                                                              "type": "string"
+                                                            },
+                                                            "scale": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "object",
+                                                                  "description": "Maps data values (domain) to visual values (range).",
+                                                                  "properties": {
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "linear",
+                                                                        "log",
+                                                                        "symlog",
+                                                                        "sqrt",
+                                                                        "pow",
+                                                                        "quantize",
+                                                                        "quantile",
+                                                                        "threshold",
+                                                                        "ordinal"
+                                                                      ]
+                                                                    },
+                                                                    "domain": {
+                                                                      "oneOf": [
+                                                                        {
+                                                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/0"
+                                                                        },
+                                                                        {
+                                                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/1"
+                                                                        }
+                                                                      ]
+                                                                    },
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false
+                                                                    }
+                                                                  },
+                                                                  "required": [
+                                                                    "type",
+                                                                    "domain"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "object",
+                                                                  "properties": {
+                                                                    "range": {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "values": {
+                                                                          "type": "array",
+                                                                          "items": {
+                                                                            "type": "number"
+                                                                          },
+                                                                          "minItems": 2
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "values"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    }
+                                                                  },
+                                                                  "required": [
+                                                                    "range"
+                                                                  ]
+                                                                }
+                                                              ],
+                                                              "unevaluatedProperties": false
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "field"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    },
+                                                    "dash": {
+                                                      "description": "Dash pattern for strokes. Kept constant-only for simplicity and broad renderer compatibility.",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "array",
+                                                              "description": "Dash pattern array, e.g., [4,2].",
+                                                              "minItems": 2,
+                                                              "items": {
+                                                                "type": "number",
+                                                                "minimum": 0
+                                                              }
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "additionalProperties": false,
+                                                  "minProperties": 1
+                                                },
+                                                "style": {
+                                                  "type": "object",
+                                                  "description": "Geometry-scoped style. The geometry layer schema constrains its shape."
+                                                }
+                                              },
+                                              "required": [
+                                                "channels"
+                                              ],
+                                              "unevaluatedProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "smooth": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "dash": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "number",
+                                                        "minimum": 0
+                                                      },
+                                                      "minItems": 2
+                                                    },
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "label": {
+                                                      "type": "object",
+                                                      "additionalProperties": false,
+                                                      "properties": {
+                                                        "enabled": {
+                                                          "type": "boolean"
+                                                        },
+                                                        "format": {
+                                                          "type": "string"
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -2762,6 +2606,7 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
@@ -2793,6 +2638,36 @@
                                             ],
                                             "additionalProperties": false
                                           }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "bandOpacity": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "maximum": 1
+                                                    },
+                                                    "edgeStroke": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -2820,9 +2695,45 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "description": "Outline width for point glyphs (px)."
+                                                    },
+                                                    "shape": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "circle",
+                                                        "square",
+                                                        "triangle",
+                                                        "diamond",
+                                                        "cross",
+                                                        "x"
+                                                      ],
+                                                      "default": "circle"
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -2849,18 +2760,65 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
                                         },
-                                        "interpolate": {
-                                          "type": "string",
-                                          "enum": [
-                                            "nearest",
-                                            "bilinear",
-                                            "bicubic"
-                                          ],
-                                          "default": "nearest"
+                                        "build": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "description": "Parameters for generating a mesh from a gridded scalar field.",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                              "interpolate": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "nearest",
+                                                  "bilinear",
+                                                  "bicubic"
+                                                ],
+                                                "default": "bilinear"
+                                              },
+                                              "cellFootprint": {
+                                                "type": "number",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "default": 1,
+                                                "description": "Fraction of each grid cell area to fill. 1 = full cell (no gaps)."
+                                              },
+                                              "targetCells": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "default": 5000,
+                                                "description": "Soft cap on number of generated cells (used for auto stride)."
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -2887,6 +2845,7 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "type": "object",
@@ -2971,6 +2930,48 @@
                                               "additionalProperties": false
                                             }
                                           ]
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "glyph": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "arrow",
+                                                        "barb"
+                                                      ]
+                                                    },
+                                                    "glyphScale": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "description": "Global multiplier for glyph size (not data-driven)."
+                                                    },
+                                                    "pivot": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "tail",
+                                                        "middle",
+                                                        "tip"
+                                                      ]
+                                                    },
+                                                    "skip": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -2997,6 +2998,7 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "description": "Input reference for particles/trajectories. Either a single scalar field or multiple named fields, scoped to a dataset.",
@@ -3028,6 +3030,39 @@
                                               }
                                             }
                                           ]
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "tailLength": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "headMarker": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "stepSize": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "maxSteps": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -3054,10 +3089,8 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
-                                        "type": {
-                                          "const": "polygon"
-                                        },
                                         "input": {
                                           "type": "object",
                                           "additionalProperties": false,
@@ -3070,6 +3103,33 @@
                                               "minLength": 1
                                             }
                                           }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "simplify": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "description": "Optional simplification tolerance (implementation-defined units)."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
@@ -3096,9 +3156,55 @@
                                       "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
                                     },
                                     {
+                                      "type": "object",
                                       "properties": {
                                         "input": {
                                           "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/5/allOf/2/properties/input"
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "count": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    "lifetime": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "speedFactor": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "fade": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "maximum": 1
+                                                    },
+                                                    "blendMode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "normal",
+                                                        "add",
+                                                        "multiply",
+                                                        "screen",
+                                                        "overlay"
+                                                      ]
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
                                         }
                                       },
                                       "required": [
