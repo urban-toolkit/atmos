@@ -1,0 +1,118 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dimensions": {
+        "latitude": { "key": "XLAT" },
+        "longitude": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+      },
+      "variables": [
+        { "id": "u10",     "key": "U10",  "kind": "grid" },
+        { "id": "v10",     "key": "V10",  "kind": "grid" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "properties": {
+        "geoid": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive_wind_speed",
+      "as": { "id": "wind_speed" },
+      "u": "u10",
+      "v": "v10"
+    },
+    {
+      "type": "derive_wind_direction",
+      "as": { "id": "wind_dir" },
+      "u": "u10",
+      "v": "v10"
+    }
+  ],
+  
+  "composition": {
+    "time": {"type": "index", "value": 0},
+    
+    "context": {
+      "controls": [
+        {
+          "type": "slider",
+          "bind": "time"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          { 
+            "id": "layer_wind",
+            "geometry": {
+              "id": "wind_vectors",
+              "type": "vector",
+              "input": {
+                "speed": "wind_speed",
+                "direction": "wind_dir",
+                "directionConvention": "from",
+                "directionUnits": "deg",
+                "directionReference": "north_clockwise"
+              },
+              "encoding": {
+                "channels": { 
+                  "stroke": { "value": "#2c7bb6" },
+                  "size": {
+                    "field": "wind_speed",
+                    "scale": {
+                      "type": "linear",
+                      "domain": { "type": "extent" },
+                      "range": { "values": [2, 18] },
+                      "clamp": true
+                    }
+                  },
+                  "opacity": { "value": 0.85 },
+                  "width": { "value": 1 }
+                },
+                "style": {
+                  "vector": {
+                    "glyph": "arrow",
+                    "glyphScale": 1.0,
+                    "pivot": "middle",
+                    "skip": 2
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "type": "polygon",
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                },
+                "style": {
+                  "polygon": {
+                    "strokeWidth": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

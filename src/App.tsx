@@ -19,6 +19,9 @@ type Manifest = {
   }>
 }
 
+// const firstExamplePath = "/examples/ex1-0-1.json"
+const firstExamplePath = "/examples/ex1-0-mesh.json"
+
 export default function App() {
 
   const [manifest, setManifest] = useState<Manifest | null>(null)
@@ -105,7 +108,7 @@ export default function App() {
     if (loadedRef.current) return
     loadedRef.current = true
 
-    fetch("/examples/ex1-0-1.json")
+    fetch(firstExamplePath)
       .then((r) => r.json())
       .then((data) => {
         firstExampleRef.current = data
