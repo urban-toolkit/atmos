@@ -234,6 +234,59 @@ def _isoline_to_geojson(
     plt.close()
     return {"type": "FeatureCollection", "features": features}
 
+def _vector_to_geojson(
+    ds: xr.Dataset,
+    *,
+    lat_key: str,
+    lon_key: str,
+    speed_key: str,
+    direction_key: str,
+    out_var_id: str,
+    skip: int = 0,
+) -> dict[str, Any]:
+    lat = ds[lat_key].values
+    lon = ds[lon_key].values
+    spd = ds[speed_key].values
+    direc = ds[direction_key].values
+
+    # squeeze to 2D if needed
+    while getattr(spd, "ndim", 0) > 2:
+        spd = spd[0]
+    while getattr(direc, "ndim", 0) > 2:
+        direc = direc[0]
+
+    ny, nx = lat.shape[-2], lat.shape[-1]
+
+    step = (skip + 1) if isinstance(skip, int) and skip >= 0 else 1
+
+    feats: list[dict[str, Any]] = []
+    for j in range(0, ny, step):
+        for i in range(0, nx, step):
+            x = float(lon[j, i])
+            y = float(lat[j, i])
+
+            s = spd[j, i]
+            d = direc[j, i]
+
+            # handle NaNs gracefully
+            try:
+                s_val = float(s)
+                d_val = float(d)
+            except Exception:
+                continue
+
+            feats.append(
+                {
+                    "type": "Feature",
+                    "properties": {
+                        f"{out_var_id}.speed": s_val,
+                        f"{out_var_id}.direction": d_val,
+                    },
+                    "geometry": {"type": "Point", "coordinates": [x, y]},
+                }
+            )
+
+    return {"type": "FeatureCollection", "features": feats}
 
 def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
     if ctx is None:
@@ -478,5 +531,45 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
         #     out_field=str(var_id),
         # )
 
-    
+    if gtype == "vector":
+        if not isinstance(upstream_obj, DataObject):
+            raise TypeError(f"vector geometry expects DataObject upstream (step {step.id})")
+
+        resolved = g.get("_resolved") or {}
+        if not isinstance(resolved, dict):
+            resolved = {}
+
+        lat_key = resolved.get("latKey")
+        lon_key = resolved.get("lonKey")
+        speed_key = resolved.get("speedKey")
+        direction_key = resolved.get("directionKey")
+        var_id = resolved.get("variableId") or "wind"
+
+        if not isinstance(lat_key, str) or not lat_key:
+            raise ValueError(f"vector geometry missing resolved latKey (step {step.id})")
+        if not isinstance(lon_key, str) or not lon_key:
+            raise ValueError(f"vector geometry missing resolved lonKey (step {step.id})")
+        if not isinstance(speed_key, str) or not speed_key:
+            raise ValueError(f"vector geometry missing resolved speedKey (step {step.id})")
+        if not isinstance(direction_key, str) or not direction_key:
+            raise ValueError(f"vector geometry missing resolved directionKey (step {step.id})")
+
+        # optional: read style.skip to thin arrows server-side
+        skip = 0
+        enc = g.get("encoding") or {}
+        if isinstance(enc, dict):
+            style = enc.get("style") or {}
+            if isinstance(style, dict) and isinstance(style.get("skip"), int):
+                skip = int(style["skip"])
+
+        ds = upstream_obj.dataset
+        return _vector_to_geojson(
+            ds,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            speed_key=speed_key,
+            direction_key=direction_key,
+            out_var_id=str(var_id),
+            skip=skip,
+        )
     raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")

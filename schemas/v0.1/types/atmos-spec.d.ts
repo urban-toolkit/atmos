@@ -691,39 +691,15 @@ export interface AtmosSpec {
   ];
   transform?: (
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
         type: 'derive';
-        /**
-         * Output variable definition
-         */
-        as:
-          | string
-          | {
-              /**
-               * Identifier for the derived variable
-               */
-              id: string;
-              /**
-               * Human-readable name
-               */
-              title?: string;
-              /**
-               * Units of the derived variable
-               */
-              units?: string;
-              description?: string;
-              /**
-               * High-level data form to inform geometry and downstream validation.
-               */
-              kind?: 'grid' | 'point' | 'table' | 'unknown';
-            };
+        id: string;
+        input: {
+          data: string;
+        };
         /**
          * Expression AST node. Either an operator, a variable reference, or a constant.
          */
@@ -750,115 +726,77 @@ export interface AtmosSpec {
           | {
               const_ref: string;
             };
-        [k: string]: unknown;
+        output: Output;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
         type: 'derive_wind_speed';
-        /**
-         * Output variable definition
-         */
-        as:
-          | string
-          | {
-              /**
-               * Identifier for the derived variable
-               */
-              id: string;
-              /**
-               * Human-readable name
-               */
-              title?: string;
-              /**
-               * Units of the derived variable
-               */
-              units?: string;
-              description?: string;
-              /**
-               * High-level data form to inform geometry and downstream validation.
-               */
-              kind?: 'grid' | 'point' | 'table' | 'unknown';
-            };
-        u: string;
-        v: string;
-        [k: string]: unknown;
+        id: string;
+        input: {
+          data: string;
+          u: string;
+          v: string;
+        };
+        output: Output;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
         type: 'derive_wind_direction';
-        /**
-         * Output variable definition
-         */
-        as:
-          | string
-          | {
-              /**
-               * Identifier for the derived variable
-               */
-              id: string;
-              /**
-               * Human-readable name
-               */
-              title?: string;
-              /**
-               * Units of the derived variable
-               */
-              units?: string;
-              description?: string;
-              /**
-               * High-level data form to inform geometry and downstream validation.
-               */
-              kind?: 'grid' | 'point' | 'table' | 'unknown';
-            };
-        /**
-         * Variable id of zonal (east-west) wind component.
-         */
-        u: string;
-        /**
-         * Variable id of meridional (north-south) wind component.
-         */
-        v: string;
-        /**
-         * Wind direction convention. 'from' follows meteorological standard.
-         */
-        convention?: 'from' | 'to';
-        /**
-         * Output angular units.
-         */
-        units?: 'deg' | 'rad';
+        id: string;
+        input: {
+          data: string;
+          /**
+           * Variable id of zonal (east-west) wind component.
+           */
+          u: string;
+          /**
+           * Variable id of meridional (north-south) wind component.
+           */
+          v: string;
+          /**
+           * Wind direction convention. 'from' follows meteorological standard.
+           */
+          convention?: 'from' | 'to';
+          /**
+           * Output angular units.
+           */
+          units?: 'deg' | 'rad';
+        };
+        output: Output;
+      })
+    | ({
+        id?: string;
+        description?: string;
+        [k: string]: unknown;
+      } & {
+        type: 'derive_wind_vector';
+        id: string;
+        description?: string;
+        input: {
+          data: string;
+          variables: {
+            u: string;
+            v: string;
+          };
+        };
+        output: Output;
         [k: string]: unknown;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
         [k: string]: unknown;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
@@ -877,14 +815,9 @@ export interface AtmosSpec {
          * How to handle missing values when reducing.
          */
         missing?: 'skip' | 'propagate';
-        [k: string]: unknown;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
@@ -914,60 +847,20 @@ export interface AtmosSpec {
          * How to handle missing values when reducing.
          */
         missing?: 'skip' | 'propagate';
-        as: {
-          /**
-           * Map from semantic role (e.g., 'forecast', 'obs') to output variable id in the matched dataset.
-           */
-          variables: {
-            [k: string]: string;
-          };
-          [k: string]: unknown;
-        };
-        [k: string]: unknown;
+        output: Output;
       })
     | ({
-        output?: Output;
-        /**
-         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
-         */
-        data?: string;
+        id?: string;
         description?: string;
         [k: string]: unknown;
       } & {
         type: 'diagnostic.slp';
         id: string;
-        data?: string;
         description?: string;
         input: {
           [k: string]: unknown;
         };
-        output: {
-          /**
-           * Id of the derived dataset produced by this transform.
-           */
-          data: string;
-          /**
-           * @minItems 1
-           */
-          variables: [
-            {
-              id: string;
-              kind: 'grid' | 'table' | 'point';
-              units?: string;
-              description?: string;
-              [k: string]: unknown;
-            },
-            ...{
-              id: string;
-              kind: 'grid' | 'table' | 'point';
-              units?: string;
-              description?: string;
-              [k: string]: unknown;
-            }[]
-          ];
-          [k: string]: unknown;
-        };
-        [k: string]: unknown;
+        output: Output;
       })
   )[];
   /**
@@ -1221,9 +1114,6 @@ export interface AtmosSpec {
                  */
                 geometry:
                   | ({
-                      type: 'isoline';
-                      [k: string]: unknown;
-                    } & {
                       /**
                        * Unique identifier for the geometry layer.
                        */
@@ -1480,6 +1370,9 @@ export interface AtmosSpec {
                         };
                         [k: string]: unknown;
                       };
+                      [k: string]: unknown;
+                    } & {
+                      type: 'isoline';
                       [k: string]: unknown;
                     } & {
                       input: Input;
@@ -3690,47 +3583,26 @@ export interface AtmosSpec {
                       [k: string]: unknown;
                     } & {
                       /**
-                       * Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).
+                       * Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).
                        */
                       input:
                         | {
-                            /**
-                             * Zonal/x component variable id.
-                             */
+                            data: string;
+                            variable: string;
+                          }
+                        | {
+                            data: string;
                             u: string;
-                            /**
-                             * Meridional/y component variable id.
-                             */
                             v: string;
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           }
                         | {
-                            /**
-                             * Speed magnitude variable id.
-                             */
+                            data: string;
                             speed: string;
-                            /**
-                             * Direction variable id (degrees or radians — interpretation is renderer-defined unless you add metadata).
-                             */
                             direction: string;
-                            /**
-                             * Units of the direction field.
-                             */
                             directionUnits?: 'deg' | 'rad';
-                            /**
-                             * Meteorological convention. 'from' means wind direction indicates where it comes from; 'to' means where it goes to.
-                             */
                             directionConvention?: 'from' | 'to';
-                            /**
-                             * Angle reference. Most meteorology uses degrees clockwise from north.
-                             */
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           };
                       encoding?: {
@@ -5682,9 +5554,6 @@ export interface AtmosSpec {
                  */
                 geometry:
                   | ({
-                      type: 'isoline';
-                      [k: string]: unknown;
-                    } & {
                       /**
                        * Unique identifier for the geometry layer.
                        */
@@ -5941,6 +5810,9 @@ export interface AtmosSpec {
                         };
                         [k: string]: unknown;
                       };
+                      [k: string]: unknown;
+                    } & {
+                      type: 'isoline';
                       [k: string]: unknown;
                     } & {
                       input: Input;
@@ -8151,47 +8023,26 @@ export interface AtmosSpec {
                       [k: string]: unknown;
                     } & {
                       /**
-                       * Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).
+                       * Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).
                        */
                       input:
                         | {
-                            /**
-                             * Zonal/x component variable id.
-                             */
+                            data: string;
+                            variable: string;
+                          }
+                        | {
+                            data: string;
                             u: string;
-                            /**
-                             * Meridional/y component variable id.
-                             */
                             v: string;
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           }
                         | {
-                            /**
-                             * Speed magnitude variable id.
-                             */
+                            data: string;
                             speed: string;
-                            /**
-                             * Direction variable id (degrees or radians — interpretation is renderer-defined unless you add metadata).
-                             */
                             direction: string;
-                            /**
-                             * Units of the direction field.
-                             */
                             directionUnits?: 'deg' | 'rad';
-                            /**
-                             * Meteorological convention. 'from' means wind direction indicates where it comes from; 'to' means where it goes to.
-                             */
                             directionConvention?: 'from' | 'to';
-                            /**
-                             * Angle reference. Most meteorology uses degrees clockwise from north.
-                             */
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           };
                       encoding?: {
@@ -10585,9 +10436,6 @@ export interface AtmosSpec {
                  */
                 geometry:
                   | ({
-                      type: 'isoline';
-                      [k: string]: unknown;
-                    } & {
                       /**
                        * Unique identifier for the geometry layer.
                        */
@@ -10844,6 +10692,9 @@ export interface AtmosSpec {
                         };
                         [k: string]: unknown;
                       };
+                      [k: string]: unknown;
+                    } & {
+                      type: 'isoline';
                       [k: string]: unknown;
                     } & {
                       input: Input;
@@ -13054,47 +12905,26 @@ export interface AtmosSpec {
                       [k: string]: unknown;
                     } & {
                       /**
-                       * Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).
+                       * Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).
                        */
                       input:
                         | {
-                            /**
-                             * Zonal/x component variable id.
-                             */
+                            data: string;
+                            variable: string;
+                          }
+                        | {
+                            data: string;
                             u: string;
-                            /**
-                             * Meridional/y component variable id.
-                             */
                             v: string;
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           }
                         | {
-                            /**
-                             * Speed magnitude variable id.
-                             */
+                            data: string;
                             speed: string;
-                            /**
-                             * Direction variable id (degrees or radians — interpretation is renderer-defined unless you add metadata).
-                             */
                             direction: string;
-                            /**
-                             * Units of the direction field.
-                             */
                             directionUnits?: 'deg' | 'rad';
-                            /**
-                             * Meteorological convention. 'from' means wind direction indicates where it comes from; 'to' means where it goes to.
-                             */
                             directionConvention?: 'from' | 'to';
-                            /**
-                             * Angle reference. Most meteorology uses degrees clockwise from north.
-                             */
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           };
                       encoding?: {
@@ -15046,9 +14876,6 @@ export interface AtmosSpec {
                  */
                 geometry:
                   | ({
-                      type: 'isoline';
-                      [k: string]: unknown;
-                    } & {
                       /**
                        * Unique identifier for the geometry layer.
                        */
@@ -15305,6 +15132,9 @@ export interface AtmosSpec {
                         };
                         [k: string]: unknown;
                       };
+                      [k: string]: unknown;
+                    } & {
+                      type: 'isoline';
                       [k: string]: unknown;
                     } & {
                       input: Input;
@@ -17515,47 +17345,26 @@ export interface AtmosSpec {
                       [k: string]: unknown;
                     } & {
                       /**
-                       * Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).
+                       * Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).
                        */
                       input:
                         | {
-                            /**
-                             * Zonal/x component variable id.
-                             */
+                            data: string;
+                            variable: string;
+                          }
+                        | {
+                            data: string;
                             u: string;
-                            /**
-                             * Meridional/y component variable id.
-                             */
                             v: string;
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           }
                         | {
-                            /**
-                             * Speed magnitude variable id.
-                             */
+                            data: string;
                             speed: string;
-                            /**
-                             * Direction variable id (degrees or radians — interpretation is renderer-defined unless you add metadata).
-                             */
                             direction: string;
-                            /**
-                             * Units of the direction field.
-                             */
                             directionUnits?: 'deg' | 'rad';
-                            /**
-                             * Meteorological convention. 'from' means wind direction indicates where it comes from; 'to' means where it goes to.
-                             */
                             directionConvention?: 'from' | 'to';
-                            /**
-                             * Angle reference. Most meteorology uses degrees clockwise from north.
-                             */
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
-                            /**
-                             * Vertical/z component variable id (optional).
-                             */
                             w?: string;
                           };
                       encoding?: {
@@ -20056,9 +19865,6 @@ export interface AdditionalProperties1 {
   key: string;
   description?: string;
 }
-/**
- * Optional derived dataset produced by this transform. Prefer this for multi-output transforms.
- */
 export interface Output {
   /**
    * Id of the derived dataset produced by this transform.
@@ -20068,20 +19874,52 @@ export interface Output {
    * @minItems 1
    */
   variables: [
-    {
-      id: string;
-      kind: 'grid' | 'table' | 'point';
-      units?: string;
-      description?: string;
-      [k: string]: unknown;
-    },
-    ...{
-      id: string;
-      kind: 'grid' | 'table' | 'point';
-      units?: string;
-      description?: string;
-      [k: string]: unknown;
-    }[]
+    (
+      | {
+          id: string;
+          kind: 'grid' | 'table' | 'point' | 'vector';
+          units?: string;
+          description?: string;
+          [k: string]: unknown;
+        }
+      | {
+          id: string;
+          kind: 'vector';
+          /**
+           * @minItems 2
+           * @maxItems 2
+           */
+          components: ['speed' | 'direction', 'speed' | 'direction'];
+          directionConvention?: 'from' | 'to';
+          directionUnits?: 'deg' | 'rad';
+          directionReference?: 'north_clockwise';
+          units?: string;
+          description?: string;
+        }
+    ),
+    ...(
+      | {
+          id: string;
+          kind: 'grid' | 'table' | 'point' | 'vector';
+          units?: string;
+          description?: string;
+          [k: string]: unknown;
+        }
+      | {
+          id: string;
+          kind: 'vector';
+          /**
+           * @minItems 2
+           * @maxItems 2
+           */
+          components: ['speed' | 'direction', 'speed' | 'direction'];
+          directionConvention?: 'from' | 'to';
+          directionUnits?: 'deg' | 'rad';
+          directionReference?: 'north_clockwise';
+          units?: string;
+          description?: string;
+        }
+    )[]
   ];
   [k: string]: unknown;
 }

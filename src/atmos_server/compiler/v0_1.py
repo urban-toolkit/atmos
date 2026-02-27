@@ -62,6 +62,45 @@ def _build_render_from_encoding(
         style = {}
 
     # -----------------------------
+    # VECTOR => MapLibre circle layer (debug/default)
+    # -----------------------------
+    if gtype == "vector":
+        render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
+        paint: dict[str, Any] = render["paint"]
+
+        # opacity -> circle-opacity
+        opacity = _get_number_constant(channels.get("opacity"))
+        if opacity is not None:
+            paint["circle-opacity"] = opacity
+
+        # color: use stroke if present, else fallback
+        stroke = channels.get("stroke")
+        stroke_const = _get_color_constant(stroke)
+        if stroke_const is not None:
+            paint["circle-color"] = stroke_const
+        else:
+            # (optional) support field-driven color later
+            pass
+
+        # size: if constant, map to radius; if field-driven, emit a payload for interface
+        size = channels.get("size")
+        size_const = _get_number_constant(size)
+        if size_const is not None:
+            paint["circle-radius"] = size_const
+        else:
+            # If it's a NumberField, pass through for your interface to convert later.
+            if _is_dict(size) and isinstance(size.get("field"), str):
+                paint["circle-radius"] = {
+                    "kind": "number-scale",
+                    "field": size["field"],
+                    "scale": size.get("scale"),
+                }
+
+        if not paint:
+            return None
+        return render
+
+    # -----------------------------
     # Helpers: extract field-color scales
     # -----------------------------
     def _color_field_to_paint_payload(
@@ -327,6 +366,10 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
         step_id = f"transform:{tid}"
 
         scope_data = t.get("data")
+        if not isinstance(scope_data, str):
+            tin = t.get("input")
+            if isinstance(tin, dict) and isinstance(tin.get("data"), str):
+                scope_data = tin.get("data")
         depends: list[str] = []
 
         if isinstance(scope_data, str) and scope_data in data_id_to_upstream_step:
@@ -336,14 +379,57 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
 
         params = dict(t)
 
-        if params.get("type") == "diagnostic.slp":
-            base_data = params.get("data")
-            if not isinstance(base_data, str) or not base_data:
-                raise ValueError("diagnostic.slp requires transform.data")
+        if params.get("type") == "derive_wind_vector":
+            tin = params.get("input") or {}
+            if not isinstance(tin, dict):
+                raise ValueError("derive_wind_vector requires input object")
 
+            base_data = tin.get("data")
+            if not isinstance(base_data, str) or not base_data:
+                raise ValueError("derive_wind_vector requires input.data")
+
+            vars_map = tin.get("variables") or {}
+            if not isinstance(vars_map, dict):
+                raise ValueError("derive_wind_vector requires input.variables object")
+
+            u_id = vars_map.get("u")
+            v_id = vars_map.get("v")
+            if not isinstance(u_id, str) or not isinstance(v_id, str):
+                raise ValueError("derive_wind_vector requires input.variables.u and .v (ids)")
+
+            u_key = _var_id_to_key(base_data, u_id)
+            v_key = _var_id_to_key(base_data, v_id)
+            if not u_key or not v_key:
+                raise ValueError(f"derive_wind_vector could not resolve keys for u='{u_id}' v='{v_id}'")
+
+            resolved = dict(params.get("_resolved") or {})
+            resolved["uKey"] = u_key
+            resolved["vKey"] = v_key
+            params["_resolved"] = resolved
+
+            # derived-data tracking (so geometry can find base lat/lon keys later)
+            out = params.get("output") or {}
+            if isinstance(out, dict):
+                out_data = out.get("data")
+                if isinstance(out_data, str) and out_data:
+                    derived_data_to_step[out_data] = step_id
+                    derived_data_to_base_data[out_data] = base_data
+
+        if params.get("type") == "diagnostic.slp":
             inp = params.get("input") or {}
             if not isinstance(inp, dict):
                 raise ValueError("diagnostic.slp input must be an object")
+
+            # NEW: prefer input.data (matches your desired pattern)
+            base_data = inp.get("data")
+            if not isinstance(base_data, str) or not base_data:
+                # Back-compat fallback: allow old transform.data
+                base_data = params.get("data")
+            if not isinstance(base_data, str) or not base_data:
+                raise ValueError("diagnostic.slp requires input.data (or legacy transform.data)")
+
+            # Optional but useful: normalize so downstream logic can assume params["data"]
+            params["data"] = base_data
 
             sp = inp.get("surfacePressure")
             t2 = inp.get("airTemperature2m")
@@ -355,25 +441,38 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
 
             if isinstance(sp, str):
                 k = _var_id_to_key(base_data, sp)
-                if k: resolved["surfacePressureKey"] = k
+                if k:
+                    resolved["surfacePressureKey"] = k
 
             if isinstance(t2, str):
                 k = _var_id_to_key(base_data, t2)
-                if k: resolved["airTemperature2mKey"] = k
+                if k:
+                    resolved["airTemperature2mKey"] = k
 
             if isinstance(r2, str):
                 k = _var_id_to_key(base_data, r2)
-                if k: resolved["waterVaporMixingRatio2mKey"] = k
+                if k:
+                    resolved["waterVaporMixingRatio2mKey"] = k
 
             if isinstance(sh, str):
                 k = _var_id_to_key(base_data, sh)
-                if k: resolved["surfaceHeightKey"] = k
+                if k:
+                    resolved["surfaceHeightKey"] = k
 
             if isinstance(sg, str):
                 k = _var_id_to_key(base_data, sg)
-                if k: resolved["surfaceGeopotentialKey"] = k
+                if k:
+                    resolved["surfaceGeopotentialKey"] = k
 
             params["_resolved"] = resolved
+
+            # derived-data tracking so geometry can map derived -> base (same as wind)
+            out = params.get("output") or {}
+            if isinstance(out, dict):
+                out_data = out.get("data")
+                if isinstance(out_data, str) and out_data:
+                    derived_data_to_step[out_data] = step_id
+                    derived_data_to_base_data[out_data] = base_data
 
         steps.append(
             Step(
@@ -477,6 +576,40 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
                     "lonKey": lon_key,
                     "baseDataId": base_data,
                 }
+
+            if gtype == "vector":
+                # input is {data, variable}
+                inp = geom.get("input") or {}
+                if not isinstance(inp, dict):
+                    raise ValueError("vector geometry requires input object")
+
+                input_data = inp.get("data")
+                input_var = inp.get("variable")
+                if not isinstance(input_data, str) or not isinstance(input_var, str):
+                    raise ValueError("vector geometry requires input.data and input.variable")
+
+                base_data = input_data
+                if input_data in derived_data_to_base_data:
+                    base_data = derived_data_to_base_data[input_data]
+
+                base = data_by_id.get(base_data) or {}
+                dims = base.get("dimensions") or {}
+                lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
+                lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+
+                if not isinstance(lat_key, str) or not isinstance(lon_key, str):
+                    raise ValueError(f"vector geometry could not resolve lat/lon keys for base data '{base_data}'")
+
+                resolved = dict(geom.get("_resolved") or {})
+                resolved["latKey"] = lat_key
+                resolved["lonKey"] = lon_key
+
+                # convention we used in step_transform: f"{var_id}.speed"/".direction"
+                resolved["speedKey"] = f"{input_var}.speed"
+                resolved["directionKey"] = f"{input_var}.direction"
+                resolved["variableId"] = input_var
+
+                geom_params["_resolved"] = resolved
 
             steps.append(
                 Step(

@@ -7,6 +7,7 @@ from typing import Any, Sequence, Union
 
 import math
 import copy
+import numpy as np
 
 Number = Union[int, float]
 NumberLike = Union[Number, str]  # allow strings like "3.2" if you want
@@ -122,47 +123,79 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
             ds2 = ds.isel({time_dim: idx})
             return DataObject(id=upstream_obj.id, dataset=ds2)
 
-        if ttype in ("derive_wind_speed", "derive_wind_direction"):
+        if ttype == "derive_wind_vector":
             resolved = t.get("_resolved") or {}
             if not isinstance(resolved, dict):
                 resolved = {}
 
-            u_key = resolved.get("uKey") or t.get("u")
-            v_key = resolved.get("vKey") or t.get("v")
-            out_id = (t.get("as") or {}).get("id")
-            out_key = resolved.get("outKey") or out_id
+            # keys for U/V in the *upstream* dataset (resolved by compiler)
+            u_key = resolved.get("uKey")
+            v_key = resolved.get("vKey")
+
+            output = t.get("output") or {}
+            if not isinstance(output, dict):
+                raise ValueError(f"derive_wind_vector requires 'output' object (step {step.id})")
+
+            out_data = output.get("data")
+            out_vars = output.get("variables") or []
+            if not isinstance(out_data, str) or not out_data:
+                raise ValueError(f"derive_wind_vector requires output.data (step {step.id})")
+            if not (isinstance(out_vars, list) and out_vars and isinstance(out_vars[0], dict)):
+                raise ValueError(f"derive_wind_vector requires output.variables[0] (step {step.id})")
+
+            v0 = out_vars[0]
+            out_var_id = v0.get("id")
+            if not isinstance(out_var_id, str) or not out_var_id:
+                raise ValueError(f"derive_wind_vector requires output.variables[0].id (step {step.id})")
+
+            direction_convention = v0.get("directionConvention", "from")
+            direction_reference = v0.get("directionReference", "north_clockwise")
+            direction_units = v0.get("directionUnits", "deg")
+
+            if direction_reference != "north_clockwise":
+                raise NotImplementedError(
+                    f"derive_wind_vector currently supports directionReference='north_clockwise' only "
+                    f"(got {direction_reference}) (step {step.id})"
+                )
+            if direction_units != "deg":
+                raise NotImplementedError(
+                    f"derive_wind_vector currently outputs degrees only (got {direction_units}) (step {step.id})"
+                )
 
             if not isinstance(u_key, str) or not u_key:
-                raise ValueError(f"{ttype}: missing uKey (step {step.id})")
+                raise ValueError(f"derive_wind_vector missing resolved uKey (step {step.id})")
             if not isinstance(v_key, str) or not v_key:
-                raise ValueError(f"{ttype}: missing vKey (step {step.id})")
-            if not isinstance(out_key, str) or not out_key:
-                raise ValueError(f"{ttype}: missing as.id/outKey (step {step.id})")
-
-            import numpy as np
+                raise ValueError(f"derive_wind_vector missing resolved vKey (step {step.id})")
 
             ds = upstream_obj.dataset
             if u_key not in ds or v_key not in ds:
-                raise KeyError(f"{ttype}: variables not found in dataset: u={u_key}, v={v_key} (step {step.id})")
+                raise KeyError(
+                    f"derive_wind_vector missing u/v in dataset: u='{u_key}' v='{v_key}' (step {step.id})"
+                )
 
             u = ds[u_key]
             v = ds[v_key]
 
-            if ttype == "derive_wind_speed":
-                out = np.sqrt(u * u + v * v)
+            # speed
+            speed = np.sqrt(u * u + v * v)
 
+            # meteorological direction (clockwise from north):
+            # dir_from = (270 - atan2(v, u) * 180/pi) % 360
+            dir_from = (270.0 - np.degrees(np.arctan2(v, u))) % 360.0
+            if direction_convention == "to":
+                direction = (dir_from + 180.0) % 360.0
             else:
-                # Direction reference: north_clockwise
-                # Direction convention: "from"
-                # u = eastward, v = northward
-                # direction_to = atan2(u, v) in degrees (0=N, 90=E)
-                direction_to = (np.degrees(np.arctan2(u, v)) + 360.0) % 360.0
-                out = (direction_to + 180.0) % 360.0
+                direction = dir_from
 
-            ds2 = ds.assign({out_key: out})
-            return DataObject(id=upstream_obj.id, dataset=ds2)
-        
-        
+            speed_key = f"{out_var_id}.speed"
+            dir_key = f"{out_var_id}.direction"
+
+            # keep coords, dims, etc. easiest: copy ds and add vars
+            ds2 = ds.copy()
+            ds2[speed_key] = speed
+            ds2[dir_key] = direction
+
+            return DataObject(id=out_data, dataset=ds2)
         
         if ttype == "diagnostic.slp":
             resolved = t.get("_resolved") or {}
@@ -190,8 +223,6 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
                     f"diagnostic.slp: variables not found in dataset "
                     f"(ps={ps_key}, t2={t2_key}, r={r_key}) (step {step.id})"
                 )
-
-            import numpy as np
 
             psfc = ds[ps_key]   # Pa
             t2   = ds[t2_key]   # K

@@ -801,14 +801,9 @@
               {
                 "type": "object",
                 "properties": {
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/7/allOf/1/properties/output",
-                    "description": "Optional derived dataset produced by this transform. Prefer this for multi-output transforms."
-                  },
-                  "data": {
+                  "id": {
                     "type": "string",
-                    "minLength": 1,
-                    "description": "Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items."
+                    "minLength": 1
                   },
                   "description": {
                     "type": "string"
@@ -819,46 +814,24 @@
                 "type": "object",
                 "properties": {
                   "type": {
-                    "type": "string",
                     "const": "derive"
                   },
-                  "as": {
-                    "description": "Output variable definition",
-                    "oneOf": [
-                      {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "input": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
                         "type": "string",
-                        "description": "Shorthand derived variable id",
                         "minLength": 1
-                      },
-                      {
-                        "type": "object",
-                        "description": "Definition of a variable produced by a transformation",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "description": "Identifier for the derived variable"
-                          },
-                          "title": {
-                            "type": "string",
-                            "description": "Human-readable name"
-                          },
-                          "units": {
-                            "type": "string",
-                            "description": "Units of the derived variable"
-                          },
-                          "description": {
-                            "type": "string"
-                          },
-                          "kind": {
-                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/variables/items/properties/kind"
-                          }
-                        },
-                        "required": [
-                          "id"
-                        ],
-                        "additionalProperties": false
                       }
-                    ]
+                    },
+                    "required": [
+                      "data"
+                    ],
+                    "additionalProperties": false
                   },
                   "expression": {
                     "description": "Expression AST node. Either an operator, a variable reference, or a constant.",
@@ -1023,14 +996,126 @@
                         "additionalProperties": false
                       }
                     ]
+                  },
+                  "output": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Id of the derived dataset produced by this transform."
+                      },
+                      "variables": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "grid",
+                                    "table",
+                                    "point",
+                                    "vector"
+                                  ]
+                                },
+                                "units": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "kind"
+                              ],
+                              "unevaluatedProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "kind": {
+                                  "const": "vector"
+                                },
+                                "components": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "speed",
+                                      "direction"
+                                    ]
+                                  },
+                                  "minItems": 2,
+                                  "maxItems": 2
+                                },
+                                "directionConvention": {
+                                  "type": "string",
+                                  "enum": [
+                                    "from",
+                                    "to"
+                                  ]
+                                },
+                                "directionUnits": {
+                                  "type": "string",
+                                  "enum": [
+                                    "deg",
+                                    "rad"
+                                  ]
+                                },
+                                "directionReference": {
+                                  "type": "string",
+                                  "enum": [
+                                    "north_clockwise"
+                                  ]
+                                },
+                                "units": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "kind",
+                                "components"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "variables"
+                    ],
+                    "unevaluatedProperties": false
                   }
                 },
                 "required": [
                   "type",
-                  "as",
-                  "expression"
+                  "id",
+                  "input",
+                  "expression",
+                  "output"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false
               }
             ]
           },
@@ -1041,31 +1126,48 @@
               },
               {
                 "type": "object",
-                "description": "Compute wind speed from u and v components: sqrt(u² + v²).",
                 "properties": {
                   "type": {
-                    "type": "string",
                     "const": "derive_wind_speed"
                   },
-                  "as": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/as"
-                  },
-                  "u": {
+                  "id": {
                     "type": "string",
                     "minLength": 1
                   },
-                  "v": {
-                    "type": "string",
-                    "minLength": 1
+                  "input": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "u": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "v": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "u",
+                      "v"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
                   "type",
-                  "as",
-                  "u",
-                  "v"
+                  "id",
+                  "input",
+                  "output"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false
               }
             ]
           },
@@ -1082,43 +1184,126 @@
                     "type": "string",
                     "const": "derive_wind_direction"
                   },
-                  "as": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/as"
-                  },
-                  "u": {
+                  "id": {
                     "type": "string",
-                    "description": "Variable id of zonal (east-west) wind component.",
                     "minLength": 1
                   },
-                  "v": {
-                    "type": "string",
-                    "description": "Variable id of meridional (north-south) wind component.",
-                    "minLength": 1
-                  },
-                  "convention": {
-                    "type": "string",
-                    "enum": [
-                      "from",
-                      "to"
+                  "input": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "u": {
+                        "type": "string",
+                        "description": "Variable id of zonal (east-west) wind component.",
+                        "minLength": 1
+                      },
+                      "v": {
+                        "type": "string",
+                        "description": "Variable id of meridional (north-south) wind component.",
+                        "minLength": 1
+                      },
+                      "convention": {
+                        "type": "string",
+                        "enum": [
+                          "from",
+                          "to"
+                        ],
+                        "default": "from",
+                        "description": "Wind direction convention. 'from' follows meteorological standard."
+                      },
+                      "units": {
+                        "type": "string",
+                        "enum": [
+                          "deg",
+                          "rad"
+                        ],
+                        "default": "deg",
+                        "description": "Output angular units."
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "u",
+                      "v"
                     ],
-                    "default": "from",
-                    "description": "Wind direction convention. 'from' follows meteorological standard."
+                    "additionalProperties": false
                   },
-                  "units": {
-                    "type": "string",
-                    "enum": [
-                      "deg",
-                      "rad"
-                    ],
-                    "default": "deg",
-                    "description": "Output angular units."
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
                   "type",
-                  "as",
-                  "u",
-                  "v"
+                  "id",
+                  "input",
+                  "output"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "derive_wind_vector"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "input": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "variables": {
+                        "type": "object",
+                        "properties": {
+                          "u": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "v": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "u",
+                          "v"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "variables"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "input",
+                  "output"
                 ],
                 "unevaluatedProperties": false
               }
@@ -1136,6 +1321,10 @@
                   "type": {
                     "type": "string",
                     "const": "reduce"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "input": {
                     "type": "string",
@@ -1161,11 +1350,11 @@
                     ]
                   },
                   "predicate": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/event/properties/predicate",
+                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/event/properties/predicate",
                     "description": "Required when op='prob'. Predicate is evaluated per element; prob is fraction of true values."
                   },
-                  "as": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/as"
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   },
                   "missing": {
                     "type": "string",
@@ -1179,12 +1368,13 @@
                 },
                 "required": [
                   "type",
+                  "id",
                   "input",
                   "across",
                   "op",
-                  "as"
+                  "output"
                 ],
-                "unevaluatedProperties": false,
+                "additionalProperties": false,
                 "allOf": [
                   {
                     "if": {
@@ -1199,22 +1389,6 @@
                         "predicate"
                       ]
                     }
-                  },
-                  {
-                    "if": {
-                      "properties": {
-                        "op": {
-                          "const": "prob"
-                        }
-                      }
-                    },
-                    "then": {
-                      "properties": {
-                        "as": {
-                          "description": "Output variable for probability (typically 0..1)."
-                        }
-                      }
-                    }
                   }
                 ]
               }
@@ -1227,10 +1401,8 @@
               },
               {
                 "type": "object",
-                "description": "Compute verification metrics between forecast and observations, optionally across a dimension.",
                 "properties": {
                   "type": {
-                    "type": "string",
                     "const": "verify"
                   },
                   "id": {
@@ -1238,7 +1410,7 @@
                     "minLength": 1
                   },
                   "forecast": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/obs"
+                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
                   },
                   "obs": {
                     "type": "object",
@@ -1269,17 +1441,14 @@
                       "pod",
                       "far",
                       "csi"
-                    ],
-                    "description": "Verification operator."
+                    ]
                   },
                   "across": {
                     "type": "string",
-                    "minLength": 1,
-                    "description": "Dimension to aggregate across (e.g., 'time')."
+                    "minLength": 1
                   },
                   "event": {
                     "type": "object",
-                    "description": "Event definition for categorical metrics (e.g., POD).",
                     "properties": {
                       "predicate": {
                         "description": "Boolean predicate expression used for events and probability reductions.",
@@ -1305,7 +1474,7 @@
                                 "type": "array",
                                 "minItems": 1,
                                 "items": {
-                                  "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/event/properties/predicate"
+                                  "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/event/properties/predicate"
                                 }
                               }
                             },
@@ -1420,29 +1589,13 @@
                     "required": [
                       "predicate"
                     ],
-                    "unevaluatedProperties": false
+                    "additionalProperties": false
                   },
                   "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/3/allOf/1/properties/missing"
+                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
                   },
-                  "as": {
-                    "type": "object",
-                    "description": "Names of output variables produced by verification.",
-                    "properties": {
-                      "variables": {
-                        "type": "object",
-                        "minProperties": 1,
-                        "additionalProperties": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": "Map from semantic role (e.g., 'rmse', 'pod') to output variable id."
-                      }
-                    },
-                    "required": [
-                      "variables"
-                    ],
-                    "unevaluatedProperties": false
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
@@ -1452,9 +1605,9 @@
                   "obs",
                   "op",
                   "across",
-                  "as"
+                  "output"
                 ],
-                "unevaluatedProperties": false,
+                "additionalProperties": false,
                 "allOf": [
                   {
                     "if": {
@@ -1506,7 +1659,7 @@
                     "description": "Input dataset ids to merge (typically outputs of prior transforms)."
                   },
                   "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/3/allOf/1/properties/missing"
+                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
                   }
                 },
                 "required": [
@@ -1514,7 +1667,7 @@
                   "id",
                   "input"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false
               }
             ]
           },
@@ -1525,10 +1678,8 @@
               },
               {
                 "type": "object",
-                "description": "Match forecast and observation variables in space and time, producing a new tabular dataset of paired values.",
                 "properties": {
                   "type": {
-                    "type": "string",
                     "const": "match"
                   },
                   "id": {
@@ -1536,10 +1687,10 @@
                     "minLength": 1
                   },
                   "forecast": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/obs"
+                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
                   },
                   "obs": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/obs"
+                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
                   },
                   "space": {
                     "type": "object",
@@ -1636,7 +1787,7 @@
                       "bin",
                       "op"
                     ],
-                    "unevaluatedProperties": false,
+                    "additionalProperties": false,
                     "allOf": [
                       {
                         "oneOf": [
@@ -1665,25 +1816,10 @@
                     ]
                   },
                   "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/3/allOf/1/properties/missing"
+                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
                   },
-                  "as": {
-                    "type": "object",
-                    "properties": {
-                      "variables": {
-                        "type": "object",
-                        "minProperties": 1,
-                        "additionalProperties": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": "Map from semantic role (e.g., 'forecast', 'obs') to output variable id in the matched dataset."
-                      }
-                    },
-                    "required": [
-                      "variables"
-                    ],
-                    "unevaluatedProperties": false
+                  "output": {
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
@@ -1693,9 +1829,9 @@
                   "obs",
                   "space",
                   "time",
-                  "as"
+                  "output"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false
               }
             ]
           },
@@ -1716,43 +1852,39 @@
                     "type": "string",
                     "minLength": 1
                   },
-                  "data": {
-                    "type": "string",
-                    "minLength": 1
-                  },
                   "description": {
                     "type": "string"
                   },
                   "input": {
                     "type": "object",
-                    "minProperties": 4,
                     "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "surfacePressure": {
-                        "$ref": "#/properties/transform/items/oneOf/7/allOf/1/properties/input/properties/surfaceHeight"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "airTemperature2m": {
-                        "$ref": "#/properties/transform/items/oneOf/7/allOf/1/properties/input/properties/surfaceHeight"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "waterVaporMixingRatio2m": {
-                        "$ref": "#/properties/transform/items/oneOf/7/allOf/1/properties/input/properties/surfaceHeight"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "surfaceHeight": {
-                        "description": "Either a variable id (scoped by TransformBase.data) or an explicit {data, variable} reference.",
-                        "oneOf": [
-                          {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          {
-                            "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/obs"
-                          }
-                        ]
+                        "type": "string",
+                        "minLength": 1
                       },
                       "surfaceGeopotential": {
-                        "$ref": "#/properties/transform/items/oneOf/7/allOf/1/properties/input/properties/surfaceHeight"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
+                      "data",
                       "surfacePressure",
                       "airTemperature2m",
                       "waterVaporMixingRatio2m"
@@ -1779,55 +1911,10 @@
                         }
                       }
                     ],
-                    "unevaluatedProperties": false
+                    "additionalProperties": false
                   },
                   "output": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Id of the derived dataset produced by this transform."
-                      },
-                      "variables": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "grid",
-                                "table",
-                                "point"
-                              ]
-                            },
-                            "units": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "description": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "kind"
-                          ],
-                          "unevaluatedProperties": false
-                        }
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "variables"
-                    ],
-                    "unevaluatedProperties": false
+                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
@@ -1836,7 +1923,7 @@
                   "input",
                   "output"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false
               }
             ]
           }
@@ -2132,17 +2219,6 @@
                                     {
                                       "type": "object",
                                       "properties": {
-                                        "type": {
-                                          "const": "isoline"
-                                        }
-                                      },
-                                      "required": [
-                                        "type"
-                                      ]
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
                                         "id": {
                                           "type": "string",
                                           "description": "Unique identifier for the geometry layer.",
@@ -2164,6 +2240,17 @@
                                       "required": [
                                         "type",
                                         "encoding"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "isoline"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
                                       ]
                                     },
                                     {
@@ -2752,7 +2839,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
@@ -2845,7 +2932,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
@@ -2914,7 +3001,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
@@ -2999,36 +3086,55 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
                                       "properties": {
                                         "input": {
                                           "type": "object",
-                                          "description": "Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).",
+                                          "description": "Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).",
                                           "oneOf": [
                                             {
                                               "type": "object",
-                                              "description": "Vector field inputs. Either components (u/v[/w]) or polar (speed/direction[/w]).",
                                               "properties": {
-                                                "u": {
+                                                "data": {
                                                   "type": "string",
-                                                  "description": "Zonal/x component variable id.",
                                                   "minLength": 1
                                                 },
-                                                "v": {
+                                                "variable": {
                                                   "type": "string",
-                                                  "description": "Meridional/y component variable id.",
-                                                  "minLength": 1
-                                                },
-                                                "w": {
-                                                  "type": "string",
-                                                  "description": "Vertical/z component variable id (optional).",
                                                   "minLength": 1
                                                 }
                                               },
                                               "required": [
+                                                "data",
+                                                "variable"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "u": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "v": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "w": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                }
+                                              },
+                                              "required": [
+                                                "data",
                                                 "u",
                                                 "v"
                                               ],
@@ -3037,14 +3143,16 @@
                                             {
                                               "type": "object",
                                               "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
                                                 "speed": {
                                                   "type": "string",
-                                                  "description": "Speed magnitude variable id.",
                                                   "minLength": 1
                                                 },
                                                 "direction": {
                                                   "type": "string",
-                                                  "description": "Direction variable id (degrees or radians — interpretation is renderer-defined unless you add metadata).",
                                                   "minLength": 1
                                                 },
                                                 "directionUnits": {
@@ -3053,8 +3161,7 @@
                                                     "deg",
                                                     "rad"
                                                   ],
-                                                  "default": "deg",
-                                                  "description": "Units of the direction field."
+                                                  "default": "deg"
                                                 },
                                                 "directionConvention": {
                                                   "type": "string",
@@ -3062,8 +3169,7 @@
                                                     "from",
                                                     "to"
                                                   ],
-                                                  "default": "from",
-                                                  "description": "Meteorological convention. 'from' means wind direction indicates where it comes from; 'to' means where it goes to."
+                                                  "default": "from"
                                                 },
                                                 "directionReference": {
                                                   "type": "string",
@@ -3071,16 +3177,15 @@
                                                     "north_clockwise",
                                                     "east_counterclockwise"
                                                   ],
-                                                  "default": "north_clockwise",
-                                                  "description": "Angle reference. Most meteorology uses degrees clockwise from north."
+                                                  "default": "north_clockwise"
                                                 },
                                                 "w": {
                                                   "type": "string",
-                                                  "description": "Vertical/z component variable id (optional).",
                                                   "minLength": 1
                                                 }
                                               },
                                               "required": [
+                                                "data",
                                                 "speed",
                                                 "direction"
                                               ],
@@ -3156,7 +3261,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
@@ -3251,7 +3356,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
@@ -3322,7 +3427,7 @@
                                       ]
                                     },
                                     {
-                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/1"
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
                                     },
                                     {
                                       "type": "object",
