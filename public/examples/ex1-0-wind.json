@@ -1,0 +1,108 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dimensions": {
+        "latitude": { "key": "XLAT" },
+        "longitude": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+      "variables": [
+        { "id": "u10", "key": "U10", "kind": "grid" },
+        { "id": "v10", "key": "V10", "kind": "grid" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "properties": {
+        "geoid": { "key": "GEOID" }
+      }
+    }
+  ],
+  "transform": [
+    {
+      "id": "wind10",
+      "type": "derive_wind_vector",
+      "input": {
+        "data": "r001",
+        "variables": { "u": "u10", "v": "v10" }
+      },
+      "output": {
+        "data": "wind10_r001",
+        "variables": [
+          {
+            "id": "wind10",
+            "kind": "vector",
+            "components": ["speed", "direction"],
+            "directionConvention": "from",
+            "directionUnits": "deg",
+            "directionReference": "north_clockwise"
+          }
+        ]
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 5,
+      "repeatView": [
+        {
+          "type": "timestep",
+          "indices": [0, 3, 4, 6, 8],
+          "targetView": "view1",
+          "targetLayer": "lwind"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lwind",
+            "geometry": {
+              "type": "vector",
+              "input": { "data": "wind10_r001", "variable": "wind10" },
+              "encoding": {
+                "channels": {
+                  "stroke": { "value": "#2c7bb6" },
+                  "size": {
+                    "field": "wind10.speed",
+                    "scale": {
+                      "type": "linear",
+                      "domain": { "type": "extent" },
+                      "range": { "values": [2, 12] }
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                },
+                "style": { "glyph": "arrow" }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                },
+                "style": {
+                  "strokeWidth": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

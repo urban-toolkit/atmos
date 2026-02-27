@@ -1,0 +1,103 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dimensions": {
+        "latitude": { "key": "XLAT" },
+        "longitude": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+      },
+      "variables": [
+        { "id": "psfc", "key": "PSFC", "kind": "grid", "units": "Pa" },
+        { "id": "t2m", "key": "T2", "kind": "grid", "units": "K" },
+        { "id": "q2m", "key": "Q2", "kind": "grid", "units": "kg/kg" },
+        { "id": "hgt", "key": "HGT", "kind": "grid", "units": "m" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "properties": {
+        "geoid": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "id": "slp",
+      "type": "diagnostic.slp",
+      "input": {
+        "data": "r001",
+        "surfacePressure": "psfc",
+        "airTemperature2m": "t2m",
+        "waterVaporMixingRatio2m": "q2m",
+        "surfaceHeight": "hgt"
+      },
+      "output": { "data": "slp_r001", "variables": [{ "id": "slp", "kind": "grid", "units": "hPa" }] }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 5,
+      "repeatView": [
+        {
+          "type": "timestep",
+          "indices": [0, 3, 4, 6, 8],
+          "targetView": "view1",
+          "targetLayer": "slp_isobars"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "slp_isobars",
+            "geometry": {
+              "type": "isoline",
+              "input": { "data": "slp_r001", "variable": "slp" },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": 992, "stop": 1040, "step": 4 }
+                }
+              ],
+              "encoding": {
+                "channels": { 
+                  "stroke": { 
+                    "value": "#000000"
+                  } 
+                },
+                "style": { 
+                  "strokeWidth": 1,
+                  "label": { "enabled": true, "format": ".0f" }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                },
+                "style": {
+                  "strokeWidth": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

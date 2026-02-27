@@ -16,21 +16,9 @@ export type MapLayerRuntime = {
   url: string
   format: "geojson"
   role: "field" | "boundary" | "unknown"
-  render?: {
-    renderer: "maplibre"
-    layerType: "fill" | "line" | "circle"
-    paint?: Record<string, any>
-    layout?: Record<string, any>
-  }
+  render?: any
+  geometryType?: string
 }
-
-// export type MapLayerRuntime = {
-//   layerId: string
-//   artifactId: string
-//   url: string
-//   format: "geojson"
-//   role: "field" | "boundary" | "unknown"
-// }
 
 function joinUrl(baseUrl: string, path: string) {
   const b = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`
@@ -55,7 +43,8 @@ export function interpretManifestToMapLayers(manifest: Manifest, baseUrl: string
         url: joinUrl(baseUrl, a.path),
         format: "geojson",
         role,
-        render: a.metadata?.render
+        render: a.metadata?.render,
+        geometryType: a.metadata?.geometryType, // THIS is what your AtmosMap override needs
       }
     })
 }
