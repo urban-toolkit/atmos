@@ -90,18 +90,86 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         if a.format == "geojson":
-            if not isinstance(obj, dict):
-                raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
-            out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
-            materialized.append(
-                {
-                    "id": a.id,
-                    "format": a.format,
-                    "path": a.path,
-                    "producerStep": a.producer_step,
-                    "metadata": a.metadata,
+
+            # ---------- CASE 1 — multi-geometry output (isolines + labels) ----------
+            if isinstance(obj, dict) and "lines" in obj and "labels" in obj:
+
+                # write isoline lines
+                out_path.write_text(json.dumps(obj["lines"], indent=2), encoding="utf-8")
+
+                materialized.append(
+                    {
+                        "id": a.id,
+                        "format": a.format,
+                        "path": a.path,
+                        "producerStep": a.producer_step,
+                        "metadata": a.metadata,
+                    }
+                )
+
+                # write labels as a second artifact
+                label_path = out_path.with_name(out_path.stem + "-labels.geojson")
+
+                label_meta = dict(a.metadata or {})
+                # label_meta["render"] = {
+                #     "renderer": "maplibre",
+                #     "layerType": "symbol"
+                # }
+                label_meta["render"] = {
+                    "renderer": "maplibre",
+                    "layerType": "symbol",
+                    "layout": {"text-field": ["get", "label"], "text-size": 12},
+                    "paint": {"text-color": "#000000"},
                 }
-            )
+
+                label_meta["role"] = "label"
+
+                label_id = f"{a.id}:labels"
+                base_layer_id = (label_meta.get("layerId") or a.id)
+                label_meta["layerId"] = f"{base_layer_id}:labels"
+
+                label_path.write_text(json.dumps(obj["labels"], indent=2), encoding="utf-8")
+
+                materialized.append(
+                    {
+                        "id": label_id,
+                        "format": a.format,
+                        "path": label_path.name,
+                        "producerStep": a.producer_step,
+                        "metadata": label_meta,
+                    }
+                )
+
+            # ---------- CASE 2 — normal single-geometry ----------
+            else:
+                if not isinstance(obj, dict):
+                    raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
+
+                out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+
+                materialized.append(
+                    {
+                        "id": a.id,
+                        "format": a.format,
+                        "path": a.path,
+                        "producerStep": a.producer_step,
+                        "metadata": a.metadata,
+                    }
+                )
+
+        # if a.format == "geojson":
+        #     if not isinstance(obj, dict):
+        #         raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
+        #     out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+        #     materialized.append(
+        #         {
+        #             "id": a.id,
+        #             "format": a.format,
+        #             "path": a.path,
+        #             "producerStep": a.producer_step,
+        #             "metadata": a.metadata,
+        #         }
+        #     )
         else:
             raise NotImplementedError(f"Artifact format not supported yet: {a.format}")
     

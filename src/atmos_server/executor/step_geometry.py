@@ -6,6 +6,74 @@ from atmos_server.executor.context import ExecutionContext
 import xarray as xr
 from typing import Any
 
+def _midpoint_of_linestring(coords: list[list[float]]) -> list[float] | None:
+    if len(coords) < 2:
+        return coords[0] if coords else None
+
+    # distance along polyline
+    seglens: list[float] = []
+    total = 0.0
+    for i in range(len(coords) - 1):
+        x1, y1 = coords[i]
+        x2, y2 = coords[i + 1]
+        d = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        seglens.append(d)
+        total += d
+
+    if total <= 0:
+        return coords[len(coords) // 2]
+
+    half = total / 2.0
+    acc = 0.0
+    for i, d in enumerate(seglens):
+        if acc + d >= half:
+            t = (half - acc) / d if d > 0 else 0.0
+            x1, y1 = coords[i]
+            x2, y2 = coords[i + 1]
+            return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)]
+        acc += d
+
+    return coords[len(coords) // 2]
+
+def _levels_from_spec(levels_obj) -> list[float] | None:
+    # 1) explicit list
+    if isinstance(levels_obj, list):
+        return [float(x) for x in levels_obj]
+
+    if not isinstance(levels_obj, dict):
+        return None
+
+    # 2) explicit {values:[...]}
+    values = levels_obj.get("values")
+    if isinstance(values, list):
+        return [float(x) for x in values]
+
+    # 3) step {type:"step", start, stop, step}
+    if levels_obj.get("type") == "step":
+        start = levels_obj.get("start")
+        stop  = levels_obj.get("stop")
+        step  = levels_obj.get("step")
+
+        if not isinstance(start, (int, float)) or not isinstance(stop, (int, float)) or not isinstance(step, (int, float)):
+            return None
+        if step <= 0:
+            return None
+
+        out: list[float] = []
+        x = float(start)
+        stopf = float(stop)
+        stepf = float(step)
+
+        # Include stop (like typical contour usage)
+        # guard against floating drift with a small epsilon
+        eps = stepf * 1e-6
+        while x <= stopf + eps:
+            out.append(float(x))
+            x += stepf
+        return out
+
+    return None
+
 def _mesh_to_geojson(
     ds: xr.Dataset,
     *,
@@ -311,18 +379,10 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
                         levels_obj = item["levels"]
                         break
 
-        levels: list[float] | None = None
-
-        if isinstance(levels_obj, list):
-            levels = [float(x) for x in levels_obj]
-
-        elif isinstance(levels_obj, dict):
-            values = levels_obj.get("values")
-            if isinstance(values, list):
-                levels = [float(x) for x in values]
+        levels: list[float] | None = _levels_from_spec(levels_obj)
 
         if not levels or len(levels) < 1:
-            raise ValueError("isoline requires explicit levels (at least one value)")
+            raise ValueError("isoline requires levels (need at least 1)")
 
         # ---- Resolve dataset keys
         var_key = resolved.get("variableKey")
@@ -343,7 +403,24 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
 
         ds = upstream_obj.dataset
 
-        return _isoline_to_geojson(
+        # ---- Read label config from encoding.style.label
+        enc = g.get("encoding") or {}
+        if not isinstance(enc, dict):
+            enc = {}
+        style = enc.get("style") or {}
+        if not isinstance(style, dict):
+            style = {}
+        label_cfg = style.get("label") or {}
+        if not isinstance(label_cfg, dict):
+            label_cfg = {}
+
+        labels_enabled = bool(label_cfg.get("enabled", False))
+        fmt = label_cfg.get("format", ".0f")
+        if not isinstance(fmt, str) or not fmt:
+            fmt = ".0f"
+
+        # 1) line features
+        lines_fc = _isoline_to_geojson(
             ds,
             var_key=var_key,
             lat_key=lat_key,
@@ -351,6 +428,55 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
             levels=levels,
             out_field=str(var_id),
         )
+
+        # 2) label features (optional)
+        if labels_enabled:
+            label_features: list[dict[str, Any]] = []
+            for feat in lines_fc.get("features", []):
+                if not isinstance(feat, dict):
+                    continue
+                geom = feat.get("geometry") or {}
+                if not isinstance(geom, dict) or geom.get("type") != "LineString":
+                    continue
+                coords = geom.get("coordinates")
+                if not isinstance(coords, list) or len(coords) < 2:
+                    continue
+
+                mid = _midpoint_of_linestring(coords)
+                if mid is None:
+                    continue
+
+                props = feat.get("properties") or {}
+                lvl = props.get(str(var_id))
+                if not isinstance(lvl, (int, float)):
+                    continue
+
+                try:
+                    label_txt = format(float(lvl), fmt)
+                except Exception:
+                    label_txt = str(lvl)
+
+                label_features.append(
+                    {
+                        "type": "Feature",
+                        "properties": {"value": float(lvl), "label": label_txt},
+                        "geometry": {"type": "Point", "coordinates": mid},
+                    }
+                )
+
+            labels_fc = {"type": "FeatureCollection", "features": label_features}
+            return {"lines": lines_fc, "labels": labels_fc}
+
+        return lines_fc
+
+        # return _isoline_to_geojson(
+        #     ds,
+        #     var_key=var_key,
+        #     lat_key=lat_key,
+        #     lon_key=lon_key,
+        #     levels=levels,
+        #     out_field=str(var_id),
+        # )
 
     
     raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")

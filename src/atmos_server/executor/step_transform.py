@@ -80,9 +80,6 @@ def _apply_geojson_feature_transform(
     return out
 
 
-
-
-
 def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
     if ctx is None:
         raise RuntimeError("Transform execution requires an ExecutionContext")
@@ -164,6 +161,91 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
 
             ds2 = ds.assign({out_key: out})
             return DataObject(id=upstream_obj.id, dataset=ds2)
+        
+        
+        
+        if ttype == "diagnostic.slp":
+            resolved = t.get("_resolved") or {}
+            if not isinstance(resolved, dict):
+                resolved = {}
+
+            # Prefer resolved NetCDF keys; fall back to common WRF names
+            ps_key = resolved.get("surfacePressureKey") or "PSFC"
+            t2_key = resolved.get("airTemperature2mKey") or "T2"
+            r_key  = resolved.get("waterVaporMixingRatio2mKey") or "Q2"
+
+            hgt_key  = resolved.get("surfaceHeightKey")          # e.g., "HGT"
+            phis_key = resolved.get("surfaceGeopotentialKey")    # optional alternative
+
+            if not isinstance(ps_key, str) or not ps_key:
+                raise ValueError(f"diagnostic.slp: missing surfacePressureKey (step {step.id})")
+            if not isinstance(t2_key, str) or not t2_key:
+                raise ValueError(f"diagnostic.slp: missing airTemperature2mKey (step {step.id})")
+            if not isinstance(r_key, str) or not r_key:
+                raise ValueError(f"diagnostic.slp: missing waterVaporMixingRatio2mKey (step {step.id})")
+
+            ds = upstream_obj.dataset
+            if ps_key not in ds or t2_key not in ds or r_key not in ds:
+                raise KeyError(
+                    f"diagnostic.slp: variables not found in dataset "
+                    f"(ps={ps_key}, t2={t2_key}, r={r_key}) (step {step.id})"
+                )
+
+            import numpy as np
+
+            psfc = ds[ps_key]   # Pa
+            t2   = ds[t2_key]   # K
+            r2   = ds[r_key]    # kg/kg (WRF mixing ratio)
+
+            # Height (m): prefer height, else geopotential / g
+            if isinstance(hgt_key, str) and hgt_key in ds:
+                z = ds[hgt_key]
+            elif isinstance(phis_key, str) and phis_key in ds:
+                z = ds[phis_key] / 9.80665
+            else:
+                raise KeyError(
+                    f"diagnostic.slp: need surfaceHeightKey or surfaceGeopotentialKey (step {step.id})"
+                )
+
+            # Convert mixing ratio r -> specific humidity q
+            q = r2 / (1.0 + r2)
+
+            # Virtual temperature
+            Tv = t2 * (1.0 + 0.61 * q)
+
+            # Simple hydrostatic reduction
+            g = 9.80665
+            Rd = 287.05
+            psl_pa = psfc * np.exp((g * z) / (Rd * Tv))
+
+            # Output spec
+            out = t.get("output") or {}
+            if not isinstance(out, dict):
+                raise ValueError(f"diagnostic.slp: output must be object (step {step.id})")
+
+            out_data_id = out.get("data")
+            out_vars = out.get("variables")
+
+            if not isinstance(out_data_id, str) or not out_data_id:
+                raise ValueError(f"diagnostic.slp: output.data required (step {step.id})")
+
+            out_var_id = "slp"
+            out_units = "Pa"
+            if isinstance(out_vars, list) and out_vars and isinstance(out_vars[0], dict):
+                if isinstance(out_vars[0].get("id"), str) and out_vars[0]["id"]:
+                    out_var_id = out_vars[0]["id"]
+                if isinstance(out_vars[0].get("units"), str) and out_vars[0]["units"]:
+                    out_units = out_vars[0]["units"]
+
+            if out_units.lower() == "hpa":
+                psl = psl_pa / 100.0
+            else:
+                psl = psl_pa
+
+            ds2 = ds.assign({out_var_id: psl})
+
+            # IMPORTANT: return derived dataset id so downstream can reference it
+            return DataObject(id=out_data_id, dataset=ds2)
         
         raise NotImplementedError(
             f"Transform '{ttype}' not implemented for xarray DataObject in step {step.id}"

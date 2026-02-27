@@ -691,6 +691,7 @@ export interface AtmosSpec {
   ];
   transform?: (
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -749,8 +750,10 @@ export interface AtmosSpec {
           | {
               const_ref: string;
             };
+        [k: string]: unknown;
       })
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -785,8 +788,10 @@ export interface AtmosSpec {
             };
         u: string;
         v: string;
+        [k: string]: unknown;
       })
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -835,8 +840,10 @@ export interface AtmosSpec {
          * Output angular units.
          */
         units?: 'deg' | 'rad';
+        [k: string]: unknown;
       })
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -847,6 +854,7 @@ export interface AtmosSpec {
         [k: string]: unknown;
       })
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -869,8 +877,10 @@ export interface AtmosSpec {
          * How to handle missing values when reducing.
          */
         missing?: 'skip' | 'propagate';
+        [k: string]: unknown;
       })
     | ({
+        output?: Output;
         /**
          * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
          */
@@ -895,6 +905,7 @@ export interface AtmosSpec {
            * Variable ids from the anchor dataset to carry through to the output rows.
            */
           preserve?: string[];
+          [k: string]: unknown;
         };
         time: {
           [k: string]: unknown;
@@ -910,7 +921,53 @@ export interface AtmosSpec {
           variables: {
             [k: string]: string;
           };
+          [k: string]: unknown;
         };
+        [k: string]: unknown;
+      })
+    | ({
+        output?: Output;
+        /**
+         * Default dataset scope for variable references used by this transform. If omitted, the runtime must raise an error when a referenced variable id is ambiguous across root.data items.
+         */
+        data?: string;
+        description?: string;
+        [k: string]: unknown;
+      } & {
+        type: 'diagnostic.slp';
+        id: string;
+        data?: string;
+        description?: string;
+        input: {
+          [k: string]: unknown;
+        };
+        output: {
+          /**
+           * Id of the derived dataset produced by this transform.
+           */
+          data: string;
+          /**
+           * @minItems 1
+           */
+          variables: [
+            {
+              id: string;
+              kind: 'grid' | 'table' | 'point';
+              units?: string;
+              description?: string;
+              [k: string]: unknown;
+            },
+            ...{
+              id: string;
+              kind: 'grid' | 'table' | 'point';
+              units?: string;
+              description?: string;
+              [k: string]: unknown;
+            }[]
+          ];
+          [k: string]: unknown;
+        };
+        [k: string]: unknown;
       })
   )[];
   /**
@@ -20000,11 +20057,41 @@ export interface AdditionalProperties1 {
   description?: string;
 }
 /**
+ * Optional derived dataset produced by this transform. Prefer this for multi-output transforms.
+ */
+export interface Output {
+  /**
+   * Id of the derived dataset produced by this transform.
+   */
+  data: string;
+  /**
+   * @minItems 1
+   */
+  variables: [
+    {
+      id: string;
+      kind: 'grid' | 'table' | 'point';
+      units?: string;
+      description?: string;
+      [k: string]: unknown;
+    },
+    ...{
+      id: string;
+      kind: 'grid' | 'table' | 'point';
+      units?: string;
+      description?: string;
+      [k: string]: unknown;
+    }[]
+  ];
+  [k: string]: unknown;
+}
+/**
  * Reference to a variable within a named dataset (or transform output dataset).
  */
 export interface Obs {
   data: string;
   variable: string;
+  [k: string]: unknown;
 }
 /**
  * Optional view-local time selection. If omitted, view may inherit composition time.
