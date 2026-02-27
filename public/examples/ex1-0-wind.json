@@ -70,18 +70,18 @@
               "input": { "data": "wind10_r001", "variable": "wind10" },
               "encoding": {
                 "channels": {
-                  "stroke": { "value": "#2c7bb6" },
+                  "stroke": { "value": "#000000" },
                   "size": {
                     "field": "wind10.speed",
                     "scale": {
                       "type": "linear",
                       "domain": { "type": "extent" },
-                      "range": { "values": [2, 12] }
+                      "range": { "values": [5, 10] }
                     }
                   },
                   "opacity": { "value": 0.9 }
                 },
-                "style": { "glyph": "arrow" }
+                "style": { "glyph": "arrow", "glyphScale": 1.0, "skip": 2 }
               }
             }
           },

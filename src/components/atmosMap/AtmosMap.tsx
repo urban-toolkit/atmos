@@ -350,14 +350,30 @@ const renderers = {
         const resolvedPaint = resolvePaintWithData(legacyPaint ?? {}, atmosLayer.geojson)
         const radiusExpr = resolvedPaint?.["circle-radius"] // number OR expression
 
+        const iconColor =
+          typeof resolvedPaint?.["circle-color"] === "string"
+            ? resolvedPaint["circle-color"]
+            : "#2c7bb6" // fallback
+
+        const iconOpacity =
+          typeof resolvedPaint?.["circle-opacity"] === "number"
+            ? resolvedPaint["circle-opacity"]
+            : 1.0
+
         // Convert radius (2..12) into a reasonable icon-size (~0.2..1.2)
-        // MapLibre icon-size is a multiplier (1.0 = original icon).
+        // MapLibre icon-size is a multiplier (1.0 = original icon).        
+        const glyphScale =
+          typeof (render as any)?.glyphScale === "number" && (render as any).glyphScale > 0
+            ? (render as any).glyphScale
+            : 1.0
+
+        // radiusExpr is either a number or an expression
         const iconSize =
           Array.isArray(radiusExpr)
-            ? ["*", radiusExpr, 0.08] // 2->0.16, 12->0.96 (tweak factor)
+            ? ["*", radiusExpr, 0.1 * glyphScale] // 2..12 -> 0.2..1.2, then glyphScale
             : typeof radiusExpr === "number"
-              ? Math.max(0.2, Math.min(1.2, radiusExpr * 0.08))
-              : 0.6
+              ? Math.max(0.05, radiusExpr * 0.1 * glyphScale)
+              : 0.6 * glyphScale
 
         const id = lyrId(atmosLayer.layerId, "arrow")
 
@@ -379,9 +395,9 @@ const renderers = {
             "icon-size": iconSize,
           },
           paint: {
-            "icon-opacity": 0.9,
-            // ✅ Works only if sdf:true in addImage
-            "icon-color": "#2c7bb6",
+            "icon-opacity": iconOpacity,
+            // Works only if sdf:true in addImage
+            "icon-color": iconColor,
           },
         }
 
