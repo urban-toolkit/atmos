@@ -68,6 +68,13 @@ def _build_render_from_encoding(
         render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
         paint: dict[str, Any] = render["paint"]
 
+        glyph_scale = 1.0
+        gs = style.get("glyphScale")
+        if isinstance(gs, (int, float)) and gs > 0:
+            glyph_scale = float(gs)
+
+        render["glyphScale"] = glyph_scale
+
         # opacity -> circle-opacity
         opacity = _get_number_constant(channels.get("opacity"))
         if opacity is not None:
