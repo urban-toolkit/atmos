@@ -288,6 +288,69 @@ def _vector_to_geojson(
 
     return {"type": "FeatureCollection", "features": feats}
 
+def _points_to_geojson_table(
+    rows, *,
+    lat_key: str,
+    lon_key: str,
+    value_key: str | None,
+    out_field: str,
+    extra_props: list[str] | None = None,
+) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    extra_props = extra_props or []
+
+    # rows may be a pandas DataFrame, or list[dict]
+    if hasattr(rows, "iterrows"):
+        iterator = (r for _, r in rows.iterrows())
+        get = lambda r, k: r.get(k) if hasattr(r, "get") else r[k]
+    elif isinstance(rows, list):
+        iterator = (r for r in rows if isinstance(r, dict))
+        get = lambda r, k: r.get(k)
+    else:
+        raise TypeError("point geometry expects a pandas.DataFrame or list[dict] upstream")
+
+    for r in iterator:
+        try:
+            lat = float(get(r, lat_key))
+            lon = float(get(r, lon_key))
+        except Exception:
+            continue
+
+        props: dict[str, Any] = {}
+
+        if value_key:
+            v = get(r, value_key)
+            # keep numeric if possible
+            try:
+                props[out_field] = float(v)
+            except Exception:
+                props[out_field] = v
+
+        for k in extra_props:
+            if not k:
+                continue
+            v = get(r, k)
+            if v is None:
+                continue
+            # best-effort JSON-serializable values
+            try:
+                import pandas as _pd
+                if isinstance(v, _pd.Timestamp):
+                    v = v.isoformat()
+            except Exception:
+                pass
+            props[k] = v
+
+        features.append(
+            {
+                "type": "Feature",
+                "properties": props,
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            }
+        )
+
+    return {"type": "FeatureCollection", "features": features}
+
 def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
     if ctx is None:
         raise RuntimeError("Geometry execution requires an ExecutionContext")
@@ -572,4 +635,36 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
             out_var_id=str(var_id),
             skip=skip,
         )
+    
+    if gtype == "point":
+        resolved = g.get("_resolved") or {}
+        if not isinstance(resolved, dict):
+            resolved = {}
+
+        lat_key = resolved.get("latKey")
+        lon_key = resolved.get("lonKey")
+        var_key = resolved.get("variableKey")  # CSV column for the variable
+        var_id  = resolved.get("variableId") or "value"
+
+        if not isinstance(lat_key, str) or not lat_key:
+            raise ValueError(f"point geometry missing resolved latKey (step {step.id})")
+        if not isinstance(lon_key, str) or not lon_key:
+            raise ValueError(f"point geometry missing resolved lonKey (step {step.id})")
+
+        extra = []
+        site_key = resolved.get("siteKey")
+        time_key = resolved.get("timeKey")
+        if isinstance(site_key, str): extra.append(site_key)
+        if isinstance(time_key, str): extra.append(time_key)
+
+        # upstream_obj is the CSV DataFrame from load
+        return _points_to_geojson_table(
+            upstream_obj,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            value_key=var_key if isinstance(var_key, str) and var_key else None,
+            out_field=str(var_id),
+            extra_props=extra,
+        )
+    
     raise NotImplementedError(f"Unsupported geometry type '{gtype}' in step {step.id}")

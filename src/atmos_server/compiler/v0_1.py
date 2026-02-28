@@ -62,52 +62,6 @@ def _build_render_from_encoding(
         style = {}
 
     # -----------------------------
-    # VECTOR => MapLibre circle layer (debug/default)
-    # -----------------------------
-    if gtype == "vector":
-        render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
-        paint: dict[str, Any] = render["paint"]
-
-        glyph_scale = 1.0
-        gs = style.get("glyphScale")
-        if isinstance(gs, (int, float)) and gs > 0:
-            glyph_scale = float(gs)
-
-        render["glyphScale"] = glyph_scale
-
-        # opacity -> circle-opacity
-        opacity = _get_number_constant(channels.get("opacity"))
-        if opacity is not None:
-            paint["circle-opacity"] = opacity
-
-        # color: use stroke if present, else fallback
-        stroke = channels.get("stroke")
-        stroke_const = _get_color_constant(stroke)
-        if stroke_const is not None:
-            paint["circle-color"] = stroke_const
-        else:
-            # (optional) support field-driven color later
-            pass
-
-        # size: if constant, map to radius; if field-driven, emit a payload for interface
-        size = channels.get("size")
-        size_const = _get_number_constant(size)
-        if size_const is not None:
-            paint["circle-radius"] = size_const
-        else:
-            # If it's a NumberField, pass through for your interface to convert later.
-            if _is_dict(size) and isinstance(size.get("field"), str):
-                paint["circle-radius"] = {
-                    "kind": "number-scale",
-                    "field": size["field"],
-                    "scale": size.get("scale"),
-                }
-
-        if not paint:
-            return None
-        return render
-
-    # -----------------------------
     # Helpers: extract field-color scales
     # -----------------------------
     def _color_field_to_paint_payload(
@@ -199,6 +153,92 @@ def _build_render_from_encoding(
             }
 
         return None
+
+
+    # -----------------------------
+    # POINT => MapLibre circle layer
+    # -----------------------------
+    if gtype == "point":
+        render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
+        paint: dict[str, Any] = render["paint"]
+
+        opacity = _get_number_constant(channels.get("opacity"))
+        if opacity is not None:
+            paint["circle-opacity"] = opacity
+
+        # color from fill (constant or field-driven)
+        fill = channels.get("fill")
+        fill_const = _get_color_constant(fill)
+        if fill_const is not None:
+            paint["circle-color"] = fill_const
+        else:
+            if _is_dict(fill):
+                payload = _color_field_to_paint_payload(fill, nodata_from_style_mesh=False)
+                if payload is not None:
+                    paint["circle-color"] = payload
+
+        # radius from size (constant or scale payload)
+        size = channels.get("size")
+        size_const = _get_number_constant(size)
+        if size_const is not None:
+            paint["circle-radius"] = size_const
+        else:
+            if _is_dict(size) and isinstance(size.get("field"), str):
+                paint["circle-radius"] = {
+                    "kind": "number-scale",
+                    "field": size["field"],
+                    "scale": size.get("scale"),
+                }
+
+        if not paint:
+            return None
+        return render
+
+    # -----------------------------
+    # VECTOR => MapLibre circle layer (debug/default)
+    # -----------------------------
+    if gtype == "vector":
+        render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
+        paint: dict[str, Any] = render["paint"]
+
+        glyph_scale = 1.0
+        gs = style.get("glyphScale")
+        if isinstance(gs, (int, float)) and gs > 0:
+            glyph_scale = float(gs)
+
+        render["glyphScale"] = glyph_scale
+
+        # opacity -> circle-opacity
+        opacity = _get_number_constant(channels.get("opacity"))
+        if opacity is not None:
+            paint["circle-opacity"] = opacity
+
+        # color: use stroke if present, else fallback
+        stroke = channels.get("stroke")
+        stroke_const = _get_color_constant(stroke)
+        if stroke_const is not None:
+            paint["circle-color"] = stroke_const
+        else:
+            # (optional) support field-driven color later
+            pass
+
+        # size: if constant, map to radius; if field-driven, emit a payload for interface
+        size = channels.get("size")
+        size_const = _get_number_constant(size)
+        if size_const is not None:
+            paint["circle-radius"] = size_const
+        else:
+            # If it's a NumberField, pass through for your interface to convert later.
+            if _is_dict(size) and isinstance(size.get("field"), str):
+                paint["circle-radius"] = {
+                    "kind": "number-scale",
+                    "field": size["field"],
+                    "scale": size.get("scale"),
+                }
+
+        if not paint:
+            return None
+        return render
 
     # -----------------------------
     # ISOLINE => MapLibre line layer
@@ -618,6 +658,40 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
 
                 geom_params["_resolved"] = resolved
 
+            if gtype == "point" and isinstance(ginput, dict):
+                input_data = ginput.get("data")
+                input_var  = ginput.get("variable")
+
+                if isinstance(input_data, str) and input_data in data_by_id:
+                    d = data_by_id[input_data]
+
+                    dims = d.get("dimensions") or {}
+                    lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
+                    lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+                    site_key = (dims.get("site") or {}).get("key") if isinstance(dims.get("site"), dict) else None
+                    time_key = (dims.get("time") or {}).get("key") if isinstance(dims.get("time"), dict) else None
+
+                    var_key = None
+                    vars_ = d.get("variables") or []
+                    if isinstance(input_var, str) and isinstance(vars_, list):
+                        for vv in vars_:
+                            if isinstance(vv, dict) and vv.get("id") == input_var:
+                                k = vv.get("key")
+                                if isinstance(k, str) and k.strip():
+                                    var_key = k.strip()
+                                break
+
+                    geom_params["_resolved"] = {
+                        "dataId": input_data,
+                        "variableId": input_var,
+                        "variableKey": var_key,
+                        "latKey": lat_key,
+                        "lonKey": lon_key,
+                        "siteKey": site_key,
+                        "timeKey": time_key,
+                        "baseDataId": input_data,
+                    }
+            
             steps.append(
                 Step(
                     id=geom_step_id,

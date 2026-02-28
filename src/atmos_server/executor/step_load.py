@@ -3,6 +3,7 @@ from atmos_server.compiler.types import Step
 from pathlib import Path
 from atmos_server.io.readers.geojson import load_geojson
 import xarray as xr
+import pandas as pd
 
 def execute_step_load(step: Step, repo_root: Path,):
     source = (step.params or {}).get("source") or {}
@@ -21,6 +22,33 @@ def execute_step_load(step: Step, repo_root: Path,):
             p = repo_root / source_path
 
         return load_geojson(p)
+    
+    # -------------------------
+    # NEW: CSV => DataFrame
+    # -------------------------
+    if source_type == "csv":
+        if not isinstance(source_path, str) or not source_path:
+            raise ValueError(f"CSV source.path missing/invalid for step {step.id}")
+
+        p = Path(source_path)
+        if not p.is_absolute():
+            p = repo_root / source_path
+        if not p.exists():
+            raise FileNotFoundError(f"CSV not found: {p}")
+
+        df = pd.read_csv(p)
+
+        # Optional: parse datetime columns if your spec says so
+        dims = (step.params or {}).get("dimensions") or {}
+        if isinstance(dims, dict):
+            time_dim = dims.get("time")
+            if isinstance(time_dim, dict):
+                time_key = time_dim.get("key")
+                time_type = time_dim.get("type")
+                if isinstance(time_key, str) and time_key in df.columns and time_type == "datetime":
+                    df[time_key] = pd.to_datetime(df[time_key], errors="coerce", utc=True)
+
+        return df
 
     if source_type == "netcdf":
         if not isinstance(source_path, str) or not source_path:
