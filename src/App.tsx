@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { runSpec } from "./api/api"
 
 import { interpretManifestToMapLayers } from "./interpreters/manifestInterpreter"
@@ -23,8 +23,9 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex1-0-stations.json"
 // const firstExamplePath = "/examples/ex1-0-isoband.json"
 // const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
+const firstExamplePath = "/examples/ex1-0-mesh.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain.json"
-const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
+// const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
 
 export default function App() {
 
@@ -32,7 +33,7 @@ export default function App() {
   
 
   const [mapLayers, setMapLayers] = useState<MapLayerRuntime[]>([])
-  const [geoByLayerId, setGeoByLayerId] = useState<Record<string, any>>({})
+  const [geoByLayerKey, setGeoByLayerKey] = useState<Record<string, any>>({})
 
   const [showAlert, setShowAlert] = useState(false)
   const [spec, setSpec] = useState<any>(null)
@@ -46,9 +47,22 @@ export default function App() {
     spec: any
     manifest: Manifest
     mapLayers: MapLayerRuntime[]
-    geoByLayerId: Record<string, any>
+    geoByLayerKey: Record<string, any>
     baseUrl: string
   }>(null)
+
+  function handleResetLocal() {
+    const snap = firstSnapshotRef.current
+    if (!snap) return
+
+    setShowAlert(false)
+    setAppliedSpec(snap.spec)
+
+    setBaseUrl(snap.baseUrl)
+    setManifest(snap.manifest)
+    setMapLayers(snap.mapLayers)
+    setGeoByLayerKey(snap.geoByLayerKey)
+  }
 
   async function handleApply(nextSpec: any) {
     try {
@@ -74,18 +88,25 @@ export default function App() {
     }
   }
 
-  function handleResetLocal() {
-    const snap = firstSnapshotRef.current
-    if (!snap) return
+  const maps = useMemo(() => {
+    const byView: Record<string, MapLayerRuntime[]> = {}
+    for (const l of mapLayers) {
+      (byView[l.viewId] ??= []).push(l)
+    }
 
-    setShowAlert(false)
-    setAppliedSpec(snap.spec)
+    // stable ordering: by timestep if repeat.index exists, else by viewId
+    const entries = Object.entries(byView)
+    entries.sort((a, b) => {
+      const ai = a[1][0]?.repeat?.index
+      const bi = b[1][0]?.repeat?.index
+      if (typeof ai === "number" && typeof bi === "number") return ai - bi
+      return a[0].localeCompare(b[0])
+    })
 
-    setBaseUrl(snap.baseUrl)
-    setManifest(snap.manifest)
-    setMapLayers(snap.mapLayers)
-    setGeoByLayerId(snap.geoByLayerId)
-  }
+    return entries.map(([viewId, layers]) => ({ viewId, layers }))
+  }, [mapLayers])
+
+  const columns = appliedSpec?.composition?.layout?.columns ?? 1
 
   useEffect(() => {
     if (!mapLayers.length) return
@@ -94,18 +115,21 @@ export default function App() {
 
     Promise.all(
       mapLayers.map(async (l) => {
-        console.log(l)
         const geo = await fetch(l.url).then((r) => r.json())
-        return [l.layerId, geo] as const
+        return [l.key, geo] as const
       })
-    ).then((pairs) => {
-      if (cancelled) return
-      const next: Record<string, any> = {}
-      for (const [layerId, geo] of pairs) next[layerId] = geo
-      setGeoByLayerId(next)
-    }).catch((e) => console.error("Failed to fetch map layers:", e))
+    )
+      .then((pairs) => {
+        if (cancelled) return
+        const next: Record<string, any> = {}
+        for (const [k, geo] of pairs) next[k] = geo
+        setGeoByLayerKey(next)
+      })
+      .catch((e) => console.error("Failed to fetch map layers:", e))
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [mapLayers])
 
   useEffect(() => {
@@ -129,10 +153,9 @@ export default function App() {
     if (!manifest) return
     if (!mapLayers.length) return
 
-    // wait until geojsons are all fetched
     const allLoaded =
-      Object.keys(geoByLayerId).length === mapLayers.length &&
-      mapLayers.every((l) => geoByLayerId[l.layerId])
+      Object.keys(geoByLayerKey).length === mapLayers.length &&
+      mapLayers.every((l) => geoByLayerKey[l.key])
 
     if (!allLoaded) return
 
@@ -140,10 +163,24 @@ export default function App() {
       spec: firstExampleRef.current,
       manifest,
       mapLayers,
-      geoByLayerId,
+      geoByLayerKey,
       baseUrl,
     }
-  }, [manifest, mapLayers, geoByLayerId, baseUrl])
+  }, [manifest, mapLayers, geoByLayerKey, baseUrl])
+
+  const headerH = 48
+  const gap = 8
+  const pad = 10
+
+  const n = maps.length
+  const cols = Math.max(1, columns)
+  const rows = Math.max(1, Math.ceil(n / cols))
+
+  // height available for the grid area (below the header)
+  const gridH = `calc(100vh - ${headerH}px)`
+
+  // tile height: distribute available height across rows (minus gaps/padding)
+  const tileH = `calc((100vh - ${headerH}px - ${pad * 2}px - ${(rows - 1) * gap}px) / ${rows})`
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
@@ -154,9 +191,45 @@ export default function App() {
             {manifest ? `${manifest.kind} • ${manifest.schemaVersion}` : "No run yet"}
           </div>
         </div>
-        <AtmosMap
-          layers={mapLayers.map((l) => ({ ...l, geojson: geoByLayerId[l.layerId] }))}
-        />
+        {/* <AtmosMap
+          layers={mapLayers.map((l) => ({ ...l, geojson: geoByLayerKey[l.layerId] }))}
+        /> */}
+
+        <div
+          style={{
+            height: gridH,
+            width: "100vw",
+            display: "grid",
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gap,
+            padding: pad,
+            boxSizing: "border-box",
+            overflow: "auto", // no scrollbars
+          }}
+        >
+          {maps.map((m) => (
+            <div
+              key={m.viewId}
+              style={{
+                minHeight: tileH,
+                border: "1px solid #eee",
+                borderRadius: 8,
+                overflow: "hidden",
+                display: "grid",
+                gridTemplateRows: "28px 1fr",
+              }}
+            >
+              <div style={{ padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 12, color: "#555" }}>
+                {m.layers[0]?.repeat?.index != null ? `t = ${m.layers[0].repeat.index}` : m.viewId}
+              </div>
+
+              <AtmosMap
+                layers={m.layers.map((l) => ({ ...l, geojson: geoByLayerKey[l.key] }))}
+              />
+            </div>
+          ))}
+        </div>
+
       </div>
 
       <Editor

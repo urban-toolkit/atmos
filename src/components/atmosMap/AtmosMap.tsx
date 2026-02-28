@@ -425,48 +425,6 @@ const renderers = {
         return { id, def, beforeId: (l as any).beforeId }
       })
     }
-    // buildLayers(atmosLayer: AtmosMapLayer): Array<{ id: string; def: any; beforeId?: string }> {
-    //   const render = atmosLayer.render
-    //   if (!render || render.renderer !== "maplibre") return []
-
-    //   const source = srcId(atmosLayer.layerId)
-
-    //   // Normalize to the NEW array form
-    //   const layers =
-    //     "layers" in render
-    //       ? render.layers
-    //       : [
-    //           {
-    //             id: "main",
-    //             type: render.layerType,
-    //             paint: render.paint,
-    //             layout: render.layout,
-    //           },
-    //         ]
-
-    //   return layers.map((l, i) => {
-    //     const id = lyrId(atmosLayer.layerId, l.id ?? String(i))
-
-    //     const def: any = {
-    //       id,
-    //       type: l.type,
-    //       source,
-    //     }
-
-    //     if (l.paint) {
-    //       const resolvedPaint = resolvePaintWithData(l.paint, atmosLayer.geojson)
-    //       def.paint = convertPaint(resolvedPaint)
-    //     }
-
-    //     if (l.layout) def.layout = l.layout
-    //     if (l.filter) def.filter = l.filter
-    //     if (typeof l.minzoom === "number") def.minzoom = l.minzoom
-    //     if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
-    //     if (l["source-layer"]) def["source-layer"] = l["source-layer"]
-
-    //     return { id, def, beforeId: (l as any).beforeId }
-    //   })
-    // },
   },
 } as const
 
@@ -544,6 +502,8 @@ export default function AtmosMap({
       style: mapStyle,
       center: [-78.9, 38.43],
       zoom: 6,
+      attributionControl: false,
+      logoPosition: undefined,
     })
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
