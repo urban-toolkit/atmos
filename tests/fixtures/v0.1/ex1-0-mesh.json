@@ -2,7 +2,7 @@
   "data": [
     {
       "id": "r001",
-      "source": { "type": "netcdf", "path": "data/wrfout_d01_2011-01-12_00_00_00.nc" },
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
       "dimensions": {
         "latitude": { "key": "XLAT" },
         "longitude": { "key": "XLONG" },
@@ -14,7 +14,7 @@
     },
     {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "data/boundaries.geojson" },
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
       "properties": {
         "geoid": { "key": "GEOID" }
       }
@@ -23,11 +23,12 @@
   
   "composition": {
     "layout": {
-      "columns": 5,
+      "columns": 3,
+      "rows": 2,
       "repeatView": [
         {
           "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
+          "indices": [0, 3, 4, 6, 8, 72],
           "targetView": "view1",
           "targetLayer": "temp"
         }
@@ -42,34 +43,33 @@
           {
             "id": "temp",
             "geometry": {
-              "type": "isoband",
+              "type": "mesh",
               "input": { "data": "r001", "variable": "temp_2m" },
-              "build": [
-                {
-                  "levels": {
-                    "type": "explicit",
-                    "values": [290, 290.5, 291.0, 291.5, 292.0, 292.5, 293.0, 293.5, 294.0]
-                  }
-                }
-              ],
               "encoding": {
                 "channels": {
                   "fill": {
                     "field": "temp_2m",
                     "scale": {
                       "type": "linear",
-                      "domain": { "type": "explicit", "values": [290, 294] },
                       "range": {
                         "stops": [
                           { "value": 290.0, "color": "#a50026" },
-                          { "value": 290.5, "color": "#de402e" },
-                          { "value": 291.0, "color": "#f98e52" },
-                          { "value": 291.5, "color": "#fed485" },
-                          { "value": 292.0, "color": "#feffc0" },
-                          { "value": 292.5, "color": "#d1ecf4" },
-                          { "value": 293.0, "color": "#8ec2dc" },
-                          { "value": 293.5, "color": "#4f81ba" },
-                          { "value": 294.0, "color": "#313695" }
+                          { "value": 290.5, "color": "#d73027" },
+                          { "value": 291.0, "color": "#f46d43" },
+                          { "value": 291.5, "color": "#fdae61" },
+                          { "value": 292.0, "color": "#fee090" },
+                          { "value": 292.5, "color": "#ffffbf" },
+                          { "value": 293.0, "color": "#e3f4f8" },
+                          { "value": 293.5, "color": "#c6e6f1" },
+                          { "value": 294.0, "color": "#abd9e9" },
+                          { "value": 294.5, "color": "#74add1" },
+                          { "value": 295.0, "color": "#4575b4" },
+                          { "value": 295.5, "color": "#3b5ba9" },
+                          { "value": 296.0, "color": "#313695" },
+                          { "value": 296.5, "color": "#3f2f8a" },
+                          { "value": 297.0, "color": "#54278f" },
+                          { "value": 297.5, "color": "#6a1b9a" },
+                          { "value": 298.0, "color": "#7b1fa2" }
                         ]
                       },
                       "clamp": false
@@ -78,9 +78,7 @@
                   "opacity": { "value": 0.9 }
                 },
                 "style": {
-                  "mesh": {
-                    "nodataColor": "rgba(0,0,0,0)"
-                  }
+                  "nodataColor": "rgba(0,0,0,0)"
                 }
               }
             }
@@ -96,9 +94,7 @@
                   "stroke": {"value": "#000000"}
                 },
                 "style": {
-                  "polygon": {
-                    "strokeWidth": 1
-                  }
+                  "strokeWidth": 1
                 }
               }
             }

@@ -8,6 +8,7 @@ from typing import Any, Sequence, Union
 import math
 import copy
 import numpy as np
+import pandas as pd
 
 Number = Union[int, float]
 NumberLike = Union[Number, str]  # allow strings like "3.2" if you want
@@ -351,6 +352,29 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
         )
     # ---- xarray/DataObject transforms (end) ----
 
+    # ---- pandas/DataFrame transforms (start) ----
+    elif isinstance(upstream_obj, pd.DataFrame):
+        if ttype == "select_time_index":
+            idx = t.get("index")
+            if not isinstance(idx, int) or idx < 0:
+                raise ValueError(f"select_time_index: 'index' must be a non-negative int (step {step.id})")
+
+            resolved = t.get("_resolved") or {}
+            time_key = resolved.get("timeKey")
+            if not isinstance(time_key, str) or time_key not in upstream_obj.columns:
+                return upstream_obj
+
+            col = upstream_obj[time_key]
+            times = pd.Series(col.dropna().unique()).sort_values(kind="mergesort").to_list()
+            if idx >= len(times):
+                raise IndexError(
+                    f"select_time_index: index {idx} out of bounds for time values (n={len(times)}) (step {step.id})"
+                )
+
+            tval = times[idx]
+            return upstream_obj[upstream_obj[time_key] == tval]
+    # ---- pandas/DataFrame transforms (end) ----
+    
     if isinstance(upstream_obj, dict) and upstream_obj.get("type") == "FeatureCollection":
         u_field = t.get("u")
         v_field = t.get("v")

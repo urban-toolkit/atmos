@@ -21,18 +21,10 @@
     }
   ],
   
-  "composition": {
+  "composition": {   
     "layout": {
-      "columns": 3,
-      "rows": 2,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 3, 4, 6, 8, 72],
-          "targetView": "view1",
-          "targetLayer": "temp"
-        }
-      ]
+      "columns": 1,
+      "rows": 1
     },
 
     "views": [
@@ -76,9 +68,6 @@
                     }
                   },
                   "opacity": { "value": 0.9 }
-                },
-                "style": {
-                  "nodataColor": "rgba(0,0,0,0)"
                 }
               }
             }
@@ -92,14 +81,20 @@
                 "channels": {
                   "fill": { "value": "transparent"},
                   "stroke": {"value": "#000000"}
-                },
-                "style": {
-                  "strokeWidth": 1
                 }
               }
             }
           }
-        ]
+        ],
+        "time": {"type": "index", "value": 0},
+        "context": {
+          "controls": [
+            {
+              "type": "slider",
+              "bind": "time"
+            }
+          ]
+        }
       }
     ]
   }

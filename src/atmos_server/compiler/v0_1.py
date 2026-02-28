@@ -13,6 +13,22 @@ from atmos_server.compiler.types import (
 from pathlib import Path
 import xarray as xr
 
+def _get_time_index_for_view(view: dict[str, Any], composition: dict[str, Any]) -> int | None:
+    # view-scoped overrides composition-scoped
+    t = view.get("time")
+    if not isinstance(t, dict):
+        t = composition.get("time")
+    if not isinstance(t, dict):
+        return None
+
+    if t.get("type") != "index":
+        return None
+
+    v = t.get("value")
+    if isinstance(v, int) and v >= 0:
+        return v
+    return None
+
 
 def infer_repeat_data_id(spec: dict[str, Any], *, target_view: str, target_layer: str) -> str:
     """
@@ -428,6 +444,17 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
     about the original spec version.
     """
 
+    def _is_time_indexable_data(input_data: str) -> bool:
+        if input_data in derived_data_to_step:
+            return True  # derived outputs are DataObjects (time-indexable)
+
+        d = data_by_id.get(input_data)
+        if not isinstance(d, dict):
+            return False
+
+        src = d.get("source") or {}
+        return isinstance(src, dict) and src.get("type") == "netcdf"
+
     def _infer_time_len_for_data(data_id: str) -> int | None:
         d = data_by_id.get(data_id)
         if not isinstance(d, dict):
@@ -817,8 +844,27 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
                     elif input_data in derived_data_to_step:
                         upstream_step = derived_data_to_step[input_data]
 
-            # repeat override (only for target layer)
+            # Determine repeat first
             repeat = view.get("_repeat")
+
+            # ---- time selection (slider/static time) ----
+            # Apply ONLY for non-repeat views
+            if not isinstance(repeat, dict):
+                time_idx = _get_time_index_for_view(view, composition)
+
+                if isinstance(time_idx, int) and isinstance(ginput, dict):
+                    input_data = ginput.get("data")
+                    if isinstance(input_data, str) and _is_time_indexable_data(input_data):
+                        tstep_id = f"transform:time:{view_id}:{layer_id}"
+                        steps.append(Step(
+                            id=tstep_id,
+                            kind="transform",
+                            depends_on=(upstream_step,) if upstream_step else (),
+                            params={"type": "select_time_index", "index": time_idx},
+                        ))
+                        upstream_step = tstep_id
+
+            # ---- repeat override (only for target layer) ----
             if isinstance(repeat, dict):
                 target_layer = view.get("_repeatTargetLayer")
                 repeat_data = view.get("_repeatDataId")

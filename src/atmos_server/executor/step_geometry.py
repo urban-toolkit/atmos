@@ -5,6 +5,7 @@ from atmos_server.executor.context import ExecutionContext
 
 import xarray as xr
 from typing import Any
+from shapely.geometry import Polygon
 
 def _midpoint_of_linestring(coords: list[list[float]]) -> list[float] | None:
     if len(coords) < 2:
@@ -178,7 +179,8 @@ def _isoband_to_geojson(
         for seg in segs:
             # seg is Nx2 array-like of lon/lat vertices
             poly = [[float(x), float(y)] for x, y in seg]
-            if len(poly) < 4:
+            poly_geom = Polygon(poly)
+            if poly_geom.area == 0:
                 continue
             # close ring if needed
             if poly[0] != poly[-1]:

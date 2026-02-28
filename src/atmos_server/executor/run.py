@@ -15,6 +15,42 @@ def _repo_root() -> Path:
     # src/atmos_server/execute/run.py -> repo root
     return Path(__file__).resolve().parents[3]
 
+def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
+    """
+    Try to infer time length from any time-indexable loaded/derived object already in ctx.
+    Returns None if we can't infer.
+    """
+    # Prefer any netcdf DataObject from load steps
+    for step in plan.steps:
+        if step.kind != "load":
+            continue
+        obj = ctx.get(step.id)
+        # DataObject: has .dataset with dims
+        ds = getattr(obj, "dataset", None)
+        if ds is not None:
+            for dim in ("Time", "time"):
+                if dim in getattr(ds, "dims", {}):
+                    return int(ds.sizes[dim])
+
+    # Fallback: any DataFrame with a datetime-like column (if present)
+    # (This is weaker; better is to pass a resolved timeKey later.)
+    try:
+        import pandas as pd
+    except Exception:
+        pd = None
+
+    if pd is not None:
+        for step in plan.steps:
+            if step.kind != "load":
+                continue
+            obj = ctx.get(step.id)
+            if isinstance(obj, pd.DataFrame):
+                # heuristic: pick the first datetime64 column
+                for c in obj.columns:
+                    if str(obj[c].dtype).startswith("datetime64"):
+                        return int(obj[c].dropna().nunique())
+    return None
+
 
 def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
     """
@@ -156,20 +192,6 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
                         "metadata": a.metadata,
                     }
                 )
-
-        # if a.format == "geojson":
-        #     if not isinstance(obj, dict):
-        #         raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
-        #     out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
-        #     materialized.append(
-        #         {
-        #             "id": a.id,
-        #             "format": a.format,
-        #             "path": a.path,
-        #             "producerStep": a.producer_step,
-        #             "metadata": a.metadata,
-        #         }
-        #     )
         else:
             raise NotImplementedError(f"Artifact format not supported yet: {a.format}")
     
@@ -181,6 +203,10 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
         "steps": executed,
         "artifacts": materialized,
     }
+
+    tlen = _infer_time_len_from_ctx(ctx, plan)
+    if isinstance(tlen, int) and tlen > 0:
+        manifest["uiState"] = {"timeMax": tlen - 1}
 
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
