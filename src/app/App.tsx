@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from "react"
-import { runSpec } from "./api/api"
+import { runSpec } from "../api/api"
 
-import { interpretManifestToMapLayers } from "./interpreters/manifestInterpreter"
-import type { MapLayerRuntime } from "./interpreters/manifestInterpreter"
+import { interpretManifestToMapLayers } from "../interpreters/manifestInterpreter"
+import type { MapLayerRuntime } from "../interpreters/manifestInterpreter"
 
-import Editor from "./components/editor/Editor"
-import AtmosMap from "./components/atmosMap/AtmosMap"
+import Editor from "../components/editor/Editor"
+import AtmosMap from "../components/atmosMap/AtmosMap"
 
 type Manifest = {
   kind: string
@@ -23,9 +23,11 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex1-0-stations.json"
 // const firstExamplePath = "/examples/ex1-0-isoband.json"
 // const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
-const firstExamplePath = "/examples/ex1-0-mesh.json"
+// const firstExamplePath = "/examples/ex1-0-mesh.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
+// const firstExamplePath = "/examples/ex1-1-isoband-slider.json"
+const firstExamplePath = "/examples/ex1-2-isoband-rain-slider.json"
 
 export default function App() {
 
@@ -40,6 +42,16 @@ export default function App() {
   const [appliedSpec, setAppliedSpec] = useState<any>(null)
   const [baseUrl, setBaseUrl] = useState<string>("/artifacts/") // default for now
 
+  const [selectedViewId, setSelectedViewId] = useState<string | null>(null)
+  const debounceRef = useRef<number | null>(null)
+  const [timeValue, setTimeValue] = useState<number>(0)
+  
+  const timeMax = (manifest as any)?.uiState?.timeMax ?? 0
+  const hasTimeSlider = !!getTimeBinding(appliedSpec) && timeMax > 0
+
+  const columns = appliedSpec?.composition?.layout?.columns ?? 1
+
+
   const loadedRef = useRef(false)
   const firstExampleRef = useRef<any>(null)
 
@@ -50,6 +62,54 @@ export default function App() {
     geoByLayerKey: Record<string, any>
     baseUrl: string
   }>(null)
+
+  function getTimeBinding(specObj: any): { scope: "view" | "composition"; viewIndex?: number; value: number } | null {
+    const comp = specObj?.composition
+    const views = comp?.views ?? []
+
+    // If a view has its own time, we treat that as view-scoped.
+    for (let i = 0; i < views.length; i++) {
+      const t = views[i]?.time
+      if (t?.type === "index" && typeof t.value === "number") {
+        return { scope: "view", viewIndex: i, value: t.value }
+      }
+    }
+
+    const ct = comp?.time
+    if (ct?.type === "index" && typeof ct.value === "number") {
+      return { scope: "composition", value: ct.value }
+    }
+
+    return null
+  }
+
+  function setTimeBinding(specObj: any, nextValue: number): any {
+    const next = structuredClone(specObj)
+    const binding = getTimeBinding(next)
+
+    if (!binding) return next
+
+    if (binding.scope === "view") {
+      const i = binding.viewIndex ?? 0
+      next.composition.views[i].time.value = nextValue
+    } else {
+      next.composition.time.value = nextValue
+    }
+    return next
+  }
+
+  function onTimeSliderChange(v: number) {
+    setTimeValue(v)
+
+    if (!appliedSpec) return
+    const nextSpec = setTimeBinding(appliedSpec, v)
+    setAppliedSpec(nextSpec) // keep editor + UI in sync immediately
+
+    if (debounceRef.current) window.clearTimeout(debounceRef.current)
+    debounceRef.current = window.setTimeout(() => {
+      handleApply(nextSpec)
+    }, 150)
+  }
 
   function handleResetLocal() {
     const snap = firstSnapshotRef.current
@@ -106,7 +166,39 @@ export default function App() {
     return entries.map(([viewId, layers]) => ({ viewId, layers }))
   }, [mapLayers])
 
-  const columns = appliedSpec?.composition?.layout?.columns ?? 1
+  // Build ordered time steps from your existing `maps` (already sorted by repeat.index)
+  const timeSteps = useMemo(() => {
+    return maps.map((m, i) => {
+      const idx = m.layers[0]?.repeat?.index
+      const label = idx != null ? `t = ${idx}` : `view ${i + 1}`
+      return { id: m.viewId, index: i, label }
+    })
+  }, [maps])
+
+
+
+  useEffect(() => {
+    if (!appliedSpec) return
+    const binding = getTimeBinding(appliedSpec)
+    if (!binding) return
+    setTimeValue(binding.value)
+  }, [appliedSpec])
+
+  // Keep a sane default when maps change after Apply/Reset
+  useEffect(() => {
+    if (!maps.length) {
+      setSelectedViewId(null)
+      return
+    }
+    setSelectedViewId((prev) => (prev && maps.some((m) => m.viewId === prev) ? prev : maps[0].viewId))
+  }, [maps])
+
+  // Decide what the slider controls:
+  // Option A: show only the selected view
+  const visibleMaps = useMemo(() => {
+    if (!selectedViewId) return maps
+    return maps.filter((m) => m.viewId === selectedViewId)
+  }, [maps, selectedViewId])
 
   useEffect(() => {
     if (!mapLayers.length) return
@@ -186,15 +278,30 @@ export default function App() {
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       <div style={{ height: "100%", width: "100%", display: "grid", gridTemplateRows: "48px 1fr" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0 12px", borderBottom: "1px solid #eee" }}>
-          <div style={{ fontWeight: 700}}>Atmos Interface</div>
+          <div style={{ fontWeight: 700 }}>Atmos Interface</div>
+
           <div style={{ color: "#666" }}>
             {manifest ? `${manifest.kind} • ${manifest.schemaVersion}` : "No run yet"}
           </div>
-        </div>
-        {/* <AtmosMap
-          layers={mapLayers.map((l) => ({ ...l, geojson: geoByLayerKey[l.layerId] }))}
-        /> */}
 
+          {hasTimeSlider && (
+            <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "#555" }}>t</div>
+              <input
+                type="range"
+                min={0}
+                max={timeMax}
+                step={1}
+                value={timeValue}
+                onChange={(e) => onTimeSliderChange(Number(e.target.value))}
+                style={{ width: 220 }}
+              />
+              <div style={{ fontSize: 12, color: "#555", width: 60, textAlign: "right" }}>
+                {timeValue} / {timeMax}
+              </div>
+            </div>
+          )}
+        </div>
         <div
           style={{
             height: gridH,

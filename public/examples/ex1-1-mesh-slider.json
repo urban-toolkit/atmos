@@ -21,17 +21,10 @@
     }
   ],
   
-  "composition": {
+  "composition": {   
     "layout": {
-      "columns": 5,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
-          "targetView": "view1",
-          "targetLayer": "temp"
-        }
-      ]
+      "columns": 1,
+      "rows": 1
     },
 
     "views": [
@@ -42,16 +35,8 @@
           {
             "id": "temp",
             "geometry": {
-              "type": "isoband",
+              "type": "mesh",
               "input": { "data": "r001", "variable": "temp_2m" },
-              "build": [
-                {
-                  "levels": {
-                    "type": "explicit",
-                    "values": [290, 290.5, 291.0, 291.5, 292.0, 292.5, 293.0, 293.5, 294.0, 294.5, 295, 295.5, 296, 296.5, 297, 297.5, 298]
-                  }
-                }
-              ],
               "encoding": {
                 "channels": {
                   "fill": {
@@ -83,9 +68,6 @@
                     }
                   },
                   "opacity": { "value": 0.9 }
-                },
-                "style": {
-                  "nodataColor": "rgba(0,0,0,0)"
                 }
               }
             }
@@ -99,14 +81,20 @@
                 "channels": {
                   "fill": { "value": "transparent"},
                   "stroke": {"value": "#000000"}
-                },
-                "style": {
-                  "strokeWidth": 1
                 }
               }
             }
           }
-        ]
+        ],
+        "time": {"type": "index", "value": 0},
+        "context": {
+          "controls": [
+            {
+              "type": "slider",
+              "bind": "time"
+            }
+          ]
+        }
       }
     ]
   }

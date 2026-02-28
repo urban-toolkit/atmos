@@ -50,16 +50,14 @@ export type AtmosMapLayer = {
 
 export type AtmosMapProps = {
   layers: AtmosMapLayer[]
-  /**
-   * If true, will fit bounds whenever layers change (using first non-empty bbox).
-   * If you later add Atmos "view" camera, you can disable this by default.
-   */
   autoFitBounds?: boolean
-  /**
-   * MapLibre style URL or JSON (optional)
-   */
   mapStyle?: string | any
+  initialViewState?: ViewState
+  onViewStateChange?: (vs: ViewState) => void
+
 }
+
+export type ViewState = { center: [number, number]; zoom: number; bearing: number; pitch: number }
 
 /**
  * -------------------------------------------
@@ -461,9 +459,12 @@ export default function AtmosMap({
   layers,
   autoFitBounds = true,
   mapStyle = "https://demotiles.maplibre.org/style.json",
+  initialViewState,
+  onViewStateChange,
 }: AtmosMapProps) {
   const mapRef = useRef<Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const didAutoFitRef = useRef(false)
 
   // Precompute “what MapLibre layers should exist” (pure, testable)
   const plan = useMemo(() => {
@@ -493,7 +494,53 @@ export default function AtmosMap({
     return { sourceIds, layerIds, ops }
   }, [layers])
 
-  // Create map once
+  // // Create map once
+  // useEffect(() => {
+  //   if (mapRef.current || !containerRef.current) return
+
+  //   const map = new maplibregl.Map({
+  //     container: containerRef.current,
+  //     style: mapStyle,
+  //     center: [-78.9, 38.43],
+  //     zoom: 6,
+  //     attributionControl: false,
+  //     logoPosition: undefined,
+  //   })
+
+  //   if (initialViewState) {
+  //     map.jumpTo({
+  //       center: initialViewState.center,
+  //       zoom: initialViewState.zoom,
+  //       bearing: initialViewState.bearing,
+  //       pitch: initialViewState.pitch,
+  //     })
+  //     didAutoFitRef.current = true
+  //   } else {
+  //     didAutoFitRef.current = false
+  //   }
+
+  //   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
+  //   mapRef.current = map
+
+  //   const emit = () => {
+  //     const c = map.getCenter()
+  //     onViewStateChange?.({
+  //       center: [c.lng, c.lat],
+  //       zoom: map.getZoom(),
+  //       bearing: map.getBearing(),
+  //       pitch: map.getPitch(),
+  //     })
+  //   }
+
+  //   map.on("moveend", emit)
+
+  //   return () => {
+  //     map.off("moveend", emit)
+  //     map.remove()
+  //     mapRef.current = null
+  //   }
+  // }, [mapStyle])
+
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
 
@@ -506,14 +553,40 @@ export default function AtmosMap({
       logoPosition: undefined,
     })
 
+    // restore camera if provided; otherwise allow one auto-fit later
+    if (initialViewState) {
+      map.jumpTo({
+        center: initialViewState.center,
+        zoom: initialViewState.zoom,
+        bearing: initialViewState.bearing,
+        pitch: initialViewState.pitch,
+      })
+      didAutoFitRef.current = true
+    } else {
+      didAutoFitRef.current = false
+    }
+
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
     mapRef.current = map
 
+    const emit = () => {
+      const c = map.getCenter()
+      onViewStateChange?.({
+        center: [c.lng, c.lat],
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+        pitch: map.getPitch(),
+      })
+    }
+
+    map.on("moveend", emit)
+
     return () => {
+      map.off("moveend", emit)
       map.remove()
       mapRef.current = null
     }
-  }, [mapStyle])
+  }, [mapStyle]) // OK: map created once per style
 
   // Resize listener
   useEffect(() => {
@@ -547,11 +620,12 @@ export default function AtmosMap({
           if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
         }
 
-        // Optional fit bounds
-        if (autoFitBounds) {
+        // Fit bounds
+        if (autoFitBounds && !didAutoFitRef.current) {
           const bb = firstNonEmptyBBox(layers ?? [])
           if (bb) {
-            map.fitBounds([[bb[0], bb[1]],[bb[2], bb[3]]], { padding: 30, duration: 400 })
+            didAutoFitRef.current = true
+            map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
           }
         }
       } catch (e) {
