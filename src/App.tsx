@@ -19,7 +19,8 @@ type Manifest = {
   }>
 }
 
-const firstExamplePath = "/examples/ex1-0-wind.json"
+// const firstExamplePath = "/examples/ex1-0-wind.json"
+const firstExamplePath = "/examples/ex1-0-stations.json"
 
 export default function App() {
 
