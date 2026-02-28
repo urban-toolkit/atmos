@@ -278,6 +278,74 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
             # IMPORTANT: return derived dataset id so downstream can reference it
             return DataObject(id=out_data_id, dataset=ds2)
         
+        if ttype == "derive":
+            ds = upstream_obj.dataset
+
+            expr = t.get("expression")
+            if not isinstance(expr, dict):
+                raise ValueError(f"derive: expression must be an object (step {step.id})")
+
+            op = expr.get("op")
+            args = expr.get("args")
+            if not isinstance(args, list) or not args:
+                raise ValueError(f"derive: expression.args must be a non-empty array (step {step.id})")
+
+            if op != "add":
+                raise NotImplementedError(f"derive: op '{op}' not supported")
+
+            resolved = t.get("_resolved") or {}
+            if not isinstance(resolved, dict):
+                resolved = {}
+            var_map = resolved.get("varKeyById") or {}
+            if not isinstance(var_map, dict):
+                var_map = {}
+
+            def eval_node(node):
+                if not isinstance(node, dict):
+                    raise ValueError(f"derive: expression nodes must be objects (step {step.id})")
+
+                if "variable" in node:
+                    var_id = node["variable"]
+                    if not isinstance(var_id, str) or not var_id:
+                        raise ValueError(f"derive: variable must be a non-empty string (step {step.id})")
+
+                    key = var_map.get(var_id, var_id)  # ✅ use mapping from compiler
+                    if key not in ds:
+                        raise KeyError(f"Variable '{var_id}' (key='{key}') not found in dataset (step {step.id})")
+
+                    return ds[key]
+
+                raise NotImplementedError("Only variable nodes supported for now")
+
+            values = [eval_node(a) for a in args]
+
+            result = values[0]
+            for v in values[1:]:
+                result = result + v
+
+            # output
+            out = t.get("output") or {}
+            if not isinstance(out, dict):
+                raise ValueError(f"derive: output must be an object (step {step.id})")
+
+            out_data = out.get("data")
+            if not isinstance(out_data, str) or not out_data:
+                raise ValueError(f"derive: output.data must be a non-empty string (step {step.id})")
+
+            out_vars = out.get("variables") or []
+            if not (isinstance(out_vars, list) and out_vars and isinstance(out_vars[0], dict)):
+                raise ValueError(f"derive: output.variables[0] required (step {step.id})")
+
+            out_var_id = out_vars[0].get("id")
+            if not isinstance(out_var_id, str) or not out_var_id:
+                raise ValueError(f"derive: output.variables[0].id must be a non-empty string (step {step.id})")
+
+            result = result.assign_attrs(ds[var_map.get("rainnc","rainnc")].attrs)
+            ds2 = ds.copy()
+            ds2[out_var_id] = result
+
+            return DataObject(id=out_data, dataset=ds2)
+        
         raise NotImplementedError(
             f"Transform '{ttype}' not implemented for xarray DataObject in step {step.id}"
         )
