@@ -10,6 +10,103 @@ from atmos_server.compiler.types import (
     Step,
 )
 
+from pathlib import Path
+import xarray as xr
+
+
+def infer_repeat_data_id(spec: dict[str, Any], *, target_view: str, target_layer: str) -> str:
+    """
+    Infer the dataset/derived-data id to repeat over by looking at:
+      composition.views[target_view].layers[target_layer].geometry.input.data
+    Raises ValueError with a helpful message if it cannot infer.
+    """
+    composition = spec.get("composition") or {}
+    views = composition.get("views") or []
+    if not isinstance(views, list):
+        raise ValueError("composition.views must be a list")
+
+    view_obj: dict[str, Any] | None = None
+    for v in views:
+        if isinstance(v, dict) and v.get("id") == target_view:
+            view_obj = v
+            break
+    if view_obj is None:
+        raise ValueError(f"repeatView: targetView '{target_view}' not found")
+
+    layers = view_obj.get("layers") or []
+    if not isinstance(layers, list):
+        raise ValueError(f"repeatView: view '{target_view}' layers must be a list")
+
+    layer_obj: dict[str, Any] | None = None
+    for lyr in layers:
+        if isinstance(lyr, dict) and lyr.get("id") == target_layer:
+            layer_obj = lyr
+            break
+    if layer_obj is None:
+        raise ValueError(f"repeatView: targetLayer '{target_layer}' not found in view '{target_view}'")
+
+    geom = layer_obj.get("geometry")
+    if not isinstance(geom, dict):
+        raise ValueError(f"repeatView: layer '{target_layer}' in view '{target_view}' is missing geometry")
+
+    ginput = geom.get("input")
+    if not isinstance(ginput, dict):
+        raise ValueError(
+            f"repeatView: layer '{target_layer}' in view '{target_view}' is missing geometry.input"
+        )
+
+    data_id = ginput.get("data")
+    if not isinstance(data_id, str) or not data_id.strip():
+        raise ValueError(
+            f"repeatView: cannot infer dataset id; expected geometry.input.data "
+            f"on layer '{target_layer}' in view '{target_view}'"
+        )
+
+    return data_id.strip()
+
+
+def infer_time_len_for_data_id(
+    data_by_id: dict[str, Any],
+    repo_root: Path,
+    *,
+    data_id: str,
+) -> int:
+    """
+    Open the NetCDF (metadata only) to infer time length.
+    Uses the spec's dimensions.time.dim if present; otherwise falls back to Time/time.
+    """
+    d = data_by_id.get(data_id)
+    if not isinstance(d, dict):
+        raise ValueError(f"repeatView: data '{data_id}' not found in spec.data")
+
+    source = d.get("source") or {}
+    if not (isinstance(source, dict) and source.get("type") == "netcdf"):
+        raise ValueError(
+            f"repeatView: cannot infer timesteps for data '{data_id}' because it is not a netcdf source"
+        )
+
+    source_path = source.get("path")
+    if not isinstance(source_path, str) or not source_path:
+        raise ValueError(f"repeatView: netcdf source.path missing for data '{data_id}'")
+
+    # Prefer declared time dim
+    dims = d.get("dimensions") or {}
+    time_spec = dims.get("time") if isinstance(dims, dict) else None
+    declared_time_dim = time_spec.get("dim") if isinstance(time_spec, dict) else None
+
+    p = Path(source_path)
+    if not p.is_absolute():
+        p = repo_root / source_path
+
+    ds = xr.open_dataset(p)
+    try:
+        for cand in [declared_time_dim, "Time", "time"]:
+            if isinstance(cand, str) and cand in ds.dims:
+                return int(ds.sizes[cand])
+        raise ValueError(f"repeatView: could not find a time dimension in dataset '{data_id}'")
+    finally:
+        ds.close()
+
 def _safe_id(prefix: str, raw: Any, fallback_i: int) -> str:
     if isinstance(raw, str) and raw.strip():
         return raw.strip()
@@ -331,6 +428,51 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
     about the original spec version.
     """
 
+    def _infer_time_len_for_data(data_id: str) -> int | None:
+        d = data_by_id.get(data_id)
+        if not isinstance(d, dict):
+            return None
+
+        src = d.get("source")
+        if not isinstance(src, dict) or src.get("type") != "netcdf":
+            return None
+
+        path = src.get("path")
+        if not isinstance(path, str) or not path:
+            return None
+
+        dims = d.get("dimensions") or {}
+        time_spec = dims.get("time") if isinstance(dims, dict) else None
+        time_dim = None
+        if isinstance(time_spec, dict):
+            # your example uses {"dim":"Time"}
+            time_dim = time_spec.get("dim")
+
+        # fallback to common names
+        if not isinstance(time_dim, str) or not time_dim:
+            time_dim = "Time"
+
+        # Resolve to repo-root relative path like step_load does
+        from pathlib import Path
+        import xarray as xr
+
+        repo_root = Path(__file__).resolve().parents[3]
+        p = Path(path)
+        if not p.is_absolute():
+            p = repo_root / path
+
+        ds = xr.open_dataset(p)
+        try:
+            if time_dim in ds.dims:
+                return int(ds.sizes[time_dim])
+            if "time" in ds.dims:
+                return int(ds.sizes["time"])
+            if "Time" in ds.dims:
+                return int(ds.sizes["Time"])
+            return None
+        finally:
+            ds.close()
+
     meta = PlanMeta(schema_version=schema_version, spec_id=spec.get("id"))
 
     inputs: list[InputRef] = []
@@ -382,20 +524,6 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
                 },
             )
         )
-
-        # Inject default time slicing for NetCDF (Option A: always index 0)
-        source = d.get("source") or {}
-        if isinstance(source, dict) and source.get("type") == "netcdf":
-            time_step_id = f"time:{data_id}"
-            steps.append(
-                Step(
-                    id=time_step_id,
-                    kind="transform",
-                    depends_on=(step_id,),
-                    params={"type": "select_time_index", "index": 72},
-                )
-            )
-            data_id_to_upstream_step[data_id] = time_step_id
 
     # ---- Transforms (global, v0.1)
     transforms = spec.get("transform") or []
@@ -583,10 +711,82 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
         transform_id_to_step[tid] = step_id
         last_transform_step = step_id
 
-
-    # ---- Geometry from composition/views/layers (v0.1 examples)
     composition = spec.get("composition") or {}
+    layout = composition.get("layout") or {}
     views = composition.get("views") or []
+
+    # Build expanded views list
+    expanded_views: list[dict[str, Any]] = []
+    repeat_specs = layout.get("repeatView") or []
+
+    # index repeats by targetView for quick lookup
+    repeats_by_view: dict[str, list[dict[str, Any]]] = {}
+    if isinstance(repeat_specs, list):
+        for r in repeat_specs:
+            if not isinstance(r, dict):
+                continue
+            tv = r.get("targetView")
+            if isinstance(tv, str) and tv:
+                repeats_by_view.setdefault(tv, []).append(r)
+
+    for vi, view in enumerate(views):
+        if not isinstance(view, dict):
+            continue
+        base_view_id = _safe_id("view", view.get("id"), vi)
+
+        reps = repeats_by_view.get(base_view_id, [])
+        if not reps:
+            expanded_views.append(view)
+            continue
+
+        # For v0.1: support only one repeat spec per view (easy to relax later)
+        r0 = reps[0]
+        rtype = r0.get("type")
+        if rtype != "timestep":
+            expanded_views.append(view)
+            continue
+
+        target_layer_any = r0.get("targetLayer")
+        if not isinstance(target_layer_any, str) or not target_layer_any.strip():
+            raise ValueError(f"repeatView for '{base_view_id}' missing targetLayer")
+        target_layer = target_layer_any.strip()
+
+        data_id_any = r0.get("data")
+        if isinstance(data_id_any, str) and data_id_any.strip():
+            data_id = data_id_any.strip()
+        else:
+            data_id = infer_repeat_data_id(spec, target_view=base_view_id, target_layer=target_layer)
+
+        indices = r0.get("indices")
+
+        if not isinstance(data_id, str) or not data_id:
+            raise ValueError(f"repeatView for '{base_view_id}' missing data (e.g. 'r001')")
+
+        if indices is None:
+            tlen = _infer_time_len_for_data(data_id)
+            if tlen is None:
+                raise ValueError(f"repeatView could not infer time length for data '{data_id}'")
+            indices = list(range(tlen))
+        elif not (isinstance(indices, list) and all(isinstance(x, int) for x in indices)):
+            raise ValueError(f"repeatView.indices must be array[int] (view '{base_view_id}')")
+
+        # Create a repeated view instance for each index
+        for idx in indices:
+            inst = dict(view)  # shallow copy ok; we’ll patch layers below
+            inst_id = f"{base_view_id}__t{idx:03d}"
+            inst["id"] = inst_id
+            inst["_repeat"] = {"type": "timestep", "index": idx, "baseViewId": base_view_id}
+
+            # annotate which layer is time-bound
+            inst["_repeatTargetLayer"] = target_layer
+            inst["_repeatDataId"] = data_id
+
+            expanded_views.append(inst)
+
+    # Use expanded_views downstream
+    views = expanded_views
+
+    # ---- Geometry from expanded views
 
     for vi, view in enumerate(views):
         if not isinstance(view, dict):
@@ -617,6 +817,29 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
                     elif input_data in derived_data_to_step:
                         upstream_step = derived_data_to_step[input_data]
 
+            # repeat override (only for target layer)
+            repeat = view.get("_repeat")
+            if isinstance(repeat, dict):
+                target_layer = view.get("_repeatTargetLayer")
+                repeat_data = view.get("_repeatDataId")
+                idx = repeat.get("index")
+
+                if layer_id == target_layer and isinstance(repeat_data, str) and isinstance(idx, int):
+                    base_upstream = upstream_step
+                    if not base_upstream:
+                        raise ValueError(f"repeatView: unknown data '{repeat_data}'")
+
+                    tstep_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
+                    steps.append(
+                        Step(
+                            id=tstep_id,
+                            kind="transform",
+                            depends_on=(base_upstream,),
+                            params={"type": "select_time_index", "index": idx},
+                        )
+                    )
+                    upstream_step = tstep_id
+            
             # Enrich mesh geometry with resolved NetCDF keys (var, lat, lon)
             geom_params = dict(geom)
             geom_params["_viewId"] = view_id
@@ -756,6 +979,9 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str) -> Plan:
             }
             if render is not None:
                 metadata["render"] = render
+
+            if isinstance(view.get("_repeat"), dict):
+                metadata["repeat"] = view["_repeat"]
 
             artifacts.append(
                 Artifact(
