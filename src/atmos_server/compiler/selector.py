@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict
 
 from atmos_server.compiler.types import Plan
-from atmos_server.compiler.v0_1 import compile_v0_1
+from atmos_server.compiler.v0_1.v0_1 import compile_v0_1
 
 CompilerFn = Callable[[dict[str, Any], str], Plan]
 # signature: (spec, schema_version) -> Plan

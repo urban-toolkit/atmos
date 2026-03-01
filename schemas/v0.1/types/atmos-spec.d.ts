@@ -691,12 +691,14 @@ export interface AtmosSpec {
   ];
   transform?: (
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'derive';
-        id: string;
         input: {
           data: string;
         };
@@ -727,28 +729,34 @@ export interface AtmosSpec {
               const_ref: string;
             };
         output: Output;
+        [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'derive_wind_speed';
-        id: string;
         input: {
           data: string;
           u: string;
           v: string;
         };
         output: Output;
+        [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'derive_wind_direction';
-        id: string;
         input: {
           data: string;
           /**
@@ -769,14 +777,17 @@ export interface AtmosSpec {
           units?: 'deg' | 'rad';
         };
         output: Output;
+        [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'derive_wind_vector';
-        id: string;
         description?: string;
         input: {
           data: string;
@@ -789,22 +800,24 @@ export interface AtmosSpec {
         [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'merge';
-        /**
-         * Output dataset id produced by this merge.
-         */
-        id: string;
         /**
          * Input dataset ids to merge (typically outputs of prior transforms).
          *
@@ -815,14 +828,17 @@ export interface AtmosSpec {
          * How to handle missing values when reducing.
          */
         missing?: 'skip' | 'propagate';
+        [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'match';
-        id: string;
         forecast: Obs;
         obs: Obs;
         space: {
@@ -848,19 +864,23 @@ export interface AtmosSpec {
          */
         missing?: 'skip' | 'propagate';
         output: Output;
+        [k: string]: unknown;
       })
     | ({
-        id?: string;
         description?: string;
+        /**
+         * Dimension name to reduce across (e.g., 'member').
+         */
+        across?: 'member' | 'time' | 'space';
         [k: string]: unknown;
       } & {
         type: 'diagnostic.slp';
-        id: string;
         description?: string;
         input: {
           [k: string]: unknown;
         };
         output: Output;
+        [k: string]: unknown;
       })
   )[];
   /**
@@ -19876,7 +19896,7 @@ export interface Output {
   variables: [
     (
       | {
-          id: string;
+          id?: string;
           kind: 'grid' | 'table' | 'point' | 'vector';
           units?: string;
           description?: string;
@@ -19899,7 +19919,7 @@ export interface Output {
     ),
     ...(
       | {
-          id: string;
+          id?: string;
           kind: 'grid' | 'table' | 'point' | 'vector';
           units?: string;
           description?: string;

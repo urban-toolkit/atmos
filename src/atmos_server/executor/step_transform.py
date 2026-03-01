@@ -255,7 +255,12 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
             if not isinstance(out, dict):
                 raise ValueError(f"diagnostic.slp: output must be object (step {step.id})")
 
-            out_data_id = out.get("data")
+            out_data_id_any = out.get("data")
+            
+            if not isinstance(out_data_id_any, str) or not out_data_id_any:
+                raise ValueError("output.data required")
+            out_data_id: str = out_data_id_any
+
             out_vars = out.get("variables")
 
             if not isinstance(out_data_id, str) or not out_data_id:
@@ -347,6 +352,58 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
 
             return DataObject(id=out_data, dataset=ds2)
         
+        if ttype == "reduce":
+            ds = upstream_obj.dataset
+
+            resolved = t.get("_resolved") or {}
+            var_key = resolved.get("varKey")
+            dim = resolved.get("dim")
+
+            if not var_key or var_key not in ds:
+                raise KeyError(f"reduce: variable '{var_key}' not found (step {step.id})")
+
+            if not dim or dim not in ds.dims:
+                raise KeyError(f"reduce: dimension '{dim}' not found (step {step.id})")
+
+            op = t.get("op")
+
+            da = ds[var_key]
+
+            if op == "mean":
+                reduced = da.mean(dim=dim, skipna=True)
+            elif op == "sum":
+                reduced = da.sum(dim=dim, skipna=True)
+            elif op == "min":
+                reduced = da.min(dim=dim, skipna=True)
+            elif op == "max":
+                reduced = da.max(dim=dim, skipna=True)
+            elif op == "std":
+                reduced = da.std(dim=dim, skipna=True)
+            elif op == "var":
+                reduced = da.var(dim=dim, skipna=True)
+            elif op == "count":
+                reduced = da.count(dim=dim)
+            else:
+                raise NotImplementedError(f"reduce op '{op}' not supported")
+
+            # output
+            out = t.get("output") or {}
+            out_data = out.get("data")
+            out_vars = out.get("variables") or []
+
+            out_var_id = out_vars[0]["id"]
+
+            ds2 = ds.copy()
+            ds2[out_var_id] = reduced
+
+            out_data_id_any = out.get("data")
+            if not isinstance(out_data_id_any, str) or not out_data_id_any:
+                raise ValueError("output.data required")
+
+            out_data_id: str = out_data_id_any
+
+            return DataObject(id=out_data_id, dataset=ds2)
+        
         raise NotImplementedError(
             f"Transform '{ttype}' not implemented for xarray DataObject in step {step.id}"
         )
@@ -374,7 +431,7 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
             tval = times[idx]
             return upstream_obj[upstream_obj[time_key] == tval]
     # ---- pandas/DataFrame transforms (end) ----
-    
+
     if isinstance(upstream_obj, dict) and upstream_obj.get("type") == "FeatureCollection":
         u_field = t.get("u")
         v_field = t.get("v")
@@ -402,5 +459,5 @@ def execute_step_transform(step: Step, ctx: ExecutionContext | None = None):
 
         raise NotImplementedError(f"Unsupported transform type '{ttype}' for GeoJSON in step {step.id}")
 
-    # For NetCDF/xarray later:
+    
     raise NotImplementedError(f"Transform '{ttype}' not implemented for upstream type in step {step.id}")

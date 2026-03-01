@@ -801,12 +801,18 @@
               {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
                   "description": {
                     "type": "string"
+                  },
+                  "across": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "time",
+                      "space"
+                    ],
+                    "default": "space",
+                    "description": "Dimension name to reduce across (e.g., 'member')."
                   }
                 }
               },
@@ -815,10 +821,6 @@
                 "properties": {
                   "type": {
                     "const": "derive"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "input": {
                     "type": "object",
@@ -1035,7 +1037,6 @@
                                 }
                               },
                               "required": [
-                                "id",
                                 "kind"
                               ],
                               "unevaluatedProperties": false
@@ -1110,14 +1111,13 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
                   "expression",
                   "output"
-                ],
-                "additionalProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1129,10 +1129,6 @@
                 "properties": {
                   "type": {
                     "const": "derive_wind_speed"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "input": {
                     "type": "object",
@@ -1163,13 +1159,12 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
                   "output"
-                ],
-                "additionalProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1183,10 +1178,6 @@
                   "type": {
                     "type": "string",
                     "const": "derive_wind_direction"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "input": {
                     "type": "object",
@@ -1237,13 +1228,12 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
                   "output"
-                ],
-                "additionalProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1255,10 +1245,6 @@
                 "properties": {
                   "type": {
                     "const": "derive_wind_vector"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "description": {
                     "type": "string"
@@ -1301,13 +1287,12 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
                   "output"
-                ],
-                "unevaluatedProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1322,19 +1307,10 @@
                     "type": "string",
                     "const": "reduce"
                   },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
                   "input": {
                     "type": "string",
                     "minLength": 1,
                     "description": "Input variable id to reduce."
-                  },
-                  "across": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Dimension name to reduce across (e.g., 'member')."
                   },
                   "op": {
                     "type": "string",
@@ -1368,13 +1344,10 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
-                  "across",
                   "op",
                   "output"
                 ],
-                "additionalProperties": false,
                 "allOf": [
                   {
                     "if": {
@@ -1392,7 +1365,8 @@
                   }
                 ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1404,10 +1378,6 @@
                 "properties": {
                   "type": {
                     "const": "verify"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "forecast": {
                     "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
@@ -1442,10 +1412,6 @@
                       "far",
                       "csi"
                     ]
-                  },
-                  "across": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "event": {
                     "type": "object",
@@ -1600,14 +1566,11 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "forecast",
                   "obs",
                   "op",
-                  "across",
                   "output"
                 ],
-                "additionalProperties": false,
                 "allOf": [
                   {
                     "if": {
@@ -1629,7 +1592,8 @@
                   }
                 ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1643,11 +1607,6 @@
                   "type": {
                     "type": "string",
                     "const": "merge"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Output dataset id produced by this merge."
                   },
                   "input": {
                     "type": "array",
@@ -1664,12 +1623,11 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input"
-                ],
-                "additionalProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1681,10 +1639,6 @@
                 "properties": {
                   "type": {
                     "const": "match"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "forecast": {
                     "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
@@ -1787,7 +1741,6 @@
                       "bin",
                       "op"
                     ],
-                    "additionalProperties": false,
                     "allOf": [
                       {
                         "oneOf": [
@@ -1813,7 +1766,8 @@
                           }
                         ]
                       }
-                    ]
+                    ],
+                    "unevaluatedProperties": false
                   },
                   "missing": {
                     "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
@@ -1824,16 +1778,15 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "forecast",
                   "obs",
                   "space",
                   "time",
                   "output"
-                ],
-                "additionalProperties": false
+                ]
               }
-            ]
+            ],
+            "unevaluatedProperties": false
           },
           {
             "allOf": [
@@ -1847,10 +1800,6 @@
                   "type": {
                     "type": "string",
                     "const": "diagnostic.slp"
-                  },
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
                   },
                   "description": {
                     "type": "string"
@@ -1919,11 +1868,10 @@
                 },
                 "required": [
                   "type",
-                  "id",
                   "input",
                   "output"
                 ],
-                "additionalProperties": false
+                "unevaluatedProperties": false
               }
             ]
           }

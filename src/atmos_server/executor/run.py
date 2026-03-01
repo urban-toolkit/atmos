@@ -24,7 +24,10 @@ def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
     for step in plan.steps:
         if step.kind != "load":
             continue
-        obj = ctx.get(step.id)
+        try:
+            obj = ctx.get(step.id)
+        except KeyError:
+            continue
         # DataObject: has .dataset with dims
         ds = getattr(obj, "dataset", None)
         if ds is not None:
@@ -43,7 +46,10 @@ def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
         for step in plan.steps:
             if step.kind != "load":
                 continue
-            obj = ctx.get(step.id)
+            try:
+                obj = ctx.get(step.id)
+            except KeyError:
+                continue
             if isinstance(obj, pd.DataFrame):
                 # heuristic: pick the first datetime64 column
                 for c in obj.columns:
@@ -78,30 +84,53 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
         status = "skipped"
         error: str | None = None
 
-        # If any dependency failed, skip this step
-        failed_deps = [dep for dep in step.depends_on if step_status.get(dep) == "error"]
-        if failed_deps:
+        # If any dependency did not succeed, skip this step
+        blocked_deps = [dep for dep in step.depends_on if step_status.get(dep) != "ok"]
+        if blocked_deps:
             status = "skipped"
-            error = f"Skipped due to failed dependencies: {', '.join(failed_deps)}"
-        else:
+            error = f"Skipped due to non-ok dependencies: {', '.join(blocked_deps)}"
+            step_status[step.id] = status
+            executed.append(
+                {
+                    "id": step.id,
+                    "kind": step.kind,
+                    "dependsOn": list(step.depends_on),
+                    "status": status,
+                    **({"error": error} if error else {}),
+                }
+            )
+            continue
+
+        # Extra safety: if a dep is 'ok' but the ctx doesn't contain it (shouldn't happen, but protects you)
+        missing_ctx = []
+        for dep in step.depends_on:
             try:
-                if step.kind == "load":
-                    result = execute_step(step, repo_root=root, ctx=ctx)
-                    ctx.put(step.id, result)
-                    status = "ok"
-                elif step.kind == "transform":
-                    result = execute_step(step, repo_root=root, ctx=ctx)
-                    ctx.put(step.id, result)
-                    status = "ok"
-                elif step.kind == "geometry":
-                    result = execute_step(step, repo_root=root, ctx=ctx)
-                    ctx.put(step.id, result)
-                    status = "ok"
-                else:
-                    status = "todo"
-            except Exception as e:
-                status = "error"
-                error = f"{type(e).__name__}: {e}"
+                ctx.get(dep)
+            except KeyError:
+                missing_ctx.append(dep)
+
+        if missing_ctx:
+            status = "skipped"
+            error = f"Skipped due to missing deps in context: {', '.join(missing_ctx)}"
+            step_status[step.id] = status
+            executed.append(
+                {
+                    "id": step.id,
+                    "kind": step.kind,
+                    "dependsOn": list(step.depends_on),
+                    "status": status,
+                    **({"error": error} if error else {}),
+                }
+            )
+            continue
+
+        try:
+            result = execute_step(step, repo_root=root, ctx=ctx)
+            ctx.put(step.id, result)
+            status = "ok"
+        except Exception as e:
+            status = "error"
+            error = f"{type(e).__name__}: {e}"
 
         step_status[step.id] = status
 

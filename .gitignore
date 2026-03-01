@@ -71,11 +71,12 @@ Desktop.ini
 .env.*
 
 # =========================
-# Runtime artifacts (VERY IMPORTANT for atmos-server)
+# Runtime artifacts
 # =========================
 /artifacts/
 /cache/
 /data/
+/tests/data/ens/
 
 # =========================
 # Temporary files
