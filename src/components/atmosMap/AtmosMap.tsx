@@ -414,6 +414,7 @@ const renderers = {
 
         // IMPORTANT: resolve paint with data BEFORE convertPaint, so extent scales work.
         if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
+
         if (l.layout) def.layout = l.layout
         if (l.filter) def.filter = l.filter
         if (typeof l.minzoom === "number") def.minzoom = l.minzoom
