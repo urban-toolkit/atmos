@@ -1308,9 +1308,18 @@
                     "const": "reduce"
                   },
                   "input": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Input variable id to reduce."
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "variables"
+                    ],
+                    "additionalProperties": false
                   },
                   "op": {
                     "type": "string",
