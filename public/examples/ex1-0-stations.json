@@ -36,13 +36,13 @@
   
   "composition": {
     "layout": {
-      "columns": 5,
+      "columns": 2,
       "repeatView": [
         {
           "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
+          "indices": [0, 1],
           "targetView": "view1",
-          "targetLayer": "temp"
+          "targetLayer": "stations"
         }
       ]
     },

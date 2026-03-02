@@ -24,7 +24,6 @@
 
   "transform": [
     {
-      "id": "rain",
       "type": "derive",
       "input": {
         "data": "r001"
@@ -51,9 +50,9 @@
       "repeatView": [
         {
           "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
+          "indices": [56, 60, 64, 68, 72],
           "targetView": "view1",
-          "targetLayer": "temp"
+          "targetLayer": "rain"
         }
       ]
     },

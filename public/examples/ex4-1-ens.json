@@ -1,32 +1,49 @@
 {
-    "data": [
+  "data": [
     {
-      "id": "r001",
-      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "id": "wrf_ens",
+      "kind": "collection",
+
+      "members": {
+        "count": 3,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
+      },
+
+      "memberDimension": "member",
+
       "dimensions": {
         "latitude": { "key": "XLAT" },
         "longitude": { "key": "XLONG" },
-        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
       },
+
       "variables": [
         { "id": "rainnc", "key": "RAINNC", "kind": "grid" },
         { "id": "rainc", "key": "RAINC", "kind": "grid" }
-      ]
-    },
-    {
-      "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
-      "properties": {
-        "geoid": { "key": "GEOID" }
-      }
+      ],
+
+      "description": "WRF ensemble"
     }
   ],
 
   "transform": [
     {
       "type": "derive",
+      "across": "space",
       "input": {
-        "data": "r001"
+        "data": "wrf_ens"
       },
       "expression": {
         "op": "add",
@@ -36,25 +53,25 @@
         ]
       },
       "output": {
-        "data": "rain_r001",
+        "data": "membersAccRain",
         "variables": [
           { "id": "accRain", "kind": "grid" }
         ]
       }
+    },
+    {
+      "type": "reduce",
+      "input": "accRain",
+      "across": "member",
+      "op": "mean",
+      "output": {
+        "data": "ensAccRainMean",
+        "variables": [{ "id": "accRainMean", "kind": "grid" }]
+      }
     }
   ],
-  
-  "composition": {
-    "time": {"type": "index", "value": 0},
-      "context": {
-        "controls": [
-          {
-            "type": "slider",
-            "bind": "time"
-          }
-        ]
-      },
 
+  "composition": {
     "views": [
       {
         "id": "view1",
@@ -63,20 +80,12 @@
           {
             "id": "rain",
             "geometry": {
-              "type": "isoband",
-              "input": { "data": "rain_r001", "variable": "accRain" },
-              "build": [
-                {
-                  "levels": {
-                    "type": "explicit",
-                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
-                  }
-                }
-              ],
+              "type": "mesh",
+              "input": { "data": "ensAccRainMean", "variable": "accRainMean" },
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "accRain",
+                    "field": "accRainMean",
                     "scale": {
                       "type": "linear",
                       "range": {
@@ -120,9 +129,6 @@
                 "channels": {
                   "fill": { "value": "transparent"},
                   "stroke": {"value": "#000000"}
-                },
-                "style": {
-                  "strokeWidth": 1
                 }
               }
             }

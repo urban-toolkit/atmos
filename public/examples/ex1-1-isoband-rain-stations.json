@@ -49,7 +49,6 @@
 
   "transform": [
     {
-      "id": "rain",
       "type": "derive",
       "input": {
         "data": "r001"

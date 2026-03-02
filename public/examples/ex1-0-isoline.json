@@ -26,7 +26,6 @@
 
   "transform": [
     {
-      "id": "slp",
       "type": "diagnostic.slp",
       "input": {
         "data": "r001",

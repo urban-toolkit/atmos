@@ -22,12 +22,13 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex1-0-wind.json"
 // const firstExamplePath = "/examples/ex1-0-stations.json"
 // const firstExamplePath = "/examples/ex1-0-isoband.json"
-// const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
+const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-slider.json"
-const firstExamplePath = "/examples/ex1-2-isoband-rain-slider.json"
+// const firstExamplePath = "/examples/ex1-2-isoband-rain-slider.json"
+// const firstExamplePath = "/examples/ex4-1-ens.json"
 
 export default function App() {
 

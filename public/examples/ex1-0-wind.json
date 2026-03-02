@@ -23,7 +23,6 @@
   ],
   "transform": [
     {
-      "id": "wind10",
       "type": "derive_wind_vector",
       "input": {
         "data": "r001",
@@ -47,11 +46,12 @@
   
   "composition": {
     "layout": {
-      "columns": 5,
+      "columns": 3,
+      "rows": 2,
       "repeatView": [
         {
           "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
+          "indices": [0, 3, 4, 6, 8, 10],
           "targetView": "view1",
           "targetLayer": "lwind"
         }

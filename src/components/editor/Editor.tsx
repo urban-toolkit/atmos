@@ -31,7 +31,7 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 const Editor: React.FC<EditorProps> = ({ onApply, onResetLocal, initialData, appliedData, resetData, showAlert, setShowAlert }) => {
 
   // State management
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   
   const [editorWidth, setEditorWidth] = useState(() => {
     const raw = localStorage.getItem(LS_KEY)
@@ -188,7 +188,7 @@ const Editor: React.FC<EditorProps> = ({ onApply, onResetLocal, initialData, app
               }
             }
           ]}
-          rootFontSize={16}
+          rootFontSize={12}
           showCollectionCount={"when-closed"}
           showArrayIndices={false}
         />
