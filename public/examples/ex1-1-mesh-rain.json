@@ -51,8 +51,7 @@
         {
           "type": "timestep",
           "indices": [56, 60, 64, 68, 72],
-          "targetView": "view1",
-          "targetLayer": "rain"
+          "view": "view1"
         }
       ]
     },

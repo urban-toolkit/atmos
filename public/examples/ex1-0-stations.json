@@ -41,8 +41,7 @@
         {
           "type": "timestep",
           "indices": [0, 1],
-          "targetView": "view1",
-          "targetLayer": "stations"
+          "view": "view1"
         }
       ]
     },

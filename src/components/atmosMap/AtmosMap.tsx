@@ -186,6 +186,58 @@ function resolvePaintWithData(paint: Record<string, any> | undefined, fc: any) {
   return out
 }
 
+function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
+  const id = layerDef.id
+  const existing = map.getLayer(id)
+
+  // If it doesn't exist yet, add it once
+  if (!existing) {
+    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+    map.addLayer(layerDef, safeBeforeId)
+    return
+  }
+
+  // If type/source changed, we must recreate (rare)
+  // @ts-ignore: MapLibre layer has type/source fields
+  const existingType = (existing as any).type
+  const existingSource = (existing as any).source
+  if (existingType !== layerDef.type || existingSource !== layerDef.source) {
+    map.removeLayer(id)
+    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+    map.addLayer(layerDef, safeBeforeId)
+    return
+  }
+
+  // Otherwise patch in-place (no flicker)
+  patchLayer(map, id, layerDef)
+}
+
+function patchLayer(map: Map, id: string, nextDef: any) {
+  // paint
+  const paint = nextDef.paint ?? {}
+  for (const [k, v] of Object.entries(paint)) {
+    try { map.setPaintProperty(id, k, v as any) } catch {}
+  }
+
+  // layout
+  const layout = nextDef.layout ?? {}
+  for (const [k, v] of Object.entries(layout)) {
+    try { map.setLayoutProperty(id, k, v as any) } catch {}
+  }
+
+  // filter
+  if ("filter" in nextDef) {
+    try { map.setFilter(id, nextDef.filter) } catch {}
+  }
+
+  // zoom range
+  if (typeof nextDef.minzoom === "number" || typeof nextDef.maxzoom === "number") {
+    const minz = typeof nextDef.minzoom === "number" ? nextDef.minzoom : 0
+    const maxz = typeof nextDef.maxzoom === "number" ? nextDef.maxzoom : 24
+    try { map.setLayerZoomRange(id, minz, maxz) } catch {}
+  }
+}
+
 /**
  * -------------------------------------------
  * ID helpers (namespacing prevents collisions)
@@ -278,50 +330,6 @@ function removeLayerIfExists(map: Map, id: string) {
 
 function removeSourceIfExists(map: Map, id: string) {
   if (map.getSource(id)) map.removeSource(id)
-}
-
-
-/**
- * When paint/layout changes, MapLibre doesn’t have a “replaceLayer” API,
- * so we remove + add. This is simple and reliable for now.
- */
-function replaceLayer(map: Map, layerDef: any, beforeId?: string) {
-  removeLayerIfExists(map, layerDef.id)
-
-  const safeBeforeId =
-    beforeId && map.getLayer(beforeId) ? beforeId : undefined
-
-  const src = layerDef.source
-
-  // If the source isn't ready yet, don't try to add the layer
-  if (typeof src === "string" && !map.getSource(src)) {
-    console.warn("Skipping addLayer because source missing (will retry later)", {
-      layerId: layerDef.id,
-      source: src,
-    })
-    return
-  }
-
-  try {
-    map.addLayer(layerDef, safeBeforeId)
-  } catch (e) {
-    console.warn("addLayer failed; retrying without beforeId", {
-      id: layerDef.id,
-      beforeId,
-      safeBeforeId,
-      e,
-    })
-
-    try {
-      map.addLayer(layerDef)
-    } catch (e2) {
-      console.warn("addLayer still failed", {
-        id: layerDef.id,
-        source: src,
-        e2,
-      })
-    }
-  }
 }
 
 /**
@@ -495,53 +503,6 @@ export default function AtmosMap({
     return { sourceIds, layerIds, ops }
   }, [layers])
 
-  // // Create map once
-  // useEffect(() => {
-  //   if (mapRef.current || !containerRef.current) return
-
-  //   const map = new maplibregl.Map({
-  //     container: containerRef.current,
-  //     style: mapStyle,
-  //     center: [-78.9, 38.43],
-  //     zoom: 6,
-  //     attributionControl: false,
-  //     logoPosition: undefined,
-  //   })
-
-  //   if (initialViewState) {
-  //     map.jumpTo({
-  //       center: initialViewState.center,
-  //       zoom: initialViewState.zoom,
-  //       bearing: initialViewState.bearing,
-  //       pitch: initialViewState.pitch,
-  //     })
-  //     didAutoFitRef.current = true
-  //   } else {
-  //     didAutoFitRef.current = false
-  //   }
-
-  //   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
-  //   mapRef.current = map
-
-  //   const emit = () => {
-  //     const c = map.getCenter()
-  //     onViewStateChange?.({
-  //       center: [c.lng, c.lat],
-  //       zoom: map.getZoom(),
-  //       bearing: map.getBearing(),
-  //       pitch: map.getPitch(),
-  //     })
-  //   }
-
-  //   map.on("moveend", emit)
-
-  //   return () => {
-  //     map.off("moveend", emit)
-  //     map.remove()
-  //     mapRef.current = null
-  //   }
-  // }, [mapStyle])
-
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
 
@@ -596,62 +557,120 @@ export default function AtmosMap({
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  // Apply plan whenever layers change
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
     let cancelled = false
+    let token = 0
+    let scheduled = false
 
-    const apply = () => {
+    const run = () => {
+      scheduled = false
       if (cancelled) return
-      if (!map.isStyleLoaded()) return // still not ready
+      const myToken = ++token
 
-      try {
-        ensureArrowIcon(map)
-        reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
-
-        // sources first
-        for (const op of plan.ops) {
-          if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
+      const doApply = () => {
+        if (cancelled) return
+        if (myToken !== token) return // newer update arrived
+        if (!map.isStyleLoaded()) {
+          // wait until style stabilizes
+          map.once("load", doApply)
+          return
         }
 
-        // then layers
-        for (const op of plan.ops) {
-          if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
-        }
+        try {
+          ensureArrowIcon(map)
+          reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
 
-        // Fit bounds
-        if (autoFitBounds && !didAutoFitRef.current) {
-          const bb = firstNonEmptyBBox(layers ?? [])
-          if (bb) {
-            didAutoFitRef.current = true
-            map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
+          for (const op of plan.ops) {
+            if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
+          }
+          for (const op of plan.ops) {
+            if (op.kind === "layer") upsertLayer(map, op.def, op.beforeId)
+          }
+
+          if (autoFitBounds && !didAutoFitRef.current) {
+            const bb = firstNonEmptyBBox(layers ?? [])
+            if (bb) {
+              didAutoFitRef.current = true
+              map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
+            }
+          }
+        } catch (e) {
+          // schedule a single retry on the next tick (not styledata spam)
+          if (!scheduled) {
+            scheduled = true
+            requestAnimationFrame(doApply)
           }
         }
-      } catch (e) {
-        // If style is in flux, sources/layers can throw. Retry on next styledata tick.
-        console.warn("apply failed; will retry on styledata", e)
-        map.once("styledata", apply)
       }
+
+      doApply()
     }
 
-    // Always: ensure we apply after style events too
-    const onStyleData = () => apply()
-
-    if (!map.isStyleLoaded()) {
-      map.once("load", apply)
-    } else {
-      apply()
-    }
-
-    map.on("styledata", onStyleData)
-
+    run()
     return () => {
       cancelled = true
-      map.off("styledata", onStyleData)
     }
-  }, [plan, layers, autoFitBounds])
+  }, [plan, autoFitBounds])
+
+  // // Apply plan whenever layers change
+  // useEffect(() => {
+  //   const map = mapRef.current
+  //   if (!map) return
+
+  //   let cancelled = false
+
+  //   const apply = () => {
+  //     if (cancelled) return
+  //     if (!map.isStyleLoaded()) return // still not ready
+
+  //     try {
+  //       ensureArrowIcon(map)
+  //       reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
+
+  //       // sources first
+  //       for (const op of plan.ops) {
+  //         if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
+  //       }
+
+  //       // then layers
+  //       for (const op of plan.ops) {
+  //         if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
+  //       }
+
+  //       // Fit bounds
+  //       if (autoFitBounds && !didAutoFitRef.current) {
+  //         const bb = firstNonEmptyBBox(layers ?? [])
+  //         if (bb) {
+  //           didAutoFitRef.current = true
+  //           map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
+  //         }
+  //       }
+  //     } catch (e) {
+  //       // If style is in flux, sources/layers can throw. Retry on next styledata tick.
+  //       console.warn("apply failed; will retry on styledata", e)
+  //       map.once("styledata", apply)
+  //     }
+  //   }
+
+  //   // Always: ensure we apply after style events too
+  //   // const onStyleData = () => apply()
+
+  //   if (!map.isStyleLoaded()) {
+  //     map.once("load", apply)
+  //   } else {
+  //     apply()
+  //   }
+
+  //   // map.on("styledata", onStyleData)
+
+  //   return () => {
+  //     cancelled = true
+  //     // map.off("styledata", onStyleData)
+  //   }
+  // }, [plan, autoFitBounds])
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 }

@@ -178,6 +178,7 @@ const Editor: React.FC<EditorProps> = ({ onApply, onResetLocal, initialData, app
           setData={(newData: any) => setEditorData(newData as any)}
           rootName=""
           collapse={isEmpty(editorData)}
+          // collapse={true}
           theme={[
             githubLightTheme,
             {

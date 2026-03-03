@@ -26,7 +26,6 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain.json"
-// const firstExamplePath = "/examples/ex1-0-isoband-sequential.json"
 const firstExamplePath = "/examples/ex1-1-isoband-rain-sequential.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
 // const firstExamplePath = "/examples/ex1-1-isoband-slider.json"
@@ -35,9 +34,10 @@ const firstExamplePath = "/examples/ex1-1-isoband-rain-sequential.json"
 
 export default function App() {
 
+  const [mapsVersion, setMapsVersion] = useState(0)
+  
   const [manifest, setManifest] = useState<Manifest | null>(null)
   
-
   const [mapLayers, setMapLayers] = useState<MapLayerRuntime[]>([])
   const [geoByLayerKey, setGeoByLayerKey] = useState<Record<string, any>>({})
 
@@ -126,6 +126,7 @@ export default function App() {
     setManifest(snap.manifest)
     setMapLayers(snap.mapLayers)
     setGeoByLayerKey(snap.geoByLayerKey)
+    setMapsVersion((v) => v + 1)
   }
 
   async function handleApply(nextSpec: any) {
@@ -140,11 +141,14 @@ export default function App() {
       setManifest(result.manifest)
       // if (result.baseUrl) setBaseUrl(result.baseUrl)
       
-
+      
       const layers = interpretManifestToMapLayers(result.manifest, nextBaseUrl)
+      setGeoByLayerKey({})
       setMapLayers(layers)
 
       setAppliedSpec(nextSpec)
+
+      setMapsVersion((v) => v + 1)
 
     } catch (e) {
       console.error(e)
@@ -335,6 +339,7 @@ export default function App() {
               </div>
 
               <AtmosMap
+                // key={`${m.viewId}:${mapsVersion}`}
                 layers={m.layers.map((l) => ({ ...l, geojson: geoByLayerKey[l.key] }))}
               />
             </div>
