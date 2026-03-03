@@ -5,7 +5,24 @@ from typing import Any
 from atmos_server.compiler.ports import CompilerPorts
 from .context import CompileContext
 from .ids import safe_id
-from .spec_nav import infer_repeat_data_id
+
+def _infer_data_id_from_view(view: dict[str, Any]) -> str | None:
+    layers = view.get("layers") or []
+    if not isinstance(layers, list):
+        return None
+
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        geom = layer.get("geometry")
+        if not isinstance(geom, dict):
+            continue
+        ginput = geom.get("input")
+        if isinstance(ginput, dict):
+            data_id = ginput.get("data")
+            if isinstance(data_id, str) and data_id.strip():
+                return data_id.strip()
+    return None
 
 def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[str, Any]]:
     composition = ctx.spec.get("composition") or {}
@@ -21,7 +38,7 @@ def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[
     if isinstance(repeat_specs, list):
         for r in repeat_specs:
             if isinstance(r, dict):
-                tv = r.get("targetView")
+                tv = r.get("view")
                 if isinstance(tv, str) and tv:
                     repeats_by_view.setdefault(tv, []).append(r)
 
@@ -31,6 +48,7 @@ def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[
 
         base_view_id = safe_id("view", view.get("id"), vi)
         reps = repeats_by_view.get(base_view_id, [])
+
         if not reps:
             expanded.append(view)
             continue
@@ -40,18 +58,18 @@ def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[
             expanded.append(view)
             continue
 
-        target_layer = r0.get("targetLayer")
-        if not isinstance(target_layer, str) or not target_layer.strip():
-            raise ValueError(f"repeatView for '{base_view_id}' missing targetLayer")
-        target_layer = target_layer.strip()
-
+        # data is now optional — if missing we infer from first layer
         data_id = r0.get("data")
-        if isinstance(data_id, str) and data_id.strip():
-            data_id = data_id.strip()
+        if not isinstance(data_id, str) or not data_id.strip():
+            data_id = _infer_data_id_from_view(view)
         else:
-            data_id = infer_repeat_data_id(ctx.spec, target_view=base_view_id, target_layer=target_layer)
+            data_id = data_id.strip()
+
+        if not isinstance(data_id, str) or not data_id:
+            raise ValueError(f"repeatView for '{base_view_id}' missing data")
 
         indices = r0.get("indices")
+
         if indices is None:
             tlen = ports.time_len.time_len(spec=ctx.spec, data_id=data_id)
             if tlen is None:
@@ -65,7 +83,6 @@ def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[
             inst_id = f"{base_view_id}__t{idx:03d}"
             inst["id"] = inst_id
             inst["_repeat"] = {"type": "timestep", "index": idx, "baseViewId": base_view_id}
-            inst["_repeatTargetLayer"] = target_layer
             inst["_repeatDataId"] = data_id
             expanded.append(inst)
 

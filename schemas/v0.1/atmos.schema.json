@@ -1941,7 +1941,7 @@
                 "required": [
                   "type",
                   "indices",
-                  "targetView"
+                  "view"
                 ],
                 "properties": {
                   "type": {
@@ -1957,15 +1957,10 @@
                     },
                     "description": "Time-step indices to repeat over."
                   },
-                  "targetView": {
+                  "view": {
                     "type": "string",
                     "minLength": 1,
                     "description": "The id of the view that acts as the template to be repeated."
-                  },
-                  "targetLayer": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Optional layer id within the target view, if repetition applies to a specific layer (renderer-defined)."
                   }
                 }
               },

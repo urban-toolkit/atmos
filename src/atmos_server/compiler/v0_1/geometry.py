@@ -64,15 +64,15 @@ def compile_geometry_and_artifacts(
                         )
                         upstream_step = tstep_id
 
-            # ---- repeat override (only for target layer) ----
+            # ---- repeat override ----
             if isinstance(repeat, dict):
-                target_layer = view.get("_repeatTargetLayer")
-                repeat_data = view.get("_repeatDataId")
                 idx = repeat.get("index")
+                input_data = ginput.get("data")
 
-                if layer_id == target_layer and isinstance(repeat_data, str) and isinstance(idx, int):
+                # Only time-slice if the layer's input data is actually time-indexable
+                if isinstance(idx, int) and isinstance(input_data, str) and _is_time_indexable_data(ctx, input_data):
                     if not upstream_step:
-                        raise ValueError(f"repeatView: unknown data '{repeat_data}'")
+                        raise ValueError(f"repeatView: unknown data '{input_data}'")
 
                     tstep_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
                     ctx.steps.append(
