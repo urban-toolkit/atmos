@@ -5,7 +5,7 @@ from typing import Any
 
 import xarray as xr
 
-from atmos_server.compiler.ports import RepoRootResolver, TimeLenResolver
+from atmos_server.core.compiler.ports import RepoRootResolver, TimeLenResolver
 
 
 class XarrayTimeLenResolver(TimeLenResolver):

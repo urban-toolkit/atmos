@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, TypeGuard
+from typing import Any, TypeGuard, Mapping
+
+from atmos_server.core.compiler.ports import RenderBuilder
 
 
 def _is_dict(x: Any) -> TypeGuard[dict[str, Any]]:
-    return isinstance(x, dict)
+    return isinstance(x, Mapping)
 
 
 def _get_number_constant(ch: Any) -> float | None:
@@ -20,8 +22,8 @@ def _get_color_constant(ch: Any) -> str | None:
     return None
 
 def build_render_from_encoding(
-    gtype: str,
-    encoding: dict[str, Any] | None,
+    geometry_type: str,
+    encoding: Mapping[str, Any] | None,
 ) -> dict[str, Any] | None:
     """
     Convert Atmos encoding (v0.1-ish) into a runtime render block for the manifest.
@@ -147,7 +149,7 @@ def build_render_from_encoding(
     # -----------------------------
     # POINT => MapLibre circle layer
     # -----------------------------
-    if gtype == "point":
+    if geometry_type == "point":
         render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
         paint: dict[str, Any] = render["paint"]
 
@@ -186,7 +188,7 @@ def build_render_from_encoding(
     # -----------------------------
     # VECTOR => MapLibre circle layer (debug/default)
     # -----------------------------
-    if gtype == "vector":
+    if geometry_type == "vector":
         render: dict[str, Any] = {"renderer": "maplibre", "layerType": "circle", "paint": {}}
         paint: dict[str, Any] = render["paint"]
 
@@ -232,7 +234,7 @@ def build_render_from_encoding(
     # -----------------------------
     # ISOLINE => MapLibre line layer
     # -----------------------------
-    if gtype == "isoline":
+    if geometry_type == "isoline":
         render: dict[str, Any] = {"renderer": "maplibre", "layerType": "line", "paint": {}}
         paint: dict[str, Any] = render["paint"]
 
@@ -311,3 +313,14 @@ def build_render_from_encoding(
         return None
 
     return render
+
+
+class MapLibreRenderBuilder(RenderBuilder):
+    def build_render(
+        self,
+        *,
+        geometry_type: str,
+        encoding: Mapping[str, Any] | None
+    ) -> dict[str, Any] | None:
+        # Match your current call style: build_render_from_encoding(geometry_type, encoding)
+        return build_render_from_encoding(geometry_type, encoding)

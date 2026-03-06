@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import atmos_server 
 
-import atmos_server  # uses installed package location (works in editable dev too)
-
-from atmos_server.compiler.ports import RepoRootResolver
+from atmos_server.core.compiler.ports import RepoRootResolver
 
 
 class PackageRepoRootResolver(RepoRootResolver):

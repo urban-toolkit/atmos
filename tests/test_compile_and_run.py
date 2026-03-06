@@ -6,10 +6,10 @@ from typing import Iterator
 
 import pytest
 
-from atmos_server.executor import run_plan
-from atmos_server.compiler import compile_plan
+from atmos_server.core.executor import run_plan
+from atmos_server.core.compiler import compile_spec
 from atmos_server.schema import SchemaProvider, validate_spec
-from atmos_server.io.readers.json_loader import load_json_file
+from atmos_server.adapters.readers.json_loader import load_json_file
 
 
 def repo_root() -> Path:
@@ -69,7 +69,7 @@ def test_compile_and_run_fixtures(version: str, name: str, spec_path: Path, tmp_
     validate_spec(spec, schema)
 
     # Compile
-    plan = compile_plan(spec, schema_version=version)
+    plan = compile_spec(spec, schema_version=version)
 
     # Run
     out_dir = tmp_path / version / spec_path.stem

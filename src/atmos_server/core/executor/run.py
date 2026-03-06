@@ -4,16 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from atmos_server.executor.context import ExecutionContext
-from atmos_server.executor.dispatch import execute_step
-from atmos_server.executor.dag import topological_sort
-from atmos_server.compiler.types import Plan
+from atmos_server.core.executor.context import ExecutionContext
+from atmos_server.core.executor.dispatch import execute_step
+from atmos_server.core.executor.dag import topological_sort
+from atmos_server.core.compiler.models import Plan
 
-
-
-def _repo_root() -> Path:
-    # src/atmos_server/execute/run.py -> repo root
-    return Path(__file__).resolve().parents[3]
 
 def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
     """
@@ -57,8 +52,7 @@ def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
                         return int(obj[c].dropna().nunique())
     return None
 
-
-def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
+def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, Any]:
     """
     Version-agnostic runner.
 
@@ -71,8 +65,6 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
 
     ctx = ExecutionContext()
-    root = _repo_root()
-
     executed: list[dict[str, Any]] = []
 
     ordered_steps = topological_sort(plan.steps)
@@ -125,7 +117,7 @@ def run_plan(plan: Plan, out_dir: str | Path) -> dict[str, Any]:
             continue
 
         try:
-            result = execute_step(step, repo_root=root, ctx=ctx)
+            result = execute_step(step, repo_root=repo_root, ctx=ctx)
             ctx.put(step.id, result)
             status = "ok"
         except Exception as e:

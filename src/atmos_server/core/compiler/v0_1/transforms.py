@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any
 
-from atmos_server.compiler.types import Step
+from atmos_server.core.compiler.models import Step
 from .context import CompileContext
 from .ids import safe_id
 

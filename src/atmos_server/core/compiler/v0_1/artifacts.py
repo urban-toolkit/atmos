@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import Any
 
-from atmos_server.compiler.types import Artifact
-from atmos_server.compiler.ports import CompilerPorts
+from atmos_server.core.compiler.models import Artifact
+from atmos_server.core.compiler.ports import CompilerPorts
 
 def add_geojson_artifact(
     *,

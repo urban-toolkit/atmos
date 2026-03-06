@@ -6,10 +6,10 @@ from pathlib import Path
 
 from atmos_server.runtime.errors import AtmosServerError, SpecValidationError
 from atmos_server.schema import SchemaProvider, load_schema, validate_spec
-from atmos_server.io.readers.json_loader import load_json_file
+from atmos_server.adapters.readers.json_loader import load_json_file
 import json
-from atmos_server.compiler import compile_plan
-from atmos_server.executor import run_plan
+from atmos_server.core.compiler import compile_spec
+from atmos_server.core.executor import run_plan
 
 
 def _repo_root() -> Path:
@@ -85,7 +85,7 @@ def cmd_compile(args: argparse.Namespace) -> int:
         schema = registry.load(chosen_version)
 
     validate_spec(spec, schema)
-    plan = compile_plan(spec, schema_version=chosen_version)
+    plan = compile_spec(spec, schema_version=chosen_version)
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,7 +110,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         schema = registry.load(chosen_version)
 
     validate_spec(spec, schema)
-    plan = compile_plan(spec, schema_version=chosen_version)
+    plan = compile_spec(spec, schema_version=chosen_version)
     manifest = run_plan(plan, args.out)
 
     print(f"✅ Wrote manifest: {Path(args.out) / 'manifest.json'}")

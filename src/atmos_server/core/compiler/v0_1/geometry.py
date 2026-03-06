@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from atmos_server.compiler.types import Step
-from atmos_server.compiler.ports import CompilerPorts
+from atmos_server.core.compiler.models import Step
+from atmos_server.core.compiler.ports import CompilerPorts
 
 from .context import CompileContext
 from .ids import safe_id

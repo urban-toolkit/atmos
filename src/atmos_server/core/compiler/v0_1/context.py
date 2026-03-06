@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from atmos_server.compiler.types import Artifact, InputRef, Step
+from atmos_server.core.compiler.models import Artifact, InputRef, Step
 
 @dataclass
 class CompileContext:

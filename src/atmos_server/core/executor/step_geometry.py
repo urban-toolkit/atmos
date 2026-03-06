@@ -1,7 +1,7 @@
-from atmos_server.runtime.model import DataObject
-from atmos_server.compiler.types import Step
+from atmos_server.core.shared.models import DataObject
+from atmos_server.core.compiler.models import Step
 
-from atmos_server.executor.context import ExecutionContext
+from atmos_server.core.executor.context import ExecutionContext
 
 import xarray as xr
 from typing import Any
@@ -396,7 +396,6 @@ def execute_step_geometry(step: Step, ctx: ExecutionContext | None = None):
         build0 = build[0] if isinstance(build, list) and build and isinstance(build[0], dict) else {}
 
         # Defaults (match your schema defaults)
-        interpolate = build0.get("interpolate", "bilinear")  # not used yet unless you implement it
         target_cells = build0.get("targetCells", 100000)
         cell_footprint = build0.get("cellFootprint", 1.0)
 

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Protocol, runtime_checkable
 
+from atmos_server.core.shared.ports import RepoRootResolver
+
 
 # -------------------------
 # Core compile context types (shared shape)
@@ -25,19 +27,6 @@ class DataRef:
 # -------------------------
 # Ports (interfaces)
 # -------------------------
-
-@runtime_checkable
-class RepoRootResolver(Protocol):
-    """
-    Resolves a "repo root" or base path used for locating local data referenced by a spec.
-
-    Keep it as a port because:
-    - tests can point it to a temp dir
-    - production can derive it from package structure / env var
-    """
-
-    def repo_root(self) -> Path: ...
-
 
 @runtime_checkable
 class TimeLenResolver(Protocol):
@@ -63,8 +52,7 @@ class RenderBuilder(Protocol):
         self,
         *,
         geometry_type: str,
-        encoding: JsonLike | None,
-        defaults: JsonLike | None = None,
+        encoding: JsonLike | None
     ) -> dict[str, Any] | None: ...
 
 

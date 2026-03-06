@@ -1,7 +1,8 @@
-from atmos_server.runtime.model import DataObject
-from atmos_server.compiler.types import Step
+from atmos_server.core.shared.models import DataObject
+from atmos_server.core.compiler.models import Step
 from pathlib import Path
-from atmos_server.io.readers.geojson import load_geojson
+from atmos_server.adapters.readers.geojson import load_geojson
+from atmos_server.core.shared.path_utils import resolve_repo_path
 import xarray as xr
 import pandas as pd
 
@@ -43,10 +44,6 @@ def _pick_keep_vars(ds: xr.Dataset, *, variables_spec: list[dict] | None, dims_s
     return ds
 
 
-def _resolve_path(repo_root: Path, p: str) -> Path:
-    path = Path(p)
-    return path if path.is_absolute() else (repo_root / path)
-
 def load_dataset(data_id, params, step, repo_root):
     source = params.get("source") or {}
     
@@ -59,14 +56,14 @@ def load_dataset(data_id, params, step, repo_root):
     if source_type == "geojson":
         if not isinstance(source_path, str) or not source_path:
             raise ValueError(f"GeoJSON source.path missing/invalid for step {step.id}")
-        p = _resolve_path(repo_root, source_path)
+        p = resolve_repo_path(repo_root, source_path)
         
         return load_geojson(p)
 
     if source_type == "csv":
         if not isinstance(source_path, str) or not source_path:
             raise ValueError(f"CSV source.path missing/invalid for step {step.id}")
-        p = _resolve_path(repo_root, source_path)
+        p = resolve_repo_path(repo_root, source_path)
         if not p.exists():
             raise FileNotFoundError(f"CSV not found: {p}")
 
@@ -86,7 +83,7 @@ def load_dataset(data_id, params, step, repo_root):
     if source_type == "netcdf":
         if not isinstance(source_path, str) or not source_path:
             raise ValueError(f"NetCDF source.path missing/invalid for step {step.id}")
-        p = _resolve_path(repo_root, source_path)
+        p = resolve_repo_path(repo_root, source_path)
 
         engine = source.get("engine")
         if engine is not None and not isinstance(engine, str):
@@ -126,7 +123,7 @@ def load_collection(data_id, params, step, repo_root, variables, dimensions):
 
     for mid in _member_ids(members):
         p_str = path_t.format(id=mid)
-        p = _resolve_path(repo_root, p_str)
+        p = resolve_repo_path(repo_root, p_str)
         if not p.exists():
             raise FileNotFoundError(f"NetCDF not found: {p} (member {mid}, step {step.id})")
 

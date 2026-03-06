@@ -3,16 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from atmos_server.compiler.types import Step
-from atmos_server.executor.context import ExecutionContext
+from atmos_server.core.compiler.models import Step
+from atmos_server.core.executor.context import ExecutionContext
 
-import matplotlib
-matplotlib.use("Agg")  # headless backend (no NSWindow)
-
-
-from atmos_server.executor.step_load import execute_step_load
-from atmos_server.executor.step_transform import execute_step_transform
-from atmos_server.executor.step_geometry import execute_step_geometry
+from atmos_server.core.executor.step_load import execute_step_load
+from atmos_server.core.executor.step_transform import execute_step_transform
+from atmos_server.core.executor.step_geometry import execute_step_geometry
 
 def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = None) -> Any:
     """
@@ -31,5 +27,5 @@ def execute_step(step: Step, *, repo_root: Path, ctx: ExecutionContext | None = 
     # geometry etc later
     if step.kind == "geometry":
         return execute_step_geometry(step, ctx)
-    
-    return None
+
+    raise NotImplementedError(f"Unsupported step kind '{step.kind}' in step {step.id}")

@@ -1,26 +1,28 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from typing import Any, Protocol
 
-from atmos_server.compiler.types import Plan
-from atmos_server.compiler.v0_1.v0_1 import compile_v0_1
-
-CompilerFn = Callable[[dict[str, Any], str], Plan]
-# signature: (spec, schema_version) -> Plan
+from atmos_server.core.compiler.ports import CompilerPorts
+from atmos_server.core.compiler.v0_1.compile import compile_v0_1
+from .models import Plan
 
 
-_COMPILERS: Dict[str, CompilerFn] = {
+class CompilerFn(Protocol):
+    def __call__(
+        self,
+        spec: dict[str, Any],
+        schema_version: str,
+        *,
+        ports: CompilerPorts,
+    ) -> Plan: ...
+
+
+_COMPILERS: dict[str, CompilerFn] = {
     "v0.1": compile_v0_1,
-    # Add future versions here:
-    # "v0.2": compile_v0_2,
-    # "v1.0": compile_v1_0,
 }
 
 
 def get_compiler(schema_version: str) -> CompilerFn:
-    """
-    Return the compiler for the given Atmos schema version.
-    """
     try:
         return _COMPILERS[schema_version]
     except KeyError as e:
