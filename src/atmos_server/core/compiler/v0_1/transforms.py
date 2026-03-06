@@ -178,21 +178,24 @@ def _enrich_generic_derive(ctx: CompileContext, params: dict[str, Any]) -> None:
     if not isinstance(expr, dict):
         return
 
+    resolved = dict(params.get("_resolved") or {})
+    var_map = dict(resolved.get("varMap") or {})
+
     def _walk(node: Any) -> None:
         if not isinstance(node, dict):
             return
+
         if "variable" in node and isinstance(node["variable"], str):
             var_id = node["variable"]
             k = _var_id_to_key(ctx, base_data, var_id)
             if k:
-                resolved = dict(params.get("_resolved") or {})
-                var_map = dict(resolved.get("varKeyById") or {})
                 var_map[var_id] = k
-                resolved["varKeyById"] = var_map
-                params["_resolved"] = resolved
+
         args = node.get("args")
         if isinstance(args, list):
             for a in args:
                 _walk(a)
 
     _walk(expr)
+    resolved["varMap"] = var_map
+    params["_resolved"] = resolved

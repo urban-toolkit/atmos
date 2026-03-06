@@ -249,8 +249,10 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
     resolved["lonKey"] = lon_key
 
     # convention: f"{var_id}.speed"/".direction"
-    resolved["speedKey"] = f"{input_var}.speed"
-    resolved["directionKey"] = f"{input_var}.direction"
+    # resolved["speedKey"] = f"{input_var}.speed"
+    # resolved["directionKey"] = f"{input_var}.direction"
+    resolved["speedKey"] = f"{input_var}_speed"
+    resolved["directionKey"] = f"{input_var}_direction"
     resolved["variableId"] = input_var
     resolved["baseDataId"] = base_data
     resolved["dataId"] = input_data
