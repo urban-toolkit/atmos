@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Iterable
 
 from atmos_server.runtime.errors import SchemaLoadError
-from atmos_server.schema.schema_loader import load_schema
+from atmos_server.schema.loader import load_schema
 
 
 @dataclass(frozen=True)

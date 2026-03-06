@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from atmos_server.executor import run_plan
-from atmos_server.compiler import compile_plan
+from atmos_server.core.executor import run_plan
+from atmos_server.core.compiler import compile_spec
 from atmos_server.schema import SchemaProvider, validate_spec
-from atmos_server.io.readers.json_loader import load_json_file
+from atmos_server.adapters.readers.json_loader import load_json_file
 
 
 def repo_root() -> Path:
@@ -30,7 +30,7 @@ def test_run_executes_geojson_load(tmp_path: Path):
     schema = registry.load("v0.1")
     validate_spec(spec, schema)
 
-    plan = compile_plan(spec, schema_version="v0.1")
+    plan = compile_spec(spec, schema_version="v0.1")
     manifest = run_plan(plan, tmp_path / "artifacts")
 
     # Find at least one load step and confirm it executed or is marked todo/error appropriately

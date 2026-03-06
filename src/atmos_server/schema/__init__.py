@@ -1,4 +1,4 @@
-from .schema_loader import load_schema
+from .loader import load_schema
 from .validate import validate_spec
 from .provider import SchemaProvider, SchemaRef
 
