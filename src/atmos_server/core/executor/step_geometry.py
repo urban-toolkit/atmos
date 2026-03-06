@@ -156,8 +156,9 @@ def _isoband_to_geojson(
     out_field: str,
 ) -> dict[str, Any]:
 
+    import matplotlib
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    import numpy as np
 
     lat = ds[lat_key].values
     lon = ds[lon_key].values
