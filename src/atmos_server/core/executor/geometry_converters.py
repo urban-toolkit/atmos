@@ -38,12 +38,31 @@ def _levels_from_spec(levels_obj: Any) -> list[float] | None:
         return [float(x) for x in levels_obj]
 
     if isinstance(levels_obj, dict):
+
+        # explicit list
         values = levels_obj.get("values")
         if isinstance(values, list):
             return [float(x) for x in values]
 
-    return None
+        # step pattern
+        if levels_obj.get("type") == "step":
+            start = levels_obj.get("start")
+            stop = levels_obj.get("stop")
+            step = levels_obj.get("step")
 
+            if isinstance(start, (int, float)) and isinstance(stop, (int, float)) and isinstance(step, (int, float)):
+                vals = []
+                v = float(start)
+                stop = float(stop)
+                step = float(step)
+
+                while v <= stop + 1e-9:
+                    vals.append(v)
+                    v += step
+
+                return vals
+
+    return None
 
 def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
     if len(coords) < 2:

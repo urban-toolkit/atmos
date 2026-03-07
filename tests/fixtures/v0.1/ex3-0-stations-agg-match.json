@@ -1,0 +1,132 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+      },
+      "vars": [
+        { "id": "temp2m", "key": "T2" },
+        { "id": "rain", "key": "RAIN" }
+      ]
+    },
+    {
+      "id": "stationsObs",
+      "type": "dataset",
+      "source": {
+        "type": "csv",
+        "path": "tests/data/stations/stations.csv"
+      },
+
+      "dims": {
+        "id": { "key": "id" },
+        "lat": { "key": "lat" },
+        "lon": { "key": "lon" },
+        "time": {
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC"
+        }
+      },
+      
+      "vars": [
+        { "id": "rain", "key": "obs" }
+      ]  
+     }
+  ],
+
+  "transform": [
+    {
+      "type": "aggregate",
+      "across": "time",
+      "by": "id",
+      "expr": {
+        "op": "mean",
+        "freq": "1H",
+        "args": [
+          { "data": "stationsObs", "var": "temp2m" }       
+        ],
+         "params": { "closed": "left", "label": "left" }
+      },
+      "out": {
+        "data": "stations1h",
+        "var": "temp2m"
+      }
+    },
+    {
+      "type": "relate",
+      "by": ["id", "time"],
+      "expr": {
+        "op": "match",
+        "args": [
+          { "data": "stations1h", "var": "temp2m" },
+          { "data": "r001",        "var": "temp2m" }
+        ],
+        "params": {
+          "space": { "method": "nearest" },
+          "rename": { "0": "temp2mObs", "1": "temp2mFcst" }
+        }
+      },
+      "out": { "data": "matchData" }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 5,
+      "repeatView": [
+        {
+          "type": "timestep",
+          "indices": [0, 1],
+          "view": "view1"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "stations",
+            "geometry": {
+              "type": "point",
+              "input": { "data": "matchData", "var": "temp2mObs" },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "accRain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Inferno",
+                      "domain": [70, 90],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

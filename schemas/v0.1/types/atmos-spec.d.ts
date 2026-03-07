@@ -21,14 +21,14 @@ export interface AtmosSpec {
           /**
            * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
            */
-          dimensions: {
-            latitude: AdditionalProperties;
-            longitude: AdditionalProperties;
+          dims: {
+            lat: Lat;
+            lon: Lat;
             /**
              * Time dimension definition.
              */
             time:
-              | AdditionalProperties
+              | Lat
               | {
                   /**
                    * Name of the NetCDF dimension (e.g., 'Time')
@@ -63,7 +63,7 @@ export interface AtmosSpec {
               /**
                * Optional variable holding vertical coordinate values (if available).
                */
-              coordinate?: string | null;
+              coord?: string | null;
               title?: string;
               description?: string;
               /**
@@ -98,7 +98,7 @@ export interface AtmosSpec {
                     positive?: 'up' | 'down';
                   };
             } | null;
-            site?: AdditionalProperties1;
+            id?: Lat1;
           };
           /**
            * Missing/invalid-data rules for this dataset (optional).
@@ -134,8 +134,15 @@ export interface AtmosSpec {
           /**
            * Variables available in the dataset.
            */
-          variables: {
-            [k: string]: unknown;
+          vars: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
           }[];
           description?: string;
           [k: string]: unknown;
@@ -143,7 +150,7 @@ export interface AtmosSpec {
           /**
            * Defaults to 'dataset' if omitted.
            */
-          kind?: 'dataset';
+          type?: 'dataset';
           /**
            * How to access the dataset bytes (path/url/etc).
            */
@@ -172,14 +179,14 @@ export interface AtmosSpec {
           /**
            * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
            */
-          dimensions: {
-            latitude: AdditionalProperties;
-            longitude: AdditionalProperties;
+          dims: {
+            lat: Lat;
+            lon: Lat;
             /**
              * Time dimension definition.
              */
             time:
-              | AdditionalProperties
+              | Lat
               | {
                   /**
                    * Name of the NetCDF dimension (e.g., 'Time')
@@ -214,7 +221,7 @@ export interface AtmosSpec {
               /**
                * Optional variable holding vertical coordinate values (if available).
                */
-              coordinate?: string | null;
+              coord?: string | null;
               title?: string;
               description?: string;
               /**
@@ -249,7 +256,7 @@ export interface AtmosSpec {
                     positive?: 'up' | 'down';
                   };
             } | null;
-            site?: AdditionalProperties1;
+            id?: Lat1;
           };
           /**
            * Missing/invalid-data rules for this dataset (optional).
@@ -285,13 +292,20 @@ export interface AtmosSpec {
           /**
            * Variables available in the dataset.
            */
-          variables: {
-            [k: string]: unknown;
+          vars: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
           }[];
           description?: string;
           [k: string]: unknown;
         } & {
-          kind: 'collection';
+          type: 'collection';
           /**
            * Defines the set of members in the collection.
            */
@@ -326,14 +340,9 @@ export interface AtmosSpec {
         })
       | {
           /**
-           * Optional discriminator for GeoJSON datasets.
-           */
-          kind?: 'geojson';
-          /**
            * Unique identifier for this data item.
            */
           id: string;
-          description?: string;
           source: ({
             [k: string]: unknown;
           } & {
@@ -345,8 +354,12 @@ export interface AtmosSpec {
           /**
            * Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).
            */
-          properties?: {
-            [k: string]: AdditionalProperties;
+          dims?: {
+            id: {
+              key: string;
+              [k: string]: unknown;
+            };
+            [k: string]: unknown;
           };
         }
     ),
@@ -359,14 +372,14 @@ export interface AtmosSpec {
           /**
            * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
            */
-          dimensions: {
-            latitude: AdditionalProperties;
-            longitude: AdditionalProperties;
+          dims: {
+            lat: Lat;
+            lon: Lat;
             /**
              * Time dimension definition.
              */
             time:
-              | AdditionalProperties
+              | Lat
               | {
                   /**
                    * Name of the NetCDF dimension (e.g., 'Time')
@@ -401,7 +414,7 @@ export interface AtmosSpec {
               /**
                * Optional variable holding vertical coordinate values (if available).
                */
-              coordinate?: string | null;
+              coord?: string | null;
               title?: string;
               description?: string;
               /**
@@ -436,7 +449,7 @@ export interface AtmosSpec {
                     positive?: 'up' | 'down';
                   };
             } | null;
-            site?: AdditionalProperties1;
+            id?: Lat1;
           };
           /**
            * Missing/invalid-data rules for this dataset (optional).
@@ -472,8 +485,15 @@ export interface AtmosSpec {
           /**
            * Variables available in the dataset.
            */
-          variables: {
-            [k: string]: unknown;
+          vars: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
           }[];
           description?: string;
           [k: string]: unknown;
@@ -481,7 +501,7 @@ export interface AtmosSpec {
           /**
            * Defaults to 'dataset' if omitted.
            */
-          kind?: 'dataset';
+          type?: 'dataset';
           /**
            * How to access the dataset bytes (path/url/etc).
            */
@@ -510,14 +530,14 @@ export interface AtmosSpec {
           /**
            * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
            */
-          dimensions: {
-            latitude: AdditionalProperties;
-            longitude: AdditionalProperties;
+          dims: {
+            lat: Lat;
+            lon: Lat;
             /**
              * Time dimension definition.
              */
             time:
-              | AdditionalProperties
+              | Lat
               | {
                   /**
                    * Name of the NetCDF dimension (e.g., 'Time')
@@ -552,7 +572,7 @@ export interface AtmosSpec {
               /**
                * Optional variable holding vertical coordinate values (if available).
                */
-              coordinate?: string | null;
+              coord?: string | null;
               title?: string;
               description?: string;
               /**
@@ -587,7 +607,7 @@ export interface AtmosSpec {
                     positive?: 'up' | 'down';
                   };
             } | null;
-            site?: AdditionalProperties1;
+            id?: Lat1;
           };
           /**
            * Missing/invalid-data rules for this dataset (optional).
@@ -623,13 +643,20 @@ export interface AtmosSpec {
           /**
            * Variables available in the dataset.
            */
-          variables: {
-            [k: string]: unknown;
+          vars: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
           }[];
           description?: string;
           [k: string]: unknown;
         } & {
-          kind: 'collection';
+          type: 'collection';
           /**
            * Defines the set of members in the collection.
            */
@@ -664,14 +691,9 @@ export interface AtmosSpec {
         })
       | {
           /**
-           * Optional discriminator for GeoJSON datasets.
-           */
-          kind?: 'geojson';
-          /**
            * Unique identifier for this data item.
            */
           id: string;
-          description?: string;
           source: ({
             [k: string]: unknown;
           } & {
@@ -683,205 +705,196 @@ export interface AtmosSpec {
           /**
            * Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).
            */
-          properties?: {
-            [k: string]: AdditionalProperties;
+          dims?: {
+            id: {
+              key: string;
+              [k: string]: unknown;
+            };
+            [k: string]: unknown;
           };
         }
     )[]
   ];
   transform?: (
-    | ({
-        description?: string;
-        /**
-         * Dimension name to reduce across (e.g., 'member').
-         */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'derive';
-        input: {
-          data: string;
-        };
-        /**
-         * Expression AST node. Either an operator, a variable reference, or a constant.
-         */
-        expression:
-          | {
-              [k: string]: unknown;
-            }
-          | {
+    | (
+        | {
+            type: 'derive';
+            /**
+             * Expression AST node. Either an operator, a variable reference, or a constant.
+             */
+            expr:
+              | {
+                  [k: string]: unknown;
+                }
+              | {
+                  /**
+                   * Optional dataset id (root.data[i].id) used to disambiguate variable references.
+                   */
+                  data?: string;
+                  /**
+                   * Reference to a variable id
+                   */
+                  var: string;
+                }
+              | {
+                  /**
+                   * Constant literal
+                   */
+                  const: number | string | boolean;
+                };
+            out: Out;
+          }
+        | {
+            type: 'derive';
+            expr: {
+              op: 'diagnostic.slp';
               /**
-               * Optional dataset id (root.data[i].id) used to disambiguate variable references.
+               * @minItems 4
+               * @maxItems 4
                */
-              data?: string;
-              /**
-               * Reference to a variable id
-               */
-              variable: string;
-            }
-          | {
-              /**
-               * Constant literal
-               */
-              const: number | string | boolean;
-            }
-          | {
-              const_ref: string;
+              args: {
+                [k: string]: unknown;
+              } & [
+                {
+                  data: string;
+                  var: string;
+                  role: 'sp' | 'at2m' | 'wvmr2m' | 'hgt';
+                },
+                {
+                  data: string;
+                  var: string;
+                  role: 'sp' | 'at2m' | 'wvmr2m' | 'hgt';
+                },
+                {
+                  data: string;
+                  var: string;
+                  role: 'sp' | 'at2m' | 'wvmr2m' | 'hgt';
+                },
+                {
+                  data: string;
+                  var: string;
+                  role: 'sp' | 'at2m' | 'wvmr2m' | 'hgt';
+                }
+              ];
             };
-        output: Output;
+            out: Out;
+          }
+        | {
+            type: 'derive';
+            expr: {
+              op: 'diagnostic.wind.cartesian' | 'diagnostic.wind.polar';
+              /**
+               * @minItems 2
+               * @maxItems 2
+               */
+              args: {
+                [k: string]: unknown;
+              } & [
+                {
+                  data: string;
+                  var: string;
+                  role: 'u' | 'v';
+                },
+                {
+                  data: string;
+                  var: string;
+                  role: 'u' | 'v';
+                }
+              ];
+            };
+            out: Out;
+          }
+      )
+    | {
         [k: string]: unknown;
-      })
-    | ({
-        description?: string;
+      }
+    | {
+        type: 'relate';
+        by: string | string[];
         /**
-         * Dimension name to reduce across (e.g., 'member').
+         * Relational expression over multiple inputs (match/join/lookup/regrid).
          */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'derive_wind_speed';
-        input: {
-          data: string;
-          u: string;
-          v: string;
-        };
-        output: Output;
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
+        expr:
+          | {
+              op: 'match';
+              /**
+               * @minItems 2
+               * @maxItems 2
+               */
+              args: [Items, Items];
+              params?: {
+                space?: {
+                  method: 'nearest' | 'bilinear' | 'idw' | 'within' | 'exact';
+                  maxDistance?: number;
+                  k?: number;
+                  power?: number;
+                  crs?: string;
+                };
+                time?: {
+                  [k: string]: unknown;
+                };
+                rename?: Rename;
+                suffix?: Suffix;
+                keep?: {
+                  unmatched: 'drop' | 'keep_left' | 'keep_right' | 'keep_both';
+                };
+              };
+            }
+          | {
+              op: 'join';
+              /**
+               * @minItems 2
+               * @maxItems 2
+               */
+              args: [Items, Items];
+              params?: {
+                how?: 'inner' | 'left' | 'right' | 'outer';
+                rename?: Rename;
+                suffix?: Suffix;
+              };
+            };
+        out: Out;
+      }
+    | {
+        type: 'reduce';
         /**
-         * Dimension name to reduce across (e.g., 'member').
+         * Semantic axis. The compiler maps it to dataset-specific dims/columns (e.g., WRF bottom_top -> level).
          */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'derive_wind_direction';
-        input: {
-          data: string;
-          /**
-           * Variable id of zonal (east-west) wind component.
-           */
-          u: string;
-          /**
-           * Variable id of meridional (north-south) wind component.
-           */
-          v: string;
-          /**
-           * Wind direction convention. 'from' follows meteorological standard.
-           */
-          convention?: 'from' | 'to';
-          /**
-           * Output angular units.
-           */
-          units?: 'deg' | 'rad';
-        };
-        output: Output;
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
+        across: 'member' | 'time' | 'space' | 'level';
         /**
-         * Dimension name to reduce across (e.g., 'member').
+         * Reduce expression AST node (numeric reducers and probability reducers).
          */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'derive_wind_vector';
-        description?: string;
-        input: {
-          data: string;
-          variables: {
-            u: string;
-            v: string;
-          };
-        };
-        output: Output;
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
-        /**
-         * Dimension name to reduce across (e.g., 'member').
-         */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
-        /**
-         * Dimension name to reduce across (e.g., 'member').
-         */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'merge';
-        /**
-         * Input dataset ids to merge (typically outputs of prior transforms).
-         *
-         * @minItems 2
-         */
-        input: [string, string, ...string[]];
-        /**
-         * How to handle missing values when reducing.
-         */
-        missing?: 'skip' | 'propagate';
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
-        /**
-         * Dimension name to reduce across (e.g., 'member').
-         */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'match';
-        forecast: Obs;
-        obs: Obs;
-        space: {
-          /**
-           * Spatial matching method (v0 supports nearest neighbor).
-           */
-          method: 'nearest';
-          /**
-           * Which dataset's locations define the matched rows.
-           */
-          anchor: 'forecast' | 'obs';
-          /**
-           * Variable ids from the anchor dataset to carry through to the output rows.
-           */
-          preserve?: string[];
-          [k: string]: unknown;
-        };
-        time: {
-          [k: string]: unknown;
-        };
-        /**
-         * How to handle missing values when reducing.
-         */
-        missing?: 'skip' | 'propagate';
-        output: Output;
-        [k: string]: unknown;
-      })
-    | ({
-        description?: string;
-        /**
-         * Dimension name to reduce across (e.g., 'member').
-         */
-        across?: 'member' | 'time' | 'space';
-        [k: string]: unknown;
-      } & {
-        type: 'diagnostic.slp';
-        description?: string;
-        input: {
-          [k: string]: unknown;
-        };
-        output: Output;
-        [k: string]: unknown;
-      })
+        expr:
+          | {
+              op: 'mean' | 'sum' | 'min' | 'max' | 'median' | 'std' | 'var' | 'count' | 'first' | 'last';
+              /**
+               * @minItems 1
+               * @maxItems 1
+               */
+              args: [Items1];
+              /**
+               * Optional reducer parameters (future-proof).
+               */
+              params?: {
+                [k: string]: unknown;
+              };
+            }
+          | {
+              op: 'prob';
+              /**
+               * @minItems 1
+               * @maxItems 1
+               */
+              args: [unknown];
+              /**
+               * Optional probability params (e.g., missing policy).
+               */
+              params?: {
+                [k: string]: unknown;
+              };
+            };
+        out: Out;
+      }
   )[];
   /**
    * A composition arranges multiple views and optionally defines shared time control and cross-view actions.
@@ -3608,7 +3621,7 @@ export interface AtmosSpec {
                       input:
                         | {
                             data: string;
-                            variable: string;
+                            var: string;
                           }
                         | {
                             data: string;
@@ -8048,7 +8061,7 @@ export interface AtmosSpec {
                       input:
                         | {
                             data: string;
-                            variable: string;
+                            var: string;
                           }
                         | {
                             data: string;
@@ -12930,7 +12943,7 @@ export interface AtmosSpec {
                       input:
                         | {
                             data: string;
-                            variable: string;
+                            var: string;
                           }
                         | {
                             data: string;
@@ -17370,7 +17383,7 @@ export interface AtmosSpec {
                       input:
                         | {
                             data: string;
-                            variable: string;
+                            var: string;
                           }
                         | {
                             data: string;
@@ -19868,7 +19881,7 @@ export interface AtmosSpec {
 /**
  * Basic dimension definition.
  */
-export interface AdditionalProperties {
+export interface Lat {
   /**
    * Key to access a coordinate variable in the data source
    */
@@ -19878,78 +19891,44 @@ export interface AdditionalProperties {
 /**
  * Basic dimension definition.
  */
-export interface AdditionalProperties1 {
+export interface Lat1 {
   /**
    * Key to access a coordinate variable in the data source
    */
   key: string;
   description?: string;
 }
-export interface Output {
+export interface Out {
   /**
    * Id of the derived dataset produced by this transform.
    */
   data: string;
   /**
-   * @minItems 1
+   * Id of the derived variable produced by this transform.
    */
-  variables: [
-    (
-      | {
-          id?: string;
-          kind: 'grid' | 'table' | 'point' | 'vector';
-          units?: string;
-          description?: string;
-          [k: string]: unknown;
-        }
-      | {
-          id: string;
-          kind: 'vector';
-          /**
-           * @minItems 2
-           * @maxItems 2
-           */
-          components: ['speed' | 'direction', 'speed' | 'direction'];
-          directionConvention?: 'from' | 'to';
-          directionUnits?: 'deg' | 'rad';
-          directionReference?: 'north_clockwise';
-          units?: string;
-          description?: string;
-        }
-    ),
-    ...(
-      | {
-          id?: string;
-          kind: 'grid' | 'table' | 'point' | 'vector';
-          units?: string;
-          description?: string;
-          [k: string]: unknown;
-        }
-      | {
-          id: string;
-          kind: 'vector';
-          /**
-           * @minItems 2
-           * @maxItems 2
-           */
-          components: ['speed' | 'direction', 'speed' | 'direction'];
-          directionConvention?: 'from' | 'to';
-          directionUnits?: 'deg' | 'rad';
-          directionReference?: 'north_clockwise';
-          units?: string;
-          description?: string;
-        }
-    )[]
-  ];
-  [k: string]: unknown;
+  var?: string;
+}
+export interface Items {
+  data: string;
+  var: string;
 }
 /**
- * Reference to a variable within a named dataset (or transform output dataset).
+ * Rename outputs by arg index: '0', '1', ...
  */
-export interface Obs {
+export interface Rename {
+  /**
+   * This interface was referenced by `Rename`'s JSON-Schema definition
+   * via the `patternProperty` "^[0-9]+$".
+   */
+  [k: string]: string;
+}
+export interface Suffix {
+  left: string;
+  right: string;
+}
+export interface Items1 {
   data: string;
-  variable: string;
-  [k: string]: unknown;
+  var: string;
 }
 /**
  * Optional view-local time selection. If omitted, view may inherit composition time.
@@ -20087,7 +20066,7 @@ export interface Filter {
 }
 export interface Input {
   data: string;
-  variable: string;
+  var: string;
   /**
    * Optional vertical level selection (for 3D variables).
    */

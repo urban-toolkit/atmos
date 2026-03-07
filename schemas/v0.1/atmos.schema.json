@@ -44,21 +44,35 @@
                     "type": "string",
                     "description": "Unique identifier for this data item."
                   },
-                  "dimensions": {
+                  "dims": {
                     "description": "How to read coordinate axes (lat/lon/time/level/member) from this dataset.",
                     "type": "object",
                     "properties": {
-                      "latitude": {
-                        "$ref": "#/properties/data/items/oneOf/2/properties/properties/additionalProperties"
+                      "lat": {
+                        "type": "object",
+                        "description": "Basic dimension definition.",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "description": "Key to access a coordinate variable in the data source"
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key"
+                        ],
+                        "additionalProperties": false
                       },
-                      "longitude": {
-                        "$ref": "#/properties/data/items/oneOf/2/properties/properties/additionalProperties"
+                      "lon": {
+                        "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat"
                       },
                       "time": {
                         "description": "Time dimension definition.",
                         "oneOf": [
                           {
-                            "$ref": "#/properties/data/items/oneOf/2/properties/properties/additionalProperties"
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat"
                           },
                           {
                             "type": "object",
@@ -126,7 +140,7 @@
                                 "type": "string",
                                 "description": "Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric')."
                               },
-                              "coordinate": {
+                              "coord": {
                                 "description": "Optional variable holding vertical coordinate values (if available).",
                                 "oneOf": [
                                   {
@@ -307,14 +321,14 @@
                           }
                         ]
                       },
-                      "site": {
-                        "$ref": "#/properties/data/items/oneOf/2/properties/properties/additionalProperties",
+                      "id": {
+                        "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat",
                         "description": "Optional identifier dimension for station/site-based datasets (e.g., station_id)."
                       }
                     },
                     "required": [
-                      "latitude",
-                      "longitude",
+                      "lat",
+                      "lon",
                       "time"
                     ],
                     "additionalProperties": false
@@ -365,7 +379,7 @@
                     },
                     "additionalProperties": false
                   },
-                  "variables": {
+                  "vars": {
                     "type": "array",
                     "description": "Variables available in the dataset.",
                     "items": {
@@ -379,75 +393,13 @@
                         "key": {
                           "type": "string",
                           "description": "Key to access the variable in the data source."
-                        },
-                        "title": {
-                          "type": "string",
-                          "description": "Human-readable variable name."
-                        },
-                        "units": {
-                          "type": "string",
-                          "description": "Units of the variable (optional)."
-                        },
-                        "vector": {
-                          "type": "object",
-                          "description": "Optional metadata declaring this variable as a component of a vector field.",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Vector identifier (e.g., 'wind10')."
-                            },
-                            "component": {
-                              "type": "string",
-                              "description": "Component label (e.g., 'u','v','w').",
-                              "enum": [
-                                "u",
-                                "v",
-                                "w"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "component"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "kind": {
-                          "type": "string",
-                          "description": "High-level data form to inform geometry and downstream validation.",
-                          "enum": [
-                            "grid",
-                            "point",
-                            "table",
-                            "unknown"
-                          ]
                         }
                       },
                       "required": [
                         "id",
-                        "key",
-                        "kind"
+                        "key"
                       ],
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "if": {
-                            "required": [
-                              "vector"
-                            ]
-                          },
-                          "then": {
-                            "properties": {
-                              "kind": {
-                                "enum": [
-                                  "grid",
-                                  "point"
-                                ]
-                              }
-                            }
-                          }
-                        }
-                      ]
+                      "additionalProperties": false
                     }
                   },
                   "description": {
@@ -456,14 +408,14 @@
                 },
                 "required": [
                   "id",
-                  "dimensions",
-                  "variables"
+                  "dims",
+                  "vars"
                 ]
               },
               {
                 "type": "object",
                 "properties": {
-                  "kind": {
+                  "type": {
                     "type": "string",
                     "enum": [
                       "dataset"
@@ -510,7 +462,7 @@
               {
                 "type": "object",
                 "properties": {
-                  "kind": {
+                  "type": {
                     "type": "string",
                     "const": "collection"
                   },
@@ -639,7 +591,7 @@
                   }
                 },
                 "required": [
-                  "kind",
+                  "type",
                   "members",
                   "sourceTemplate"
                 ]
@@ -655,17 +607,9 @@
               "source"
             ],
             "properties": {
-              "kind": {
-                "type": "string",
-                "const": "geojson",
-                "description": "Optional discriminator for GeoJSON datasets."
-              },
               "id": {
                 "type": "string",
                 "description": "Unique identifier for this data item."
-              },
-              "description": {
-                "type": "string"
               },
               "source": {
                 "allOf": [
@@ -764,26 +708,25 @@
                   }
                 ]
               },
-              "properties": {
+              "dims": {
                 "type": "object",
                 "description": "Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).",
-                "additionalProperties": {
-                  "type": "object",
-                  "description": "Basic dimension definition.",
-                  "properties": {
-                    "key": {
-                      "type": "string",
-                      "description": "Key to access a coordinate variable in the data source"
+                "properties": {
+                  "id": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      }
                     },
-                    "description": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "key"
-                  ],
-                  "additionalProperties": false
-                }
+                    "required": [
+                      "key"
+                    ]
+                  }
+                },
+                "required": [
+                  "id"
+                ]
               }
             }
           }
@@ -797,636 +740,27 @@
         "description": "A transformation step. Execution order is determined by variable dependencies and then list order for ties.",
         "oneOf": [
           {
-            "allOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "across": {
-                    "type": "string",
-                    "enum": [
-                      "member",
-                      "time",
-                      "space"
-                    ],
-                    "default": "space",
-                    "description": "Dimension name to reduce across (e.g., 'member')."
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "const": "derive"
-                  },
-                  "input": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
-                      }
-                    },
-                    "required": [
-                      "data"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "expression": {
-                    "description": "Expression AST node. Either an operator, a variable reference, or a constant.",
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "op": {
-                            "type": "string",
-                            "enum": [
-                              "add",
-                              "sub",
-                              "mul",
-                              "div",
-                              "pow",
-                              "min",
-                              "max",
-                              "abs",
-                              "sqrt",
-                              "log",
-                              "exp",
-                              "atan2",
-                              "mod"
-                            ]
-                          },
-                          "args": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {
-                              "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/expression"
-                            }
-                          }
-                        },
-                        "required": [
-                          "op",
-                          "args"
-                        ],
-                        "additionalProperties": false,
-                        "allOf": [
-                          {
-                            "if": {
-                              "properties": {
-                                "op": {
-                                  "enum": [
-                                    "abs",
-                                    "sqrt",
-                                    "log",
-                                    "exp"
-                                  ]
-                                }
-                              }
-                            },
-                            "then": {
-                              "properties": {
-                                "args": {
-                                  "minItems": 1,
-                                  "maxItems": 1
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "if": {
-                              "properties": {
-                                "op": {
-                                  "enum": [
-                                    "atan2",
-                                    "mod",
-                                    "pow",
-                                    "sub",
-                                    "div"
-                                  ]
-                                }
-                              }
-                            },
-                            "then": {
-                              "properties": {
-                                "args": {
-                                  "minItems": 2,
-                                  "maxItems": 2
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "if": {
-                              "properties": {
-                                "op": {
-                                  "enum": [
-                                    "add",
-                                    "mul",
-                                    "min",
-                                    "max"
-                                  ]
-                                }
-                              }
-                            },
-                            "then": {
-                              "properties": {
-                                "args": {
-                                  "minItems": 2
-                                }
-                              }
-                            }
-                          }
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "description": "Reference to a variable id, optionally scoped to a dataset.",
-                        "properties": {
-                          "data": {
-                            "type": "string",
-                            "description": "Optional dataset id (root.data[i].id) used to disambiguate variable references."
-                          },
-                          "variable": {
-                            "type": "string",
-                            "minLength": 1,
-                            "description": "Reference to a variable id"
-                          }
-                        },
-                        "required": [
-                          "variable"
-                        ],
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "const": {
-                            "description": "Constant literal",
-                            "oneOf": [
-                              {
-                                "type": "number"
-                              },
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "boolean"
-                              }
-                            ]
-                          }
-                        },
-                        "required": [
-                          "const"
-                        ],
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "description": "Reference a named constant declared in root.constants.",
-                        "properties": {
-                          "const_ref": {
-                            "type": "string",
-                            "minLength": 1
-                          }
-                        },
-                        "required": [
-                          "const_ref"
-                        ],
-                        "additionalProperties": false
-                      }
-                    ]
-                  },
-                  "output": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Id of the derived dataset produced by this transform."
-                      },
-                      "variables": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "grid",
-                                    "table",
-                                    "point",
-                                    "vector"
-                                  ]
-                                },
-                                "units": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "description": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "kind"
-                              ],
-                              "unevaluatedProperties": false
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "kind": {
-                                  "const": "vector"
-                                },
-                                "components": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string",
-                                    "enum": [
-                                      "speed",
-                                      "direction"
-                                    ]
-                                  },
-                                  "minItems": 2,
-                                  "maxItems": 2
-                                },
-                                "directionConvention": {
-                                  "type": "string",
-                                  "enum": [
-                                    "from",
-                                    "to"
-                                  ]
-                                },
-                                "directionUnits": {
-                                  "type": "string",
-                                  "enum": [
-                                    "deg",
-                                    "rad"
-                                  ]
-                                },
-                                "directionReference": {
-                                  "type": "string",
-                                  "enum": [
-                                    "north_clockwise"
-                                  ]
-                                },
-                                "units": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "description": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "id",
-                                "kind",
-                                "components"
-                              ],
-                              "additionalProperties": false
-                            }
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "variables"
-                    ],
-                    "unevaluatedProperties": false
-                  }
-                },
-                "required": [
-                  "type",
-                  "input",
-                  "expression",
-                  "output"
-                ]
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "derive"
               }
+            },
+            "required": [
+              "type"
             ],
-            "unevaluatedProperties": false
-          },
-          {
             "allOf": [
               {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "const": "derive_wind_speed"
-                  },
-                  "input": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "u": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "v": {
-                        "type": "string",
-                        "minLength": 1
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "u",
-                      "v"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
-                  }
-                },
-                "required": [
-                  "type",
-                  "input",
-                  "output"
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "description": "Compute wind direction from u and v components.",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "const": "derive_wind_direction"
-                  },
-                  "input": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "u": {
-                        "type": "string",
-                        "description": "Variable id of zonal (east-west) wind component.",
-                        "minLength": 1
-                      },
-                      "v": {
-                        "type": "string",
-                        "description": "Variable id of meridional (north-south) wind component.",
-                        "minLength": 1
-                      },
-                      "convention": {
-                        "type": "string",
-                        "enum": [
-                          "from",
-                          "to"
-                        ],
-                        "default": "from",
-                        "description": "Wind direction convention. 'from' follows meteorological standard."
-                      },
-                      "units": {
-                        "type": "string",
-                        "enum": [
-                          "deg",
-                          "rad"
-                        ],
-                        "default": "deg",
-                        "description": "Output angular units."
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "u",
-                      "v"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
-                  }
-                },
-                "required": [
-                  "type",
-                  "input",
-                  "output"
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "const": "derive_wind_vector"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "input": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "variables": {
-                        "type": "object",
-                        "properties": {
-                          "u": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "v": {
-                            "type": "string",
-                            "minLength": 1
-                          }
-                        },
-                        "required": [
-                          "u",
-                          "v"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "variables"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
-                  }
-                },
-                "required": [
-                  "type",
-                  "input",
-                  "output"
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "description": "Reduce a variable across a named dimension (e.g., ensemble member). Produces a derived variable.",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "const": "reduce"
-                  },
-                  "input": {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "variables"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "op": {
-                    "type": "string",
-                    "enum": [
-                      "mean",
-                      "sum",
-                      "min",
-                      "max",
-                      "count",
-                      "std",
-                      "var",
-                      "prob"
-                    ]
-                  },
-                  "predicate": {
-                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/event/properties/predicate",
-                    "description": "Required when op='prob'. Predicate is evaluated per element; prob is fraction of true values."
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
-                  },
-                  "missing": {
-                    "type": "string",
-                    "enum": [
-                      "skip",
-                      "propagate"
-                    ],
-                    "default": "skip",
-                    "description": "How to handle missing values when reducing."
-                  }
-                },
-                "required": [
-                  "type",
-                  "input",
-                  "op",
-                  "output"
-                ],
-                "allOf": [
+                "oneOf": [
                   {
-                    "if": {
-                      "properties": {
-                        "op": {
-                          "const": "prob"
-                        }
-                      }
-                    },
-                    "then": {
-                      "required": [
-                        "predicate"
-                      ]
-                    }
-                  }
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "const": "verify"
-                  },
-                  "forecast": {
-                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
-                  },
-                  "obs": {
                     "type": "object",
-                    "description": "Reference to a variable within a named dataset (or transform output dataset).",
+                    "description": "Regular derive operations.",
                     "properties": {
-                      "data": {
-                        "type": "string",
-                        "minLength": 1
+                      "type": {
+                        "const": "derive"
                       },
-                      "variable": {
-                        "type": "string",
-                        "minLength": 1
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "variable"
-                    ],
-                    "unevaluatedProperties": false
-                  },
-                  "op": {
-                    "type": "string",
-                    "enum": [
-                      "rmse",
-                      "mae",
-                      "bias",
-                      "corr",
-                      "pod",
-                      "far",
-                      "csi"
-                    ]
-                  },
-                  "event": {
-                    "type": "object",
-                    "properties": {
-                      "predicate": {
-                        "description": "Boolean predicate expression used for events and probability reductions.",
+                      "expr": {
+                        "description": "Expression AST node. Either an operator, a variable reference, or a constant.",
                         "oneOf": [
                           {
                             "type": "object",
@@ -1434,22 +768,26 @@
                               "op": {
                                 "type": "string",
                                 "enum": [
-                                  "gt",
-                                  "gte",
-                                  "lt",
-                                  "lte",
-                                  "eq",
-                                  "neq",
-                                  "and",
-                                  "or",
-                                  "not"
+                                  "add",
+                                  "sub",
+                                  "mul",
+                                  "div",
+                                  "pow",
+                                  "min",
+                                  "max",
+                                  "abs",
+                                  "sqrt",
+                                  "log",
+                                  "exp",
+                                  "atan2",
+                                  "mod"
                                 ]
                               },
                               "args": {
                                 "type": "array",
                                 "minItems": 1,
                                 "items": {
-                                  "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/event/properties/predicate"
+                                  "$ref": "#/properties/transform/items/oneOf/0/allOf/0/oneOf/0/properties/expr"
                                 }
                               }
                             },
@@ -1463,7 +801,12 @@
                                 "if": {
                                   "properties": {
                                     "op": {
-                                      "const": "not"
+                                      "enum": [
+                                        "abs",
+                                        "sqrt",
+                                        "log",
+                                        "exp"
+                                      ]
                                     }
                                   }
                                 },
@@ -1481,8 +824,33 @@
                                   "properties": {
                                     "op": {
                                       "enum": [
-                                        "and",
-                                        "or"
+                                        "atan2",
+                                        "mod",
+                                        "pow",
+                                        "sub",
+                                        "div"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "then": {
+                                  "properties": {
+                                    "args": {
+                                      "minItems": 2,
+                                      "maxItems": 2
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "if": {
+                                  "properties": {
+                                    "op": {
+                                      "enum": [
+                                        "add",
+                                        "mul",
+                                        "min",
+                                        "max"
                                       ]
                                     }
                                   }
@@ -1494,40 +862,21 @@
                                     }
                                   }
                                 }
-                              },
-                              {
-                                "if": {
-                                  "properties": {
-                                    "op": {
-                                      "enum": [
-                                        "gt",
-                                        "gte",
-                                        "lt",
-                                        "lte",
-                                        "eq",
-                                        "neq"
-                                      ]
-                                    }
-                                  }
-                                },
-                                "then": {
-                                  "properties": {
-                                    "args": {
-                                      "minItems": 1,
-                                      "maxItems": 2
-                                    }
-                                  },
-                                  "description": "Comparisons may use a single threshold arg (implicit target) or two explicit args."
-                                }
                               }
                             ]
                           },
                           {
                             "type": "object",
+                            "description": "Reference to a variable id, optionally scoped to a dataset.",
                             "properties": {
+                              "data": {
+                                "type": "string",
+                                "description": "Optional dataset id (root.data[i].id) used to disambiguate variable references."
+                              },
                               "var": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "description": "Reference to a variable id"
                               }
                             },
                             "required": [
@@ -1538,8 +887,8 @@
                           {
                             "type": "object",
                             "properties": {
-                              "value": {
-                                "description": "Literal threshold/value used in predicates.",
+                              "const": {
+                                "description": "Constant literal",
                                 "oneOf": [
                                   {
                                     "type": "number"
@@ -1554,333 +903,1118 @@
                               }
                             },
                             "required": [
-                              "value"
+                              "const"
                             ],
                             "additionalProperties": false
                           }
                         ]
+                      },
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
                       }
                     },
                     "required": [
-                      "predicate"
+                      "type",
+                      "expr",
+                      "out"
                     ],
                     "additionalProperties": false
                   },
-                  "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
-                  }
-                },
-                "required": [
-                  "type",
-                  "forecast",
-                  "obs",
-                  "op",
-                  "output"
-                ],
-                "allOf": [
                   {
-                    "if": {
-                      "properties": {
-                        "op": {
-                          "enum": [
-                            "pod",
-                            "far",
-                            "csi"
-                          ]
-                        }
-                      }
-                    },
-                    "then": {
-                      "required": [
-                        "event"
-                      ]
-                    }
-                  }
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "description": "Merge multiple transform-produced datasets into one dataset by joining on shared dimensions (runtime-defined).",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "const": "merge"
-                  },
-                  "input": {
-                    "type": "array",
-                    "minItems": 2,
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "description": "Input dataset ids to merge (typically outputs of prior transforms)."
-                  },
-                  "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
-                  }
-                },
-                "required": [
-                  "type",
-                  "input"
-                ]
-              }
-            ],
-            "unevaluatedProperties": false
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "const": "match"
-                  },
-                  "forecast": {
-                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
-                  },
-                  "obs": {
-                    "$ref": "#/properties/transform/items/oneOf/5/allOf/1/properties/obs"
-                  },
-                  "space": {
                     "type": "object",
+                    "description": "Diagnose sea-level pressure (SLP) from near-surface fields.",
                     "properties": {
-                      "method": {
-                        "type": "string",
-                        "enum": [
-                          "nearest"
-                        ],
-                        "description": "Spatial matching method (v0 supports nearest neighbor)."
+                      "type": {
+                        "const": "derive"
                       },
-                      "anchor": {
-                        "type": "string",
-                        "enum": [
-                          "forecast",
-                          "obs"
-                        ],
-                        "description": "Which dataset's locations define the matched rows."
-                      },
-                      "preserve": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": "Variable ids from the anchor dataset to carry through to the output rows."
-                      }
-                    },
-                    "required": [
-                      "method",
-                      "anchor"
-                    ],
-                    "unevaluatedProperties": false
-                  },
-                  "time": {
-                    "type": "object",
-                    "properties": {
-                      "anchor": {
-                        "type": "string",
-                        "enum": [
-                          "forecast",
-                          "obs"
-                        ],
-                        "description": "Which dataset defines the output time grid (alias: 'target')."
-                      },
-                      "target": {
-                        "type": "string",
-                        "enum": [
-                          "forecast",
-                          "obs"
-                        ],
-                        "description": "Alias for 'anchor' (accepted for compatibility)."
-                      },
-                      "bin": {
-                        "type": "string",
-                        "enum": [
-                          "step"
-                        ],
-                        "description": "Temporal binning strategy."
-                      },
-                      "op": {
-                        "type": "string",
-                        "enum": [
-                          "mean",
-                          "sum"
-                        ],
-                        "description": "Aggregation operator applied within each time bin."
-                      },
-                      "coverage": {
+                      "expr": {
                         "type": "object",
                         "properties": {
-                          "minFraction": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1,
-                            "description": "Minimum fraction of samples required in a bin to keep the aggregated value."
+                          "op": {
+                            "const": "diagnostic.slp"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "sp",
+                                    "at2m",
+                                    "wvmr2m",
+                                    "hgt"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var",
+                                "role"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "allOf": [
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "sp"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "at2m"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "wvmr2m"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "hgt"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              }
+                            ]
                           }
                         },
                         "required": [
-                          "minFraction"
+                          "op",
+                          "args"
                         ],
-                        "unevaluatedProperties": false
+                        "additionalProperties": false
                       },
-                      "closed": {
-                        "type": "string",
-                        "enum": [
-                          "left",
-                          "right"
-                        ],
-                        "description": "Which side of the bin interval is closed."
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
                       }
                     },
                     "required": [
-                      "bin",
-                      "op"
+                      "type",
+                      "expr",
+                      "out"
                     ],
-                    "allOf": [
-                      {
-                        "oneOf": [
-                          {
-                            "required": [
-                              "anchor"
-                            ],
-                            "not": {
-                              "required": [
-                                "target"
-                              ]
-                            }
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Diagnose wind from near-surface fields.",
+                    "properties": {
+                      "type": {
+                        "const": "derive"
+                      },
+                      "expr": {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "enum": [
+                              "diagnostic.wind.cartesian",
+                              "diagnostic.wind.polar"
+                            ]
                           },
-                          {
-                            "required": [
-                              "target"
-                            ],
-                            "not": {
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "u",
+                                    "v"
+                                  ]
+                                }
+                              },
                               "required": [
-                                "anchor"
-                              ]
-                            }
+                                "data",
+                                "var",
+                                "role"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "allOf": [
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "u"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "v"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              }
+                            ]
                           }
-                        ]
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
                       }
+                    },
+                    "required": [
+                      "type",
+                      "expr",
+                      "out"
                     ],
-                    "unevaluatedProperties": false
-                  },
-                  "missing": {
-                    "$ref": "#/properties/transform/items/oneOf/4/allOf/1/properties/missing"
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
+                    "additionalProperties": false
                   }
-                },
-                "required": [
-                  "type",
-                  "forecast",
-                  "obs",
-                  "space",
-                  "time",
-                  "output"
                 ]
               }
-            ],
-            "unevaluatedProperties": false
+            ]
           },
           {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "aggregate"
+              }
+            },
+            "required": [
+              "type"
+            ],
             "allOf": [
               {
-                "$ref": "#/properties/transform/items/oneOf/0/allOf/0"
-              },
-              {
                 "type": "object",
-                "description": "Diagnose sea-level pressure (SLP) from near-surface fields.",
                 "properties": {
                   "type": {
+                    "const": "aggregate"
+                  },
+                  "across": {
                     "type": "string",
-                    "const": "diagnostic.slp"
+                    "enum": [
+                      "time",
+                      "space"
+                    ]
                   },
-                  "description": {
-                    "type": "string"
+                  "by": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
                   },
-                  "input": {
+                  "expr": {},
+                  "out": {
                     "type": "object",
                     "properties": {
                       "data": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "description": "Id of the derived dataset produced by this transform."
                       },
-                      "surfacePressure": {
+                      "var": {
                         "type": "string",
-                        "minLength": 1
-                      },
-                      "airTemperature2m": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "waterVaporMixingRatio2m": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "surfaceHeight": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "surfaceGeopotential": {
-                        "type": "string",
-                        "minLength": 1
+                        "description": "Id of the derived variable produced by this transform."
                       }
                     },
                     "required": [
-                      "data",
-                      "surfacePressure",
-                      "airTemperature2m",
-                      "waterVaporMixingRatio2m"
-                    ],
-                    "oneOf": [
-                      {
-                        "required": [
-                          "surfaceHeight"
-                        ],
-                        "not": {
-                          "required": [
-                            "surfaceGeopotential"
-                          ]
-                        }
-                      },
-                      {
-                        "required": [
-                          "surfaceGeopotential"
-                        ],
-                        "not": {
-                          "required": [
-                            "surfaceHeight"
-                          ]
-                        }
-                      }
+                      "data"
                     ],
                     "additionalProperties": false
-                  },
-                  "output": {
-                    "$ref": "#/properties/transform/items/oneOf/0/allOf/1/properties/output"
                   }
                 },
                 "required": [
                   "type",
-                  "input",
-                  "output"
+                  "across",
+                  "by",
+                  "expr",
+                  "out"
                 ],
-                "unevaluatedProperties": false
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "aggregate"
+                        },
+                        "across": {
+                          "const": "time"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "across"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "expr": {
+                          "type": "object",
+                          "description": "Aggregate over time: resample/bin in time then reduce (mean/sum/...). Works for table or grid inputs.",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": [
+                                "mean",
+                                "sum",
+                                "min",
+                                "max",
+                                "median",
+                                "std",
+                                "var",
+                                "count",
+                                "first",
+                                "last"
+                              ]
+                            },
+                            "freq": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "args": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "data": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "var": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "select": {
+                                    "type": "object",
+                                    "description": "Optional selector for where/how to aggregate values. Supports either grid field selection or table XY/value selection.",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "x": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "y": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false,
+                                    "oneOf": [
+                                      {
+                                        "required": [
+                                          "field"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "value"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "x",
+                                          "y",
+                                          "value"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "data",
+                                  "var"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "params": {
+                              "type": "object",
+                              "properties": {
+                                "closed": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "right"
+                                  ]
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "right"
+                                  ]
+                                },
+                                "origin": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "offset": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "freq",
+                            "args"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "aggregate"
+                        },
+                        "across": {
+                          "const": "space"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "across"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "expr": {
+                          "type": "object",
+                          "description": "Aggregate over space: spatial binning (optional) then reduce (mean/sum/...). Works for table or grid inputs.",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": [
+                                "mean",
+                                "sum",
+                                "min",
+                                "max",
+                                "median",
+                                "std",
+                                "var",
+                                "count",
+                                "first",
+                                "last"
+                              ]
+                            },
+                            "bin": {
+                              "type": "object",
+                              "description": "Defines how space is binned/grouped before reduction. Optional if `by` already defines spatial groups (e.g., region_id).",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "grid",
+                                    "hex",
+                                    "polygon"
+                                  ]
+                                },
+                                "size": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                },
+                                "crs": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "polygonData": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "polygonId": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "if": {
+                                    "properties": {
+                                      "type": {
+                                        "enum": [
+                                          "grid",
+                                          "hex"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type"
+                                    ]
+                                  },
+                                  "then": {
+                                    "required": [
+                                      "size"
+                                    ]
+                                  }
+                                },
+                                {
+                                  "if": {
+                                    "properties": {
+                                      "type": {
+                                        "const": "polygon"
+                                      }
+                                    },
+                                    "required": [
+                                      "type"
+                                    ]
+                                  },
+                                  "then": {
+                                    "required": [
+                                      "polygonData",
+                                      "polygonId"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "args": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "data": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "var": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "select": {
+                                    "type": "object",
+                                    "description": "Optional selector for where/how to aggregate values. Supports either grid field selection or table XY/value selection.",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "x": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "y": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false,
+                                    "oneOf": [
+                                      {
+                                        "required": [
+                                          "field"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "value"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "x",
+                                          "y",
+                                          "value"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "data",
+                                  "var"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "args"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "relate"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "relate"
+                  },
+                  "by": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  },
+                  "expr": {
+                    "description": "Relational expression over multiple inputs (match/join/lookup/regrid).",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "match"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "properties": {
+                              "space": {
+                                "type": "object",
+                                "properties": {
+                                  "method": {
+                                    "type": "string",
+                                    "enum": [
+                                      "nearest",
+                                      "bilinear",
+                                      "idw",
+                                      "within",
+                                      "exact"
+                                    ]
+                                  },
+                                  "maxDistance": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "k": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "power": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "crs": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "method"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "time": {
+                                "type": "object",
+                                "properties": {
+                                  "method": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exact",
+                                      "nearest"
+                                    ]
+                                  },
+                                  "tolerance": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "method"
+                                ],
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "if": {
+                                      "properties": {
+                                        "method": {
+                                          "const": "nearest"
+                                        }
+                                      },
+                                      "required": [
+                                        "method"
+                                      ]
+                                    },
+                                    "then": {
+                                      "required": [
+                                        "tolerance"
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              "rename": {
+                                "type": "object",
+                                "description": "Rename outputs by arg index: '0', '1', ...",
+                                "patternProperties": {
+                                  "^[0-9]+$": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "minProperties": 1
+                              },
+                              "suffix": {
+                                "type": "object",
+                                "properties": {
+                                  "left": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "right": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "left",
+                                  "right"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "keep": {
+                                "type": "object",
+                                "properties": {
+                                  "unmatched": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drop",
+                                      "keep_left",
+                                      "keep_right",
+                                      "keep_both"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "unmatched"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "join"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/args/items"
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "properties": {
+                              "how": {
+                                "type": "string",
+                                "enum": [
+                                  "inner",
+                                  "left",
+                                  "right",
+                                  "outer"
+                                ]
+                              },
+                              "rename": {
+                                "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/params/properties/rename"
+                              },
+                              "suffix": {
+                                "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/params/properties/suffix"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "out": {
+                    "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                  }
+                },
+                "required": [
+                  "type",
+                  "by",
+                  "expr",
+                  "out"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "reduce"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "reduce"
+                  },
+                  "across": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "time",
+                      "space",
+                      "level"
+                    ],
+                    "description": "Semantic axis. The compiler maps it to dataset-specific dims/columns (e.g., WRF bottom_top -> level)."
+                  },
+                  "expr": {
+                    "description": "Reduce expression AST node (numeric reducers and probability reducers).",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "type": "string",
+                            "enum": [
+                              "mean",
+                              "sum",
+                              "min",
+                              "max",
+                              "median",
+                              "std",
+                              "var",
+                              "count",
+                              "first",
+                              "last"
+                            ]
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "description": "Optional reducer parameters (future-proof).",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "prob"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "description": "Boolean predicate expression (used by prob).",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte",
+                                        "eq",
+                                        "neq"
+                                      ]
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "maxItems": 2,
+                                      "items": {
+                                        "description": "Scalar numeric value in expressions: either a value ref or a constant.",
+                                        "oneOf": [
+                                          {
+                                            "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/0/properties/args/items"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "const": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "required": [
+                                              "const"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "and",
+                                        "or"
+                                      ]
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "items": {
+                                        "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/1/properties/args/items"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "const": "not"
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 1,
+                                      "maxItems": 1,
+                                      "items": {
+                                        "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/1/properties/args/items"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "tsType": "unknown"
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "description": "Optional probability params (e.g., missing policy).",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "out": {
+                    "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                  }
+                },
+                "required": [
+                  "type",
+                  "across",
+                  "expr",
+                  "out"
+                ],
+                "additionalProperties": false
               }
             ]
           }
@@ -2212,14 +2346,14 @@
                                           "type": "object",
                                           "required": [
                                             "data",
-                                            "variable"
+                                            "var"
                                           ],
                                           "properties": {
                                             "data": {
                                               "type": "string",
                                               "minLength": 1
                                             },
-                                            "variable": {
+                                            "var": {
                                               "type": "string",
                                               "minLength": 1
                                             },
@@ -3054,14 +3188,14 @@
                                                   "type": "string",
                                                   "minLength": 1
                                                 },
-                                                "variable": {
+                                                "var": {
                                                   "type": "string",
                                                   "minLength": 1
                                                 }
                                               },
                                               "required": [
                                                 "data",
-                                                "variable"
+                                                "var"
                                               ],
                                               "additionalProperties": false
                                             },

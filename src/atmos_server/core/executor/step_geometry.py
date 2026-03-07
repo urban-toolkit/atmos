@@ -75,15 +75,30 @@ def _encoding_style_dict(g: dict[str, Any]) -> dict[str, Any]:
 
 
 def _levels_from_geometry_spec(g: dict[str, Any]) -> list[float] | None:
+    # 1 — direct geometry.levels
     levels_obj = g.get("levels")
+
+    # 2 — geometry.build[*].levels
     if levels_obj is None:
         build = g.get("build")
         if isinstance(build, list):
             for item in build:
-                if isinstance(item, dict) and "levels" in item:
-                    levels_obj = item["levels"]
-                    break
+                if isinstance(item, dict):
+                    if "levels" in item:
+                        levels_obj = item["levels"]
+                        break
+
+                    # support build patterns like {"type":"levels", ...}
+                    if item.get("type") == "levels":
+                        levels_obj = item
+                        break
+
+    if levels_obj is None:
+        return None
+
     return _levels_from_spec(levels_obj)
+
+
 
 
 # -------------------------------------------------------------------

@@ -180,7 +180,7 @@ def _maybe_enrich_geometry_resolved(
 
 def _resolved_mesh_like(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str, Any]:
     input_data = ginput.get("data")
-    input_var = ginput.get("variable")
+    input_var = ginput.get("var")
 
     base_data: str | None = None
     if isinstance(input_data, str):
@@ -195,17 +195,17 @@ def _resolved_mesh_like(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[
 
     if base_data is not None:
         d = ctx.data_by_id[base_data]
-        dims = d.get("dimensions") or {}
+        dims = d.get("dims") or {}
 
-        lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
-        lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+        lat_key = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
+        lon_key = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
 
         # For derived datasets, the xarray variable name should be the derived variable id itself
         if isinstance(input_data, str) and input_data in ctx.derived_data_to_step:
             if isinstance(input_var, str):
                 var_key = input_var
         else:
-            vars_ = d.get("variables") or []
+            vars_ = d.get("vars") or []
             if isinstance(input_var, str) and isinstance(vars_, list):
                 for vv in vars_:
                     if isinstance(vv, dict) and vv.get("id") == input_var:
@@ -228,7 +228,7 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
         raise ValueError("vector geometry requires input object")
 
     input_data = inp.get("data")
-    input_var = inp.get("variable")
+    input_var = inp.get("var")
     if not isinstance(input_data, str) or not isinstance(input_var, str):
         raise ValueError("vector geometry requires input.data and input.variable")
 
@@ -237,9 +237,9 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
         base_data = ctx.derived_data_to_base_data[input_data]
 
     base = ctx.data_by_id.get(base_data) or {}
-    dims = base.get("dimensions") or {}
-    lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
-    lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+    dims = base.get("dims") or {}
+    lat_key = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
+    lon_key = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
 
     if not isinstance(lat_key, str) or not isinstance(lon_key, str):
         raise ValueError(f"vector geometry could not resolve lat/lon keys for base data '{base_data}'")
@@ -248,11 +248,8 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
     resolved["latKey"] = lat_key
     resolved["lonKey"] = lon_key
 
-    # convention: f"{var_id}.speed"/".direction"
-    # resolved["speedKey"] = f"{input_var}.speed"
-    # resolved["directionKey"] = f"{input_var}.direction"
-    resolved["speedKey"] = f"{input_var}_speed"
-    resolved["directionKey"] = f"{input_var}_direction"
+    resolved["speedKey"] = f"{input_var}.speed"
+    resolved["directionKey"] = f"{input_var}.direction"
     resolved["variableId"] = input_var
     resolved["baseDataId"] = base_data
     resolved["dataId"] = input_data
@@ -262,20 +259,20 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
 
 def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str, Any]:
     input_data = ginput.get("data")
-    input_var = ginput.get("variable")
+    input_var = ginput.get("var")
 
     lat_key = lon_key = site_key = time_key = var_key = None
 
     if isinstance(input_data, str) and input_data in ctx.data_by_id:
         d = ctx.data_by_id[input_data]
-        dims = d.get("dimensions") or {}
+        dims = d.get("dims") or {}
 
-        lat_key = (dims.get("latitude") or {}).get("key") if isinstance(dims.get("latitude"), dict) else None
-        lon_key = (dims.get("longitude") or {}).get("key") if isinstance(dims.get("longitude"), dict) else None
+        lat_key = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
+        lon_key = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
         site_key = (dims.get("site") or {}).get("key") if isinstance(dims.get("site"), dict) else None
         time_key = (dims.get("time") or {}).get("key") if isinstance(dims.get("time"), dict) else None
 
-        vars_ = d.get("variables") or []
+        vars_ = d.get("vars") or []
         if isinstance(input_var, str) and isinstance(vars_, list):
             for vv in vars_:
                 if isinstance(vv, dict) and vv.get("id") == input_var:

@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "id": "stationsObs",
+      "type": "dataset",
+      "source": {
+        "type": "csv",
+        "path": "tests/data/stations/stations.csv"
+      },
+
+      "dims": {
+        "id": { "key": "id" },
+        "lat": { "key": "lat" },
+        "lon": { "key": "lon" },
+        "time": {
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC"
+        }
+      },
+      "vars": [
+        { "id": "rain", "key": "obs" }
+      ]   
+     },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 2,
+      "repeatView": [
+        {
+          "type": "timestep",
+          "indices": [0, 1],
+          "view": "view1"
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "stations",
+            "geometry": {
+              "type": "point",
+              "input": { "data": "stationsObs", "var": "rain" },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "rain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Inferno",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

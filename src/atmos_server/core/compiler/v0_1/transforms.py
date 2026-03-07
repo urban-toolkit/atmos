@@ -49,7 +49,7 @@ def _var_id_to_key(ctx: CompileContext, data_id: str, var_id: str) -> str | None
     d = ctx.data_by_id.get(data_id)
     if not isinstance(d, dict):
         return None
-    vars_ = d.get("variables") or []
+    vars_ = d.get("vars") or []
     if not isinstance(vars_, list):
         return None
     for vv in vars_:
@@ -75,11 +75,15 @@ def _infer_base_data_id_from_transform(t: dict[str, Any], params: dict[str, Any]
 
 
 def _track_derived_output(ctx: CompileContext, t: dict[str, Any], step_id: str, *, params: dict[str, Any]) -> None:
-    out = t.get("output")
+    out = t.get("out")
     if not isinstance(out, dict):
         return
+
     out_data = out.get("data")
+    out_var = out.get("var")
     if not isinstance(out_data, str) or not out_data:
+        return
+    if not isinstance(out_var, str) or not out_var:
         return
 
     ctx.derived_data_to_step[out_data] = step_id
@@ -88,19 +92,66 @@ def _track_derived_output(ctx: CompileContext, t: dict[str, Any], step_id: str, 
     if isinstance(base, str) and base:
         ctx.derived_data_to_base_data[out_data] = base
 
+        base_spec = ctx.data_by_id.get(base)
+        if isinstance(base_spec, dict):
+            ctx.data_by_id[out_data] = {
+                **base_spec,
+                "id": out_data,
+                "vars": [{"id": out_var, "key": out_var}],
+            }
+
+
+def _enrich_diagnostic_wind_polar(ctx: CompileContext, params: dict[str, Any]) -> None:
+    expr = params.get("expr") or {}
+    args = expr.get("args") or []
+
+    base_data = None
+    resolved: dict[str, Any] = {}
+
+    role_map = {
+        "u": "uKey",
+        "v": "vKey",
+    }
+
+    for a in args:
+        if not isinstance(a, dict):
+            continue
+
+        data_id = a.get("data")
+        var_id = a.get("var")
+        role = a.get("role")
+
+        if not isinstance(data_id, str) or not isinstance(var_id, str):
+            continue
+
+        if base_data is None:
+            base_data = data_id
+
+        key = _var_id_to_key(ctx, data_id, var_id)
+        if key and role in role_map:
+            resolved[role_map[role]] = key
+
+    if not isinstance(base_data, str):
+        raise ValueError("diagnostic.wind.polar: could not infer base dataset")
+
+    params["data"] = base_data
+    params["_resolved"] = {**dict(params.get("_resolved") or {}), **resolved}
+
 
 def _enrich_transform_params(ctx: CompileContext, params: dict[str, Any], step_id: str) -> None:
     ttype = params.get("type")
 
-    if ttype == "derive_wind_vector":
-        _enrich_derive_wind_vector(ctx, params)
-        return
-
-    if ttype == "diagnostic.slp":
-        _enrich_diagnostic_slp(ctx, params)
-        return
-
     if ttype == "derive":
+        expr = params.get("expr") or {}
+        op = expr.get("op")
+
+        if op == "diagnostic.slp":
+            _enrich_diagnostic_slp(ctx, params)
+
+        if op == "diagnostic.wind.polar":
+            _enrich_diagnostic_wind_polar(ctx, params)
+            return
+
         _enrich_generic_derive(ctx, params)
         return
 
@@ -114,7 +165,7 @@ def _enrich_derive_wind_vector(ctx: CompileContext, params: dict[str, Any]) -> N
     if not isinstance(base_data, str) or not base_data:
         raise ValueError("derive_wind_vector requires input.data")
 
-    vars_map = tin.get("variables") or {}
+    vars_map = tin.get("vars") or {}
     if not isinstance(vars_map, dict):
         raise ValueError("derive_wind_vector requires input.variables object")
 
@@ -135,48 +186,67 @@ def _enrich_derive_wind_vector(ctx: CompileContext, params: dict[str, Any]) -> N
 
 
 def _enrich_diagnostic_slp(ctx: CompileContext, params: dict[str, Any]) -> None:
-    inp = params.get("input") or {}
-    if not isinstance(inp, dict):
-        raise ValueError("diagnostic.slp input must be an object")
 
-    base_data = inp.get("data")
-    if not isinstance(base_data, str) or not base_data:
-        base_data = params.get("data")
-    if not isinstance(base_data, str) or not base_data:
-        raise ValueError("diagnostic.slp requires input.data (or legacy transform.data)")
+    expr = params.get("expr") or {}
+    args = expr.get("args") or []
 
-    # normalize so downstream uses params["data"]
-    params["data"] = base_data
-
+    base_data = None
     resolved: dict[str, Any] = {}
-    for role, key_name in [
-        ("surfacePressure", "surfacePressureKey"),
-        ("airTemperature2m", "airTemperature2mKey"),
-        ("waterVaporMixingRatio2m", "waterVaporMixingRatio2mKey"),
-        ("surfaceHeight", "surfaceHeightKey"),
-        ("surfaceGeopotential", "surfaceGeopotentialKey"),
-    ]:
-        var_id = inp.get(role)
-        if isinstance(var_id, str):
-            k = _var_id_to_key(ctx, base_data, var_id)
-            if k:
-                resolved[key_name] = k
 
+    role_map = {
+        "sp": "surfacePressureKey",
+        "at2m": "airTemperature2mKey",
+        "wvmr2m": "waterVaporMixingRatio2mKey",
+        "hgt": "surfaceHeightKey",
+        "geopot": "surfaceGeopotentialKey",
+    }
+
+    for a in args:
+        if not isinstance(a, dict):
+            continue
+
+        data_id = a.get("data")
+        var_id = a.get("var")
+        role = a.get("role")
+
+        if not isinstance(data_id, str) or not isinstance(var_id, str):
+            continue
+
+        if base_data is None:
+            base_data = data_id
+
+        key = _var_id_to_key(ctx, data_id, var_id)
+        if key and role in role_map:
+            resolved[role_map[role]] = key
+
+    if not isinstance(base_data, str):
+        raise ValueError("diagnostic.slp: could not infer base dataset")
+
+    params["data"] = base_data
     params["_resolved"] = resolved
 
 
 def _enrich_generic_derive(ctx: CompileContext, params: dict[str, Any]) -> None:
-    tin = params.get("input") or {}
-    if not isinstance(tin, dict):
-        raise ValueError("derive requires input object")
+    base_data = None
 
-    base_data = tin.get("data")
-    if not isinstance(base_data, str) or not base_data:
-        raise ValueError("derive requires input.data")
-
-    expr = params.get("expression") or {}
+    expr = params.get("expr") or {}
     if not isinstance(expr, dict):
         return
+
+    def _find_base(node):
+        if isinstance(node, dict):
+            if "data" in node and isinstance(node["data"], str):
+                return node["data"]
+            for a in node.get("args", []):
+                d = _find_base(a)
+                if d:
+                    return d
+        return None
+
+    base_data = _find_base(expr)
+
+    if not isinstance(base_data, str):
+        raise ValueError("derive: could not infer input data from expression")
 
     resolved = dict(params.get("_resolved") or {})
     var_map = dict(resolved.get("varMap") or {})
@@ -185,8 +255,8 @@ def _enrich_generic_derive(ctx: CompileContext, params: dict[str, Any]) -> None:
         if not isinstance(node, dict):
             return
 
-        if "variable" in node and isinstance(node["variable"], str):
-            var_id = node["variable"]
+        if "var" in node and isinstance(node["var"], str):
+            var_id = node["var"]
             k = _var_id_to_key(ctx, base_data, var_id)
             if k:
                 var_map[var_id] = k
@@ -199,3 +269,4 @@ def _enrich_generic_derive(ctx: CompileContext, params: dict[str, Any]) -> None:
     _walk(expr)
     resolved["varMap"] = var_map
     params["_resolved"] = resolved
+    params["data"] = base_data

@@ -34,7 +34,7 @@ def test_run_executes_geojson_load(tmp_path: Path):
     manifest = run_plan(plan, tmp_path / "artifacts")
 
     # Find at least one load step and confirm it executed or is marked todo/error appropriately
-    load_steps = [s for s in manifest["steps"] if s["kind"] == "load"]
+    load_steps = [s for s in manifest["steps"] if s["type"] == "load"]
     assert load_steps, "Expected at least one load step"
 
     # If the fixture contains a geojson data source, at least one load should be ok

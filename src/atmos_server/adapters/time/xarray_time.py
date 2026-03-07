@@ -46,7 +46,7 @@ class XarrayTimeLenResolver(TimeLenResolver):
             raise ValueError(f"repeatView: netcdf source.path missing for data '{data_id}'")
 
         # Prefer declared time dim
-        dims = d.get("dimensions") or {}
+        dims = d.get("dims") or {}
         time_spec = dims.get("time") if isinstance(dims, dict) else None
         declared_time_dim = time_spec.get("dim") if isinstance(time_spec, dict) else None
 
