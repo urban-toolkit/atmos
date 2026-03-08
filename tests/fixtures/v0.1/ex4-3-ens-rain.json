@@ -5,7 +5,7 @@
       "type": "collection",
 
       "members": {
-        "count": 3,
+        "count": 4,
         "indexStart": 0,
         "idPattern": "m{index}"
       },
@@ -67,7 +67,7 @@
             "id": "lrain",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "wrfEnsRain", "var": "accRain", "dims": { "time": 60, "member": [0, 1, 2] } },
+              "input": { "data": "wrfEnsRain", "var": "accRain", "dims": { "time": 60, "member": [0, 1, 2, 3] } },
               "build": [
                 {
                   "levels": {

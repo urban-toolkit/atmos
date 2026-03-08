@@ -22,6 +22,165 @@ ScalarOrVector = Union[NumberLike, VectorLike]
 # Generic helpers
 # ============================================================
 
+def _eval_reduce_expr(
+    node: Any,
+    ds,
+    *,
+    step_id: str,
+    var_map: dict[str, str] | None = None
+):
+    var_map = var_map or {}
+
+    if not isinstance(node, dict):
+        raise ValueError(f"reduce: invalid expression node {node!r} (step {step_id})")
+
+    if "const" in node:
+        return node["const"]
+
+    if "var" in node:
+        var_id = node["var"]
+        if not isinstance(var_id, str):
+            raise ValueError(f"reduce: invalid var reference (step {step_id})")
+
+        key = var_map.get(var_id, var_id)
+        if key not in ds:
+            raise KeyError(f"reduce: variable '{key}' not found in dataset (step {step_id})")
+        return ds[key]
+
+    op = node.get("op")
+    args = node.get("args", [])
+    values = [_eval_reduce_expr(a, ds, step_id=step_id, var_map=var_map) for a in args]
+
+    # -------- comparisons --------
+    if op == "gt":
+        return values[0] > values[1]
+    if op == "lt":
+        return values[0] < values[1]
+    if op == "ge":
+        return values[0] >= values[1]
+    if op == "le":
+        return values[0] <= values[1]
+    if op == "eq":
+        return values[0] == values[1]
+    if op == "ne":
+        return values[0] != values[1]
+
+    # -------- logic --------
+    if op == "and":
+        result = values[0]
+        for v in values[1:]:
+            result = result & v
+        return result
+
+    if op == "or":
+        result = values[0]
+        for v in values[1:]:
+            result = result | v
+        return result
+
+    if op == "not":
+        if len(values) != 1:
+            raise ValueError(f"reduce: 'not' expects exactly one arg (step {step_id})")
+        return ~values[0]
+
+    # -------- optional numeric ops --------
+    if op == "add":
+        result = values[0]
+        for v in values[1:]:
+            result = result + v
+        return result
+
+    if op == "sub":
+        result = values[0]
+        for v in values[1:]:
+            result = result - v
+        return result
+
+    if op == "mul":
+        result = values[0]
+        for v in values[1:]:
+            result = result * v
+        return result
+
+    if op == "div":
+        result = values[0]
+        for v in values[1:]:
+            result = result / v
+        return result
+
+    raise NotImplementedError(f"reduce: expression op '{op}' not supported (step {step_id})")
+
+def _apply_reduce_op(
+    op: str,
+    value,
+    *,
+    dim: str,
+    step_id: str,
+):
+    if op == "mean":
+        return value.mean(dim=dim, skipna=True)
+
+    if op == "sum":
+        return value.sum(dim=dim, skipna=True)
+
+    if op == "min":
+        return value.min(dim=dim, skipna=True)
+
+    if op == "max":
+        return value.max(dim=dim, skipna=True)
+
+    if op == "std":
+        return value.std(dim=dim, skipna=True)
+
+    if op == "var":
+        return value.var(dim=dim, skipna=True)
+
+    if op == "count":
+        return value.count(dim=dim)
+
+    if op == "prob":
+        # probability = fraction of members/times where condition is true
+        return value.astype(float).mean(dim=dim, skipna=True)
+
+    raise NotImplementedError(f"reduce op '{op}' not supported (step {step_id})")
+
+def _eval_reduce_condition(node, ds, var_key):
+
+    if "const" in node:
+        return node["const"]
+
+    if "data" in node and "var" in node:
+        key = var_key
+        return ds[key]
+
+    op = node.get("op")
+    args = node.get("args", [])
+
+    vals = [_eval_reduce_condition(a, ds, var_key) for a in args]
+
+    if op == "gt":
+        return vals[0] > vals[1]
+
+    if op == "lt":
+        return vals[0] < vals[1]
+
+    if op == "ge":
+        return vals[0] >= vals[1]
+
+    if op == "le":
+        return vals[0] <= vals[1]
+
+    if op == "eq":
+        return vals[0] == vals[1]
+
+    if op == "and":
+        return vals[0] & vals[1]
+
+    if op == "or":
+        return vals[0] | vals[1]
+
+    raise NotImplementedError(f"reduce condition op '{op}' not supported")
+
 def _resolved_dict(t: dict[str, Any]) -> dict[str, Any]:
     resolved = t.get("_resolved")
     return resolved if isinstance(resolved, dict) else {}
@@ -518,30 +677,39 @@ def _transform_dataobject_derive(
             
             elif op == "pow":
                 result = values[0] ** values[1]
+                return result, sources
 
             elif op == "min":
                 result = np.minimum(values[0], values[1])
+                return result, sources
 
             elif op == "max":
                 result = np.maximum(values[0], values[1])
+                return result, sources
 
             elif op == "abs":
                 result = np.abs(values[0])
+                return result, sources
 
             elif op == "sqrt":
                 result = np.sqrt(values[0])
+                return result, sources
 
             elif op == "log":
                 result = np.log(values[0])
+                return result, sources
 
             elif op == "exp":
                 result = np.exp(values[0])
+                return result, sources
 
             elif op == "atan2":
                 result = np.arctan2(values[0], values[1])
+                return result, sources
 
             elif op == "mod":
                 result = values[0] % values[1]
+                return result, sources
 
             raise NotImplementedError(f"derive: op '{op}' not supported yet (step {step.id})")
 
@@ -567,7 +735,6 @@ def _transform_dataobject_derive(
     ds2[out_var_id] = result
     return DataObject(id=out_data, dataset=ds2)
 
-
 def _transform_dataobject_reduce(
     step: Step,
     t: dict[str, Any],
@@ -575,11 +742,8 @@ def _transform_dataobject_reduce(
 ) -> DataObject:
     ds = upstream_obj.dataset
     resolved = _resolved_dict(t)
-    var_key = resolved.get("varKey")
     dim = resolved.get("dim")
 
-    if not isinstance(var_key, str) or var_key not in ds:
-        raise KeyError(f"reduce: variable '{var_key}' not found (step {step.id})")
     if not isinstance(dim, str) or dim not in ds.dims:
         raise KeyError(f"reduce: dimension '{dim}' not found (step {step.id})")
 
@@ -590,25 +754,30 @@ def _transform_dataobject_reduce(
     op = expr.get("op")
     if not isinstance(op, str) or not op:
         raise ValueError(f"reduce: expr.op must be a non-empty string (step {step.id})")
-    
-    da = ds[var_key]
 
-    if op == "mean":
-        reduced = da.mean(dim=dim, skipna=True)
-    elif op == "sum":
-        reduced = da.sum(dim=dim, skipna=True)
-    elif op == "min":
-        reduced = da.min(dim=dim, skipna=True)
-    elif op == "max":
-        reduced = da.max(dim=dim, skipna=True)
-    elif op == "std":
-        reduced = da.std(dim=dim, skipna=True)
-    elif op == "var":
-        reduced = da.var(dim=dim, skipna=True)
-    elif op == "count":
-        reduced = da.count(dim=dim)
-    else:
-        raise NotImplementedError(f"reduce op '{op}' not supported (step {step.id})")
+    args = expr.get("args") or []
+    if not (isinstance(args, list) and len(args) == 1 and isinstance(args[0], dict)):
+        raise ValueError(
+            f"reduce: expr.args must contain exactly one argument (step {step.id})"
+        )
+
+    var_map = resolved.get("varMap")
+    if not isinstance(var_map, dict):
+        var_map = {}
+
+    value = _eval_reduce_expr(
+        args[0],
+        ds,
+        step_id=step.id,
+        var_map=var_map,
+    )
+
+    reduced = _apply_reduce_op(
+        op,
+        value,
+        dim=dim,
+        step_id=step.id,
+    )
 
     out_data, out_var_id = _require_output_data_and_var_id(
         t,
@@ -619,7 +788,6 @@ def _transform_dataobject_reduce(
     ds2 = ds.copy()
     ds2[out_var_id] = reduced
     return DataObject(id=out_data, dataset=ds2)
-
 
 # ============================================================
 # DataFrame branch

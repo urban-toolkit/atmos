@@ -266,59 +266,33 @@ def _enrich_reduce(ctx: CompileContext, params: dict[str, Any]) -> None:
     if not isinstance(expr, dict):
         raise ValueError("reduce: expr must be an object")
 
+    args = expr.get("args") or []
+    if not (isinstance(args, list) and len(args) == 1 and isinstance(args[0], dict)):
+        raise ValueError("reduce: expr.args must contain exactly one input")
+
+    a0 = args[0]
+    data_id = a0.get("data")
+    var_id = a0.get("var")
     across = params.get("across")
-    if not isinstance(across, str) or not across:
-        raise ValueError("reduce: across must be a non-empty string")
+
+    if not isinstance(data_id, str) or not isinstance(var_id, str):
+        raise ValueError("reduce: input data/var missing")
+
+    var_key = _var_id_to_key(ctx, data_id, var_id)
+    if not isinstance(var_key, str):
+        raise ValueError(f"reduce: could not resolve var '{var_id}' in data '{data_id}'")
 
     dim_map = {
         "member": "member",
         "time": "Time",
     }
+    if not isinstance(across, str) or not across:
+        raise ValueError("reduce: across must be a non-empty string")
+
     dim = dim_map.get(across, across)
 
-    def _find_base_data(node: Any) -> str | None:
-        if not isinstance(node, dict):
-            return None
-
-        data_id = node.get("data")
-        if isinstance(data_id, str) and data_id:
-            return data_id
-
-        args = node.get("args")
-        if isinstance(args, list):
-            for a in args:
-                found = _find_base_data(a)
-                if found:
-                    return found
-        return None
-
-    base_data = _find_base_data(expr)
-    if not isinstance(base_data, str):
-        raise ValueError("reduce: could not infer input data from expression")
-
     resolved = dict(params.get("_resolved") or {})
-    var_map = dict(resolved.get("varMap") or {})
-
-    def _walk(node: Any) -> None:
-        if not isinstance(node, dict):
-            return
-
-        data_id = node.get("data")
-        var_id = node.get("var")
-
-        if isinstance(data_id, str) and isinstance(var_id, str):
-            key = _var_id_to_key(ctx, data_id, var_id)
-            if key:
-                var_map[var_id] = key
-
-        args = node.get("args")
-        if isinstance(args, list):
-            for a in args:
-                _walk(a)
-
-    _walk(expr)
-
+    resolved["varKey"] = var_key
     resolved["dim"] = dim
-    resolved["varMap"] = var_map
     params["_resolved"] = resolved
-    params["data"] = base_data
+    params["data"] = data_id
