@@ -866,7 +866,7 @@ export interface AtmosSpec {
          */
         expr:
           | {
-              op: 'mean' | 'sum' | 'min' | 'max' | 'median' | 'std' | 'var' | 'count' | 'first' | 'last';
+              op: 'mean' | 'sum' | 'min' | 'max' | 'median' | 'std' | 'var' | 'count' | 'first' | 'last' | 'quantile';
               /**
                * @minItems 1
                * @maxItems 1

@@ -22,6 +22,21 @@ ScalarOrVector = Union[NumberLike, VectorLike]
 # Generic helpers
 # ============================================================
 
+def _require_quantile_q(expr: dict[str, Any], *, step_id: str) -> float:
+    params = expr.get("params")
+    if not isinstance(params, dict):
+        raise ValueError(f"quantile: expr.params must be an object (step {step_id})")
+
+    q = params.get("q")
+    if not isinstance(q, (int, float)):
+        raise ValueError(f"quantile: expr.params.q must be a number in [0, 1] (step {step_id})")
+
+    q = float(q)
+    if q < 0.0 or q > 1.0:
+        raise ValueError(f"quantile: expr.params.q must be in [0, 1] (step {step_id})")
+
+    return q
+
 def _eval_reduce_expr(
     node: Any,
     ds,
@@ -116,6 +131,7 @@ def _apply_reduce_op(
     *,
     dim: str,
     step_id: str,
+    expr: dict[str, Any] | None = None,
 ):
     if op == "mean":
         return value.mean(dim=dim, skipna=True)
@@ -139,8 +155,24 @@ def _apply_reduce_op(
         return value.count(dim=dim)
 
     if op == "prob":
-        # probability = fraction of members/times where condition is true
         return value.astype(float).mean(dim=dim, skipna=True)
+
+    if op == "quantile":
+        if not isinstance(expr, dict):
+            raise ValueError(f"quantile: missing expression object (step {step_id})")
+
+        q = _require_quantile_q(expr, step_id=step_id)
+
+        reduced = value.quantile(q, dim=dim, skipna=True)
+
+        # xarray may keep a scalar 'quantile' coord; drop it if present
+        try:
+            if "quantile" in reduced.coords:
+                reduced = reduced.reset_coords("quantile", drop=True)
+        except Exception:
+            pass
+
+        return reduced
 
     raise NotImplementedError(f"reduce op '{op}' not supported (step {step_id})")
 
@@ -777,6 +809,7 @@ def _transform_dataobject_reduce(
         value,
         dim=dim,
         step_id=step.id,
+        expr=expr,
     )
 
     out_data, out_var_id = _require_output_data_and_var_id(
