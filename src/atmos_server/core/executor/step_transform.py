@@ -169,6 +169,9 @@ def _execute_dataobject_transform(step: Step, t: dict[str, Any], upstream_obj: D
     if ttype == "select_time_index":
         return _transform_dataobject_select_time_index(step, t, upstream_obj)
 
+    if ttype == "select_member_index":
+        return _transform_dataobject_select_member_index(step, t, upstream_obj)
+
     if ttype == "derive_wind_vector":
         return _transform_dataobject_derive_wind_vector(step, t, upstream_obj)
 
@@ -211,6 +214,50 @@ def _transform_dataobject_select_time_index(
         )
 
     ds2 = ds.isel({time_dim: idx})
+    print("select_time_index idx =", idx)
+    print("before time select dims =", ds.dims)
+    print("after time select dims =", ds2.dims)
+
+    return DataObject(id=upstream_obj.id, dataset=ds2)
+
+def _transform_dataobject_select_member_index(
+    step: Step,
+    t: dict[str, Any],
+    upstream_obj: DataObject,
+) -> DataObject:
+    idx = t.get("index")
+    if not isinstance(idx, int) or idx < 0:
+        raise ValueError(
+            f"select_member_index: 'index' must be a non-negative int (step {step.id})"
+        )
+
+    ds = upstream_obj.dataset
+
+    if "member" not in ds.dims:
+        return upstream_obj
+
+    if idx >= ds.sizes["member"]:
+        raise IndexError(
+            f"select_member_index: index {idx} out of bounds for dim 'member' "
+            f"(size={ds.sizes['member']}) (step {step.id})"
+        )
+
+    ds2 = ds.isel(member=idx)
+    print("select_member_index idx =", idx)
+    print("before member select dims =", ds.dims)
+    print("after member select dims =", ds2.dims)
+
+    print("member idx =", idx)
+    for name in ["RAINNC", "RAINC", "accRain"]:
+        if name in ds2:
+            da = ds2[name]
+            print(
+                name,
+                "min=", float(da.min().item()),
+                "max=", float(da.max().item()),
+                "sample00=", float(da.isel(south_north=0, west_east=0).item()),
+            )
+
     return DataObject(id=upstream_obj.id, dataset=ds2)
 
 def _transform_dataobject_derive_wind_vector(
@@ -503,6 +550,8 @@ def _transform_dataobject_derive(
         )
 
     result, sources = eval_node(expr)
+    print("derive result dims =", result.dims)
+    print("derive result shape =", result.shape)
 
     attrs = _first_input_attrs(sources)
     if attrs and hasattr(result, "assign_attrs"):
@@ -534,7 +583,14 @@ def _transform_dataobject_reduce(
     if not isinstance(dim, str) or dim not in ds.dims:
         raise KeyError(f"reduce: dimension '{dim}' not found (step {step.id})")
 
-    op = t.get("op")
+    expr = t.get("expr") or {}
+    if not isinstance(expr, dict):
+        raise ValueError(f"reduce: expr must be an object (step {step.id})")
+
+    op = expr.get("op")
+    if not isinstance(op, str) or not op:
+        raise ValueError(f"reduce: expr.op must be a non-empty string (step {step.id})")
+    
     da = ds[var_key]
 
     if op == "mean":

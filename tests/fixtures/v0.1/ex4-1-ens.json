@@ -1,27 +1,36 @@
 {
   "data": [
     {
-      "id": "stationsObs",
-      "type": "dataset",
-      "source": {
-        "type": "csv",
-        "path": "tests/data/stations/stations.csv"
+      "id": "wrfEns",
+      "type": "collection",
+
+      "members": {
+        "count": 3,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
       },
 
       "dims": {
-        "id": { "key": "id" },
-        "lat": { "key": "lat" },
-        "lon": { "key": "lon" },
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
         "time": {
-          "key": "time",
+          "dim": "Time",
+          "key": "Times",
           "type": "datetime",
-          "timezone": "UTC"
+          "timezone": "UTC",
+          "format": "WRF_Times"
         }
       },
+
       "vars": [
-        { "id": "rain", "key": "obs" }
-      ]   
-     },
+        { "id": "t2m", "key": "T2" }
+      ]
+    },
     {
       "id": "boundaries",
       "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
@@ -30,7 +39,23 @@
       }
     }
   ],
-  
+
+  "transform": [
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "mean",
+        "args": [
+          { "data": "wrfEns", "var": "t2m" }
+        ]
+      },
+      "out": {
+        "data": "ensT2mMean",
+        "var": "t2mMean"
+      }
+    }
+  ],
   "composition": {
     "layout": {
       "columns": 2
@@ -42,18 +67,18 @@
         "frame": { "type": "map" },
         "layers": [
           {
-            "id": "stations",
+            "id": "temp",
             "geometry": {
-              "type": "point",
-              "input": { "data": "stationsObs", "var": "rain", "dims": { "time": [0, 1]} },
+              "type": "mesh",
+              "input": { "data": "ensT2mMean", "var": "t2mMean", "dims": { "time": [40, 50, 60, 70] } },
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "rain",
+                    "field": "t2mMean",
                     "scale": {
                       "type": "sequential",
                       "scheme": "Inferno",
-                      "domain": [0, 160],
+                      "domain": [290, 294],
                       "clamp": false
                     }
                   },

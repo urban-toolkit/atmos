@@ -38,16 +38,8 @@
   
   "composition": {
     "layout": {
-      "columns": 2,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [40, 50, 60, 70],
-          "view": "view1"
-        }
-      ]
+      "columns": 2
     },
-
     "views": [
       {
         "id": "view1",
@@ -57,7 +49,7 @@
             "id": "lrain",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "r001Rain", "var": "accRain" },
+              "input": { "data": "r001Rain", "var": "accRain", "dims": { "time": [40, 50, 60, 70] } },
               "build": [
                 {
                   "levels": {

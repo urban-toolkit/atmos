@@ -41,14 +41,7 @@
   
   "composition": {
     "layout": {
-      "columns": 3,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
-          "view": "view1"
-        }
-      ]
+      "columns": 3
     },
 
     "views": [
@@ -60,7 +53,7 @@
             "id": "lwind",
             "geometry": {
               "type": "vector",
-              "input": { "data": "r001Wind10", "var": "wind10" },
+              "input": { "data": "r001Wind10", "var": "wind10", "dims": { "time": [40, 50, 60, 70]} },
               "encoding": {
                 "channels": {
                   "stroke": { "value": "#2c7bb6" },

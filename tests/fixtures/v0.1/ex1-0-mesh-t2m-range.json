@@ -23,14 +23,7 @@
   
   "composition": {
     "layout": {
-      "columns": 2,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 3, 4, 8],
-          "view": "view1"
-        }
-      ]
+      "columns": 2
     },
 
     "views": [
@@ -42,7 +35,7 @@
             "id": "temp",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "r001", "var": "temp2m" },
+              "input": { "data": "r001", "var": "temp2m", "dims": { "time": [0, 3, 4, 8]} },
               "encoding": {
                 "channels": {
                   "fill": {

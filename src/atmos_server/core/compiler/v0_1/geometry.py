@@ -4,11 +4,116 @@ from typing import Any
 
 from atmos_server.core.compiler.models import Step
 from atmos_server.core.compiler.ports import CompilerPorts
+from atmos_server.core.compiler.v0_1.shared import resolve_base_data_id
 
 from .context import CompileContext
 from .ids import safe_id
 from .artifacts import add_geojson_artifact
 
+def _get_runtime_time_index(ctx: CompileContext, view_id: str) -> int | None:
+    runtime_state = getattr(ctx, "runtime_state", None)
+    if not isinstance(runtime_state, dict):
+        return None
+
+    v = runtime_state.get("timeIndex")
+    if isinstance(v, int) and v >= 0:
+        return v
+
+    return None
+
+def _is_time_controlled_for_view(ctx: CompileContext, view_id: str) -> bool:
+    composition = ctx.spec.get("composition") or {}
+    interactions = composition.get("interactions") or []
+
+    for intr in interactions:
+        if not isinstance(intr, dict):
+            continue
+
+        action = intr.get("action")
+        if not isinstance(action, dict):
+            continue
+
+        select = action.get("select")
+        if not isinstance(select, dict):
+            continue
+
+        if select.get("dim") != "time":
+            continue
+
+        targets = select.get("target") or []
+        for tgt in targets:
+            if isinstance(tgt, dict) and tgt.get("view") == view_id:
+                return True
+
+    return False
+
+def _strip_repeated_dims_from_geom_input(
+    geom_params: dict[str, Any],
+    *,
+    repeat: dict[str, Any] | None,
+) -> None:
+    if not isinstance(repeat, dict):
+        return
+
+    ginput = geom_params.get("input")
+    if not isinstance(ginput, dict):
+        return
+
+    dims = ginput.get("dims")
+    if not isinstance(dims, dict):
+        return
+
+    rtype = repeat.get("type")
+    dims2 = dict(dims)
+
+    if rtype == "timestep" and "time" in dims2:
+        dims2.pop("time", None)
+
+    if rtype == "member" and "member" in dims2:
+        dims2.pop("member", None)
+
+    ginput2 = dict(ginput)
+    ginput2["dims"] = dims2
+    geom_params["input"] = ginput2
+
+def _is_member_indexable_data(ctx: CompileContext, input_data: str) -> bool:
+    reduced_dims = getattr(ctx, "derived_data_to_reduced_dims", {}).get(input_data, set())
+    if "member" in reduced_dims:
+        return False
+
+    base_data = resolve_base_data_id(ctx, input_data)
+    d = ctx.data_by_id.get(base_data)
+    if not isinstance(d, dict):
+        return False
+
+    members = d.get("members")
+    if isinstance(members, dict):
+        count = members.get("count")
+        return isinstance(count, int) and count > 0
+
+    return False
+
+def _layer_varies_with_repeat(
+    ctx: CompileContext,
+    *,
+    repeat: dict[str, Any] | None,
+    ginput: dict[str, Any],
+) -> bool:
+    if not isinstance(repeat, dict):
+        return False
+
+    rtype = repeat.get("type")
+    input_data = ginput.get("data")
+    if not isinstance(input_data, str):
+        return False
+
+    if rtype == "timestep":
+        return _is_time_indexable_data(ctx, input_data)
+
+    if rtype == "member":
+        return _is_member_indexable_data(ctx, input_data)
+
+    return False
 
 def compile_geometry_and_artifacts(
     ctx: CompileContext,
@@ -16,6 +121,7 @@ def compile_geometry_and_artifacts(
     views: list[dict[str, Any]],
 ) -> None:
     composition = ctx.spec.get("composition") or {}
+    compiled_static: dict[tuple[str, str], str] = {}
 
     for vi, view in enumerate(views):
         if not isinstance(view, dict):
@@ -30,7 +136,7 @@ def compile_geometry_and_artifacts(
         for li, layer in enumerate(layers):
             if not isinstance(layer, dict):
                 continue
-
+            
             layer_id = safe_id("layer", layer.get("id"), li)
 
             geom = layer.get("geometry")
@@ -47,9 +153,44 @@ def compile_geometry_and_artifacts(
             upstream_step = _resolve_upstream_step(ctx, ginput)
             repeat = view.get("_repeat")
 
-            # ---- time selection (only for non-repeat views) ----
-            if not isinstance(repeat, dict):
-                time_idx = _get_time_index_for_view(view, composition)
+            is_dynamic = _layer_varies_with_repeat(ctx, repeat=repeat, ginput=ginput)
+
+            base_view_id = view_id.split("__")[0] if isinstance(repeat, dict) else view_id
+            static_key = (base_view_id, layer_id)
+
+            reuse_geom_step_id: str | None = None
+
+            if isinstance(repeat, dict) and not is_dynamic:
+                if static_key in compiled_static:
+                    reuse_geom_step_id = compiled_static[static_key]
+
+            # ---- time selection ----
+            # if reuse_geom_step_id is None and not isinstance(repeat, dict):
+            if reuse_geom_step_id is None:
+
+                # geometry explicit time
+                time_idx = _get_time_index_from_geom_input(ginput)
+
+                # runtime slider
+                if time_idx is None:
+                    time_idx = _get_runtime_time_index(ctx, view_id)
+
+                # view/composition time
+                if time_idx is None:
+                    time_idx = _get_time_index_for_view(view, composition)
+
+                # 4️⃣ slider default
+                if time_idx is None and _is_time_controlled_for_view(ctx, view_id):
+                    time_idx = 0
+
+                if time_idx is None:
+                    time_idx = _get_time_index_for_view(view, composition)
+
+                if time_idx is None and _is_time_controlled_for_view(ctx, view_id):
+                    time_idx = 0
+
+                print("final time_idx =", time_idx, "for", view_id, layer_id)
+
                 if isinstance(time_idx, int):
                     input_data = ginput.get("data")
                     if isinstance(input_data, str) and _is_time_indexable_data(ctx, input_data):
@@ -65,42 +206,57 @@ def compile_geometry_and_artifacts(
                         upstream_step = tstep_id
 
             # ---- repeat override ----
-            if isinstance(repeat, dict):
+            if reuse_geom_step_id is None and isinstance(repeat, dict) and is_dynamic:
                 idx = repeat.get("index")
+                rtype = repeat.get("type")
                 input_data = ginput.get("data")
 
-                # Only time-slice if the layer's input data is actually time-indexable
-                if isinstance(idx, int) and isinstance(input_data, str) and _is_time_indexable_data(ctx, input_data):
+                if isinstance(idx, int) and isinstance(input_data, str):
                     if not upstream_step:
                         raise ValueError(f"repeatView: unknown data '{input_data}'")
 
-                    tstep_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
-                    ctx.steps.append(
-                        Step(
-                            id=tstep_id,
-                            kind="transform",
-                            depends_on=(upstream_step,),
-                            params={"type": "select_time_index", "index": idx},
-                        )
-                    )
-                    upstream_step = tstep_id
+                    if rtype == "timestep" and _is_time_indexable_data(ctx, input_data):
+                        step_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
+                        params = {"type": "select_time_index", "index": idx}
+                    elif rtype == "member":
+                        step_id = f"transform:repeat:{view_id}:{layer_id}:m{idx:03d}"
+                        params = {"type": "select_member_index", "index": idx}
+                    else:
+                        step_id = None
 
+                    if step_id:
+                        ctx.steps.append(
+                            Step(
+                                id=step_id,
+                                kind="transform",
+                                depends_on=(upstream_step,),
+                                params=params,
+                            )
+                        )
+                        upstream_step = step_id
+            
             # ---- geometry params (+ _resolved) ----
             geom_params = dict(geom)
             geom_params["_viewId"] = view_id
             geom_params["_layerId"] = layer_id
 
+            _strip_repeated_dims_from_geom_input(geom_params, repeat=repeat)
             _maybe_enrich_geometry_resolved(ctx, geom_params, gtype=gtype, ginput=ginput, geom=geom)
 
             # ---- geometry step ----
-            ctx.steps.append(
-                Step(
-                    id=geom_step_id,
-                    kind="geometry",
-                    depends_on=(upstream_step,) if upstream_step else (),
-                    params=geom_params,
+            if reuse_geom_step_id is None:
+                ctx.steps.append(
+                    Step(
+                        id=geom_step_id,
+                        kind="geometry",
+                        depends_on=(upstream_step,) if upstream_step else (),
+                        params=geom_params,
+                    )
                 )
-            )
+                if isinstance(repeat, dict) and not is_dynamic:
+                    compiled_static[static_key] = geom_step_id
+            else:
+                geom_step_id = reuse_geom_step_id
 
             # ---- artifact ----
             add_geojson_artifact(
@@ -113,6 +269,18 @@ def compile_geometry_and_artifacts(
                 geom_step_id=geom_step_id,
                 geom=geom,
             )
+
+def _get_time_index_from_geom_input(ginput: dict[str, Any]) -> int | None:
+    dims = ginput.get("dims")
+    if not isinstance(dims, dict):
+        return None
+
+    t = dims.get("time")
+
+    if isinstance(t, int) and t >= 0:
+        return t
+
+    return None
 
 
 def _get_time_index_for_view(view: dict[str, Any], composition: dict[str, Any]) -> int | None:

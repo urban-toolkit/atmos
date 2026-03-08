@@ -98,7 +98,6 @@ def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
     x0, y0 = coords[-1]
     return [float(x0), float(y0)]
 
-
 def _mesh_to_geojson(
     ds: xr.Dataset,
     *,
@@ -112,6 +111,12 @@ def _mesh_to_geojson(
     lat = ds[lat_key].values
     lon = ds[lon_key].values
     val = ds[var_key].values
+
+    while getattr(lat, "ndim", 0) > 2:
+        lat = lat[0]
+
+    while getattr(lon, "ndim", 0) > 2:
+        lon = lon[0]
 
     while getattr(val, "ndim", 0) > 2:
         val = val[0]

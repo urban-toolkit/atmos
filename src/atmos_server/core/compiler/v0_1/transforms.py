@@ -100,6 +100,21 @@ def _track_derived_output(ctx: CompileContext, t: dict[str, Any], step_id: str, 
                 "vars": [{"id": out_var, "key": out_var}],
             }
 
+    # ------------------------------------------------
+    # NEW: track reduced dimensions
+    # ------------------------------------------------
+    if params.get("type") == "reduce":
+        resolved = params.get("_resolved") or {}
+        dim = resolved.get("dim")
+
+        if isinstance(dim, str):
+            reduced = getattr(ctx, "derived_data_to_reduced_dims", None)
+            if not isinstance(reduced, dict):
+                ctx.derived_data_to_reduced_dims = {}
+                reduced = ctx.derived_data_to_reduced_dims
+
+            reduced.setdefault(out_data, set()).add(dim.lower())
+
 
 def _enrich_diagnostic_wind_polar(ctx: CompileContext, params: dict[str, Any]) -> None:
     expr = params.get("expr") or {}
@@ -154,35 +169,10 @@ def _enrich_transform_params(ctx: CompileContext, params: dict[str, Any], step_i
 
         _enrich_generic_derive(ctx, params)
         return
-
-
-def _enrich_derive_wind_vector(ctx: CompileContext, params: dict[str, Any]) -> None:
-    tin = params.get("input") or {}
-    if not isinstance(tin, dict):
-        raise ValueError("derive_wind_vector requires input object")
-
-    base_data = tin.get("data")
-    if not isinstance(base_data, str) or not base_data:
-        raise ValueError("derive_wind_vector requires input.data")
-
-    vars_map = tin.get("vars") or {}
-    if not isinstance(vars_map, dict):
-        raise ValueError("derive_wind_vector requires input.variables object")
-
-    u_id = vars_map.get("u")
-    v_id = vars_map.get("v")
-    if not isinstance(u_id, str) or not isinstance(v_id, str):
-        raise ValueError("derive_wind_vector requires input.variables.u and .v (ids)")
-
-    u_key = _var_id_to_key(ctx, base_data, u_id)
-    v_key = _var_id_to_key(ctx, base_data, v_id)
-    if not u_key or not v_key:
-        raise ValueError(f"derive_wind_vector could not resolve keys for u='{u_id}' v='{v_id}'")
-
-    resolved = dict(params.get("_resolved") or {})
-    resolved["uKey"] = u_key
-    resolved["vKey"] = v_key
-    params["_resolved"] = resolved
+    
+    elif ttype == "reduce":
+        _enrich_reduce(ctx, params)
+        return
 
 
 def _enrich_diagnostic_slp(ctx: CompileContext, params: dict[str, Any]) -> None:
@@ -270,3 +260,39 @@ def _enrich_generic_derive(ctx: CompileContext, params: dict[str, Any]) -> None:
     resolved["varMap"] = var_map
     params["_resolved"] = resolved
     params["data"] = base_data
+
+def _enrich_reduce(ctx: CompileContext, params: dict[str, Any]) -> None:
+    expr = params.get("expr") or {}
+    if not isinstance(expr, dict):
+        raise ValueError("reduce: expr must be an object")
+
+    args = expr.get("args") or []
+    if not (isinstance(args, list) and len(args) == 1 and isinstance(args[0], dict)):
+        raise ValueError("reduce: expr.args must contain exactly one input")
+
+    a0 = args[0]
+    data_id = a0.get("data")
+    var_id = a0.get("var")
+    across = params.get("across")
+
+    if not isinstance(data_id, str) or not isinstance(var_id, str):
+        raise ValueError("reduce: input data/var missing")
+
+    var_key = _var_id_to_key(ctx, data_id, var_id)
+    if not isinstance(var_key, str):
+        raise ValueError(f"reduce: could not resolve var '{var_id}' in data '{data_id}'")
+
+    dim_map = {
+        "member": "member",
+        "time": "Time",
+    }
+    if not isinstance(across, str) or not across:
+        raise ValueError("reduce: across must be a non-empty string")
+
+    dim = dim_map.get(across, across)
+
+    resolved = dict(params.get("_resolved") or {})
+    resolved["varKey"] = var_key
+    resolved["dim"] = dim
+    params["_resolved"] = resolved
+    params["data"] = data_id

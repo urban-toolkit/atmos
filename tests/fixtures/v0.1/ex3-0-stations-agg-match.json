@@ -76,14 +76,7 @@
   
   "composition": {
     "layout": {
-      "columns": 5,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 1],
-          "view": "view1"
-        }
-      ]
+      "columns": 5
     },
 
     "views": [
@@ -95,7 +88,7 @@
             "id": "stations",
             "geometry": {
               "type": "point",
-              "input": { "data": "matchData", "var": "temp2mObs" },
+              "input": { "data": "matchData", "var": "temp2mObs", "dims": { "time": [0, 1]} },
               "encoding": {
                 "channels": {
                   "fill": {

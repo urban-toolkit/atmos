@@ -915,7 +915,19 @@ export interface AtmosSpec {
       (
         | ({
             id: string;
-            time?: Time;
+            /**
+             * Optional view-local time selection. If omitted, view may inherit composition time.
+             */
+            time?: {
+              /**
+               * Time selection mode. v0 supports discrete timestep selection by index only.
+               */
+              type: 'index';
+              /**
+               * Selected timestep index. If omitted, defaults to 0.
+               */
+              value?: number;
+            };
             context?: Context;
             /**
              * @minItems 1
@@ -3622,12 +3634,14 @@ export interface AtmosSpec {
                         | {
                             data: string;
                             var: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
                             u: string;
                             v: string;
                             w?: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
@@ -3637,6 +3651,7 @@ export interface AtmosSpec {
                             directionConvention?: 'from' | 'to';
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
                             w?: string;
+                            dims?: Dims;
                           };
                       encoding?: {
                         /**
@@ -8062,12 +8077,14 @@ export interface AtmosSpec {
                         | {
                             data: string;
                             var: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
                             u: string;
                             v: string;
                             w?: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
@@ -8077,6 +8094,7 @@ export interface AtmosSpec {
                             directionConvention?: 'from' | 'to';
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
                             w?: string;
+                            dims?: Dims;
                           };
                       encoding?: {
                         /**
@@ -10025,7 +10043,19 @@ export interface AtmosSpec {
           })
         | ({
             id: string;
-            time?: Time;
+            /**
+             * Optional view-local time selection. If omitted, view may inherit composition time.
+             */
+            time?: {
+              /**
+               * Time selection mode. v0 supports discrete timestep selection by index only.
+               */
+              type: 'index';
+              /**
+               * Selected timestep index. If omitted, defaults to 0.
+               */
+              value?: number;
+            };
             context?: Context;
             /**
              * @minItems 1
@@ -10237,7 +10267,19 @@ export interface AtmosSpec {
       ...(
         | ({
             id: string;
-            time?: Time;
+            /**
+             * Optional view-local time selection. If omitted, view may inherit composition time.
+             */
+            time?: {
+              /**
+               * Time selection mode. v0 supports discrete timestep selection by index only.
+               */
+              type: 'index';
+              /**
+               * Selected timestep index. If omitted, defaults to 0.
+               */
+              value?: number;
+            };
             context?: Context;
             /**
              * @minItems 1
@@ -12944,12 +12986,14 @@ export interface AtmosSpec {
                         | {
                             data: string;
                             var: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
                             u: string;
                             v: string;
                             w?: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
@@ -12959,6 +13003,7 @@ export interface AtmosSpec {
                             directionConvention?: 'from' | 'to';
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
                             w?: string;
+                            dims?: Dims;
                           };
                       encoding?: {
                         /**
@@ -17384,12 +17429,14 @@ export interface AtmosSpec {
                         | {
                             data: string;
                             var: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
                             u: string;
                             v: string;
                             w?: string;
+                            dims?: Dims;
                           }
                         | {
                             data: string;
@@ -17399,6 +17446,7 @@ export interface AtmosSpec {
                             directionConvention?: 'from' | 'to';
                             directionReference?: 'north_clockwise' | 'east_counterclockwise';
                             w?: string;
+                            dims?: Dims;
                           };
                       encoding?: {
                         /**
@@ -19347,7 +19395,19 @@ export interface AtmosSpec {
           })
         | ({
             id: string;
-            time?: Time;
+            /**
+             * Optional view-local time selection. If omitted, view may inherit composition time.
+             */
+            time?: {
+              /**
+               * Time selection mode. v0 supports discrete timestep selection by index only.
+               */
+              type: 'index';
+              /**
+               * Selected timestep index. If omitted, defaults to 0.
+               */
+              value?: number;
+            };
             context?: Context;
             /**
              * @minItems 1
@@ -19558,19 +19618,6 @@ export interface AtmosSpec {
       )[]
     ];
     /**
-     * Optional shared time state/control for views that bind to it.
-     */
-    time?: {
-      /**
-       * Time selection mode. v0 supports discrete timestep selection by index only.
-       */
-      type: 'index';
-      /**
-       * Selected timestep index. If omitted, defaults to 0.
-       */
-      value?: number;
-    };
-    /**
      * Composition-level context: global titles, legends, and controls (e.g., a shared time slider).
      */
     context?: {
@@ -19689,192 +19736,154 @@ export interface AtmosSpec {
      * @minItems 1
      */
     interactions?: [
-      {
-        on: 'click' | 'hover';
-        source: {
-          [k: string]: unknown;
-        };
-        /**
-         * @minItems 1
-         */
-        do: [
-          (
-            | {
-                type: 'openView';
-                viewId: string;
-              }
-            | {
-                type: 'setFilter';
-                target: {
-                  viewId: string;
-                };
-                filter: Filter;
-              }
-            | {
-                type: 'showTooltip';
-                title: string;
+      (
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
                 /**
                  * @minItems 1
                  */
-                items: [
-                  {
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  },
-                  ...{
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  }[]
-                ];
-              }
-          ),
-          ...(
-            | {
-                type: 'openView';
-                viewId: string;
-              }
-            | {
-                type: 'setFilter';
-                target: {
-                  viewId: string;
-                };
-                filter: Filter;
-              }
-            | {
-                type: 'showTooltip';
-                title: string;
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'slider';
+            [k: string]: unknown;
+          })
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
                 /**
                  * @minItems 1
                  */
-                items: [
-                  {
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  },
-                  ...{
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  }[]
-                ];
-              }
-          )[]
-        ];
-      } & {
-        source: {
-          viewId: string;
-          layerId?: string;
-        };
-        [k: string]: unknown;
-      },
-      ...({
-        on: 'click' | 'hover';
-        source: {
-          [k: string]: unknown;
-        };
-        /**
-         * @minItems 1
-         */
-        do: [
-          (
-            | {
-                type: 'openView';
-                viewId: string;
-              }
-            | {
-                type: 'setFilter';
-                target: {
-                  viewId: string;
-                };
-                filter: Filter;
-              }
-            | {
-                type: 'showTooltip';
-                title: string;
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'buttons';
+            [k: string]: unknown;
+          })
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
                 /**
                  * @minItems 1
                  */
-                items: [
-                  {
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  },
-                  ...{
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  }[]
-                ];
-              }
-          ),
-          ...(
-            | {
-                type: 'openView';
-                viewId: string;
-              }
-            | {
-                type: 'setFilter';
-                target: {
-                  viewId: string;
-                };
-                filter: Filter;
-              }
-            | {
-                type: 'showTooltip';
-                title: string;
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'click';
+            [k: string]: unknown;
+          })
+      ),
+      ...(
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
                 /**
                  * @minItems 1
                  */
-                items: [
-                  {
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  },
-                  ...{
-                    label: string;
-                    value: {
-                      data: string;
-                      variable: string;
-                      filter?: Filter;
-                    };
-                  }[]
-                ];
-              }
-          )[]
-        ];
-      } & {
-        source: {
-          viewId: string;
-          layerId?: string;
-        };
-        [k: string]: unknown;
-      })[]
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'slider';
+            [k: string]: unknown;
+          })
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
+                /**
+                 * @minItems 1
+                 */
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'buttons';
+            [k: string]: unknown;
+          })
+        | ({
+            type: 'slider' | 'buttons' | 'click';
+            /**
+             * Optional explicit interaction source. Usually needed for event-based interactions like click.
+             *
+             * @minItems 1
+             */
+            source?: [Items2, ...Items2[]];
+            action: {
+              select: {
+                /**
+                 * Dimension selected by the interaction, e.g. time, member, id.
+                 */
+                dim: string;
+                /**
+                 * @minItems 1
+                 */
+                target: [Items2, ...Items2[]];
+              };
+            };
+          } & {
+            type?: 'click';
+            [k: string]: unknown;
+          })
+      )[]
     ];
   };
 }
@@ -19929,19 +19938,6 @@ export interface Suffix {
 export interface Items1 {
   data: string;
   var: string;
-}
-/**
- * Optional view-local time selection. If omitted, view may inherit composition time.
- */
-export interface Time {
-  /**
-   * Time selection mode. v0 supports discrete timestep selection by index only.
-   */
-  type: 'index';
-  /**
-   * Selected timestep index. If omitted, defaults to 0.
-   */
-  value?: number;
 }
 /**
  * Optional view-local context (titles, legends, controls).
@@ -20068,18 +20064,36 @@ export interface Input {
   data: string;
   var: string;
   /**
-   * Optional vertical level selection (for 3D variables).
+   * Optional dimension selection. If omitted, all indices are used.
    */
-  level?: {
+  dims?: {
     /**
-     * Select a vertical level by integer index.
+     * Select one or more indices of a dimension.
      */
-    type: 'index';
+    time?: number | [number, ...number[]];
     /**
-     * Zero-based level index.
+     * Select one or more indices of a dimension.
      */
-    value: number;
+    member?: number | [number, ...number[]];
+    /**
+     * Select one or more indices of a dimension.
+     */
+    level?: number | [number, ...number[]];
   };
+}
+export interface Dims {
+  /**
+   * Select one or more indices of a dimension.
+   */
+  time?: number | [number, ...number[]];
+  /**
+   * Select one or more indices of a dimension.
+   */
+  member?: number | [number, ...number[]];
+  /**
+   * Select one or more indices of a dimension.
+   */
+  level?: number | [number, ...number[]];
 }
 /**
  * Optional spatial limits within which the bbox mask may move or resize.
@@ -20089,4 +20103,11 @@ export interface Bounds {
   south: number;
   east: number;
   north: number;
+}
+export interface Items2 {
+  view: string;
+  /**
+   * @minItems 1
+   */
+  layers: [string, ...string[]];
 }

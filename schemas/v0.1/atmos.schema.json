@@ -2065,40 +2065,6 @@
               "type": "number",
               "minimum": 0,
               "description": "Optional spacing between views (px)."
-            },
-            "repeatView": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "type",
-                  "indices",
-                  "view"
-                ],
-                "properties": {
-                  "type": {
-                    "const": "timestep",
-                    "description": "Repeat a view across multiple discrete time-step indices."
-                  },
-                  "indices": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "description": "Time-step indices to repeat over."
-                  },
-                  "view": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The id of the view that acts as the template to be repeated."
-                  }
-                }
-              },
-              "description": "Authoring sugar: repeat (expand) one template view across a list of indices (e.g., time steps). Renderers should expand this into concrete views before execution."
             }
           },
           "allOf": [
@@ -2149,7 +2115,23 @@
                       },
                       "time": {
                         "description": "Optional view-local time selection. If omitted, view may inherit composition time.",
-                        "$ref": "#/properties/composition/properties/time"
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "index",
+                            "description": "Time selection mode. v0 supports discrete timestep selection by index only."
+                          },
+                          "value": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0,
+                            "description": "Selected timestep index. If omitted, defaults to 0."
+                          }
+                        }
                       },
                       "context": {
                         "description": "Optional view-local context (titles, legends, controls).",
@@ -2161,7 +2143,163 @@
                         "items": {
                           "allOf": [
                             {
-                              "$ref": "#/properties/composition/properties/interactions/items/allOf/0"
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "on",
+                                "source",
+                                "do"
+                              ],
+                              "properties": {
+                                "on": {
+                                  "type": "string",
+                                  "enum": [
+                                    "click",
+                                    "hover"
+                                  ]
+                                },
+                                "source": {
+                                  "type": "object"
+                                },
+                                "do": {
+                                  "type": "array",
+                                  "minItems": 1,
+                                  "items": {
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                          "type",
+                                          "viewId"
+                                        ],
+                                        "properties": {
+                                          "type": {
+                                            "const": "openView"
+                                          },
+                                          "viewId": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                          "type",
+                                          "target",
+                                          "filter"
+                                        ],
+                                        "properties": {
+                                          "type": {
+                                            "const": "setFilter"
+                                          },
+                                          "target": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                              "viewId"
+                                            ],
+                                            "properties": {
+                                              "viewId": {
+                                                "type": "string",
+                                                "minLength": 1
+                                              }
+                                            }
+                                          },
+                                          "filter": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                              "dimension",
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "dimension": {
+                                                "type": "string",
+                                                "minLength": 1
+                                              },
+                                              "value": {
+                                                "oneOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                      "field"
+                                                    ],
+                                                    "properties": {
+                                                      "field": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                          "type",
+                                          "title",
+                                          "items"
+                                        ],
+                                        "properties": {
+                                          "type": {
+                                            "const": "showTooltip"
+                                          },
+                                          "title": {
+                                            "type": "string"
+                                          },
+                                          "items": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": [
+                                                "label",
+                                                "value"
+                                              ],
+                                              "properties": {
+                                                "label": {
+                                                  "type": "string"
+                                                },
+                                                "value": {
+                                                  "type": "object",
+                                                  "additionalProperties": false,
+                                                  "required": [
+                                                    "data",
+                                                    "variable"
+                                                  ],
+                                                  "properties": {
+                                                    "data": {
+                                                      "type": "string",
+                                                      "minLength": 1
+                                                    },
+                                                    "variable": {
+                                                      "type": "string",
+                                                      "minLength": 1
+                                                    },
+                                                    "filter": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/0/properties/interactions/items/allOf/0/properties/do/items/oneOf/1/properties/filter"
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
                             },
                             {
                               "properties": {
@@ -2357,26 +2495,35 @@
                                               "type": "string",
                                               "minLength": 1
                                             },
-                                            "level": {
-                                              "description": "Optional vertical level selection (for 3D variables).",
+                                            "dims": {
                                               "type": "object",
-                                              "additionalProperties": false,
-                                              "required": [
-                                                "type",
-                                                "value"
-                                              ],
+                                              "description": "Optional dimension selection. If omitted, all indices are used.",
                                               "properties": {
-                                                "type": {
-                                                  "type": "string",
-                                                  "const": "index",
-                                                  "description": "Select a vertical level by integer index."
+                                                "time": {
+                                                  "description": "Select one or more indices of a dimension.",
+                                                  "oneOf": [
+                                                    {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                      },
+                                                      "minItems": 1
+                                                    }
+                                                  ]
                                                 },
-                                                "value": {
-                                                  "type": "integer",
-                                                  "minimum": 0,
-                                                  "description": "Zero-based level index."
+                                                "member": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                },
+                                                "level": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
                                                 }
-                                              }
+                                              },
+                                              "additionalProperties": false
                                             }
                                           },
                                           "additionalProperties": false
@@ -3191,6 +3338,21 @@
                                                 "var": {
                                                   "type": "string",
                                                   "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "time": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    },
+                                                    "member": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    },
+                                                    "level": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
                                                 }
                                               },
                                               "required": [
@@ -3217,6 +3379,9 @@
                                                 "w": {
                                                   "type": "string",
                                                   "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/4/allOf/2/properties/input/oneOf/0/properties/dims"
                                                 }
                                               },
                                               "required": [
@@ -3268,6 +3433,9 @@
                                                 "w": {
                                                   "type": "string",
                                                   "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/4/allOf/2/properties/input/oneOf/0/properties/dims"
                                                 }
                                               },
                                               "required": [
@@ -3879,26 +4047,6 @@
           },
           "description": "Views in display order. Repeat a view by including multiple ViewSpec objects with different ids (and optionally different time.value)."
         },
-        "time": {
-          "description": "Optional shared time state/control for views that bind to it.",
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "const": "index",
-              "description": "Time selection mode. v0 supports discrete timestep selection by index only."
-            },
-            "value": {
-              "type": "integer",
-              "default": 0,
-              "minimum": 0,
-              "description": "Selected timestep index. If omitted, defaults to 0."
-            }
-          }
-        },
         "context": {
           "description": "Composition-level context: global titles, legends, and controls (e.g., a shared time slider).",
           "type": "object",
@@ -4044,188 +4192,123 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "allOf": [
+            "oneOf": [
               {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "on",
-                  "source",
-                  "do"
-                ],
-                "properties": {
-                  "on": {
-                    "type": "string",
-                    "enum": [
-                      "click",
-                      "hover"
-                    ]
-                  },
-                  "source": {
-                    "type": "object"
-                  },
-                  "do": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "oneOf": [
-                        {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "slider",
+                          "buttons",
+                          "click"
+                        ]
+                      },
+                      "source": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
                           "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "type",
-                            "viewId"
-                          ],
                           "properties": {
-                            "type": {
-                              "const": "openView"
-                            },
-                            "viewId": {
+                            "view": {
                               "type": "string",
                               "minLength": 1
-                            }
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "type",
-                            "target",
-                            "filter"
-                          ],
-                          "properties": {
-                            "type": {
-                              "const": "setFilter"
                             },
-                            "target": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "viewId"
-                              ],
-                              "properties": {
-                                "viewId": {
-                                  "type": "string",
-                                  "minLength": 1
-                                }
-                              }
-                            },
-                            "filter": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "dimension",
-                                "value"
-                              ],
-                              "properties": {
-                                "dimension": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "value": {
-                                  "oneOf": [
-                                    {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": [
-                                        "field"
-                                      ],
-                                      "properties": {
-                                        "field": {
-                                          "type": "string",
-                                          "minLength": 1
-                                        }
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            }
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "type",
-                            "title",
-                            "items"
-                          ],
-                          "properties": {
-                            "type": {
-                              "const": "showTooltip"
-                            },
-                            "title": {
-                              "type": "string"
-                            },
-                            "items": {
+                            "layers": {
                               "type": "array",
                               "minItems": 1,
                               "items": {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "required": [
-                                  "label",
-                                  "value"
-                                ],
-                                "properties": {
-                                  "label": {
-                                    "type": "string"
-                                  },
-                                  "value": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "required": [
-                                      "data",
-                                      "variable"
-                                    ],
-                                    "properties": {
-                                      "data": {
-                                        "type": "string",
-                                        "minLength": 1
-                                      },
-                                      "variable": {
-                                        "type": "string",
-                                        "minLength": 1
-                                      },
-                                      "filter": {
-                                        "$ref": "#/properties/composition/properties/interactions/items/allOf/0/properties/do/items/oneOf/1/properties/filter"
-                                      }
-                                    }
-                                  }
-                                }
+                                "type": "string",
+                                "minLength": 1
                               }
                             }
-                          }
-                        }
-                      ]
-                    }
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "source": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "viewId"
-                    ],
-                    "properties": {
-                      "viewId": {
-                        "type": "string",
-                        "minLength": 1
+                          },
+                          "required": [
+                            "view",
+                            "layers"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Optional explicit interaction source. Usually needed for event-based interactions like click."
                       },
-                      "layerId": {
-                        "type": "string",
-                        "minLength": 1
+                      "action": {
+                        "type": "object",
+                        "properties": {
+                          "select": {
+                            "type": "object",
+                            "properties": {
+                              "dim": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Dimension selected by the interaction, e.g. time, member, id."
+                              },
+                              "target": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0/properties/source/items"
+                                }
+                              }
+                            },
+                            "required": [
+                              "dim",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "select"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "slider"
                       }
                     }
                   }
-                },
-                "required": [
-                  "source"
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "buttons"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "click"
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ]
+                  }
                 ]
               }
             ]

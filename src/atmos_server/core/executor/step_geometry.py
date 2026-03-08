@@ -171,6 +171,10 @@ def _execute_isoband_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
     var_key, var_id = _require_variable_key_and_id(resolved, step_id=step.id)
     lat_key, lon_key = _require_lat_lon_keys(resolved, step_id=step.id)
 
+    ds = upstream.dataset
+    print("geometry dims =", ds.dims)
+    print("geometry var dims =", ds[var_key].dims)
+
     return _isoband_to_geojson(
         upstream.dataset,
         var_key=var_key,

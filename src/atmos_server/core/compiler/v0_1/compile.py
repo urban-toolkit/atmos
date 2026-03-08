@@ -1,4 +1,3 @@
-# atmos_server/compiler/v0_1/compile.py
 from __future__ import annotations
 from typing import Any
 
@@ -12,9 +11,24 @@ from atmos_server.core.compiler.v0_1.transforms import compile_transform_steps
 from atmos_server.core.compiler.v0_1.repeat import expand_repeat_views
 from atmos_server.core.compiler.v0_1.geometry import compile_geometry_and_artifacts
 
-def compile_v0_1(spec: dict[str, Any], schema_version: str, *, ports: CompilerPorts) -> Plan:
+
+def compile_v0_1(
+    spec: dict[str, Any],
+    schema_version: str,
+    *,
+    ports: CompilerPorts,
+    runtime_state: dict[str, Any] | None = None,
+) -> Plan:
     ports = ports or make_default_ports()
-    ctx = CompileContext(spec=spec, schema_version=schema_version)
+
+    ctx = CompileContext(
+        spec=spec,
+        schema_version=schema_version,
+        runtime_state=runtime_state or {},
+    )
+
+    print("compile_v0_1 runtime_state =", runtime_state)
+    print("ctx.runtime_state =", ctx.runtime_state)
 
     compile_load_steps(ctx)
     compile_transform_steps(ctx)
@@ -22,4 +36,10 @@ def compile_v0_1(spec: dict[str, Any], schema_version: str, *, ports: CompilerPo
     compile_geometry_and_artifacts(ctx, ports, views)
 
     meta = PlanMeta(schema_version=schema_version, spec_id=spec.get("id"))
-    return Plan(meta=meta, inputs=tuple(ctx.inputs), steps=tuple(ctx.steps), artifacts=tuple(ctx.artifacts), raw_spec=spec)
+    return Plan(
+        meta=meta,
+        inputs=tuple(ctx.inputs),
+        steps=tuple(ctx.steps),
+        artifacts=tuple(ctx.artifacts),
+        raw_spec=spec,
+    )
