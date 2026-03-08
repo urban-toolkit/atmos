@@ -24,6 +24,10 @@ from atmos_server.core.executor.geometry_converters import (
 # Small shared helpers
 # -------------------------------------------------------------------
 
+def _sampling_dict(g: dict[str, Any]) -> dict[str, Any]:
+    sampling = g.get("sampling") or {}
+    return sampling if isinstance(sampling, dict) else {}
+
 def _resolved_dict(g: dict[str, Any]) -> dict[str, Any]:
     resolved = g.get("_resolved")
     return resolved if isinstance(resolved, dict) else {}
@@ -264,9 +268,14 @@ def _execute_vector_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -
     direction_key = _require_str(resolved.get("directionKey"), name="directionKey", step_id=step.id)
     var_id = str(resolved.get("variableId") or "wind")
 
-    style = _encoding_style_dict(g)
-    skip = style.get("skip", 0)
+    sampling = _sampling_dict(g)
+    skip = sampling.get("skip", 0)
     if not isinstance(skip, int):
+        try:
+            skip = int(skip)
+        except Exception:
+            skip = 0 
+    if skip < 0:
         skip = 0
 
     return _vector_to_geojson(

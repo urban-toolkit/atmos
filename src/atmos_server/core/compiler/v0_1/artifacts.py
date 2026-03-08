@@ -1,4 +1,3 @@
-# atmos_server/compiler/v0_1/artifacts.py
 from __future__ import annotations
 from typing import Any
 
@@ -17,13 +16,32 @@ def add_geojson_artifact(
     geom: dict[str, Any],
 ) -> None:
     out_name = f"{view_id}-{layer_id}"
+
     encoding_any = geom.get("encoding")
     encoding_dict = encoding_any if isinstance(encoding_any, dict) else None
-    render = ports.render.build_render(geometry_type=gtype, encoding=encoding_dict)
 
-    metadata: dict[str, Any] = {"geometryType": gtype, "viewId": view_id, "layerId": layer_id}
+    render = ports.render.build_render(
+        geometry_type=gtype,
+        encoding=encoding_dict,
+    )
+
+    metadata: dict[str, Any] = {
+        "geometryType": gtype,
+        "viewId": view_id,
+        "layerId": layer_id,
+    }
+
+    # NEW: preserve vector glyph info for the frontend
+    if gtype == "vector" and isinstance(encoding_dict, dict):
+        style = encoding_dict.get("style")
+        if isinstance(style, dict):
+            glyph = style.get("glyph")
+            if isinstance(glyph, dict):
+                metadata["glyph"] = glyph
+
     if render is not None:
         metadata["render"] = render
+
     if isinstance(view.get("_repeat"), dict):
         metadata["repeat"] = view["_repeat"]
 

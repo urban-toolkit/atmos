@@ -3448,6 +3448,15 @@
                                             }
                                           ]
                                         },
+                                        "sampling": {
+                                          "type": "object",
+                                          "properties": {
+                                            "skip": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
                                         "encoding": {
                                           "allOf": [
                                             {
@@ -3460,16 +3469,25 @@
                                                   "type": "object",
                                                   "properties": {
                                                     "glyph": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "arrow",
-                                                        "barb"
-                                                      ]
-                                                    },
-                                                    "glyphScale": {
-                                                      "type": "number",
-                                                      "minimum": 0,
-                                                      "description": "Global multiplier for glyph size (not data-driven)."
+                                                      "type": "object",
+                                                      "properties": {
+                                                        "type": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "arrow",
+                                                            "barb"
+                                                          ]
+                                                        },
+                                                        "scale": {
+                                                          "type": "number",
+                                                          "minimum": 0,
+                                                          "description": "Global multiplier for glyph size (not data-driven)."
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "type"
+                                                      ],
+                                                      "additionalProperties": false
                                                     },
                                                     "pivot": {
                                                       "type": "string",
@@ -3478,10 +3496,6 @@
                                                         "middle",
                                                         "tip"
                                                       ]
-                                                    },
-                                                    "skip": {
-                                                      "type": "integer",
-                                                      "minimum": 0
                                                     },
                                                     "nodataColor": {
                                                       "type": "string",
@@ -3496,7 +3510,8 @@
                                         }
                                       },
                                       "required": [
-                                        "input"
+                                        "input",
+                                        "encoding"
                                       ]
                                     }
                                   ],

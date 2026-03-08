@@ -3653,7 +3653,10 @@ export interface AtmosSpec {
                             w?: string;
                             dims?: Dims;
                           };
-                      encoding?: {
+                      sampling?: {
+                        skip?: number;
+                      };
+                      encoding: {
                         /**
                          * Channel mappings (e.g., fill, stroke, opacity).
                          */
@@ -3896,13 +3899,14 @@ export interface AtmosSpec {
                         [k: string]: unknown;
                       } & {
                         style?: {
-                          glyph?: 'arrow' | 'barb';
-                          /**
-                           * Global multiplier for glyph size (not data-driven).
-                           */
-                          glyphScale?: number;
+                          glyph?: {
+                            type: 'arrow' | 'barb';
+                            /**
+                             * Global multiplier for glyph size (not data-driven).
+                             */
+                            scale?: number;
+                          };
                           pivot?: 'tail' | 'middle' | 'tip';
-                          skip?: number;
                           /**
                            * CSS color or hex.
                            */
@@ -8096,7 +8100,10 @@ export interface AtmosSpec {
                             w?: string;
                             dims?: Dims;
                           };
-                      encoding?: {
+                      sampling?: {
+                        skip?: number;
+                      };
+                      encoding: {
                         /**
                          * Channel mappings (e.g., fill, stroke, opacity).
                          */
@@ -8339,13 +8346,14 @@ export interface AtmosSpec {
                         [k: string]: unknown;
                       } & {
                         style?: {
-                          glyph?: 'arrow' | 'barb';
-                          /**
-                           * Global multiplier for glyph size (not data-driven).
-                           */
-                          glyphScale?: number;
+                          glyph?: {
+                            type: 'arrow' | 'barb';
+                            /**
+                             * Global multiplier for glyph size (not data-driven).
+                             */
+                            scale?: number;
+                          };
                           pivot?: 'tail' | 'middle' | 'tip';
-                          skip?: number;
                           /**
                            * CSS color or hex.
                            */
@@ -13005,7 +13013,10 @@ export interface AtmosSpec {
                             w?: string;
                             dims?: Dims;
                           };
-                      encoding?: {
+                      sampling?: {
+                        skip?: number;
+                      };
+                      encoding: {
                         /**
                          * Channel mappings (e.g., fill, stroke, opacity).
                          */
@@ -13248,13 +13259,14 @@ export interface AtmosSpec {
                         [k: string]: unknown;
                       } & {
                         style?: {
-                          glyph?: 'arrow' | 'barb';
-                          /**
-                           * Global multiplier for glyph size (not data-driven).
-                           */
-                          glyphScale?: number;
+                          glyph?: {
+                            type: 'arrow' | 'barb';
+                            /**
+                             * Global multiplier for glyph size (not data-driven).
+                             */
+                            scale?: number;
+                          };
                           pivot?: 'tail' | 'middle' | 'tip';
-                          skip?: number;
                           /**
                            * CSS color or hex.
                            */
@@ -17448,7 +17460,10 @@ export interface AtmosSpec {
                             w?: string;
                             dims?: Dims;
                           };
-                      encoding?: {
+                      sampling?: {
+                        skip?: number;
+                      };
+                      encoding: {
                         /**
                          * Channel mappings (e.g., fill, stroke, opacity).
                          */
@@ -17691,13 +17706,14 @@ export interface AtmosSpec {
                         [k: string]: unknown;
                       } & {
                         style?: {
-                          glyph?: 'arrow' | 'barb';
-                          /**
-                           * Global multiplier for glyph size (not data-driven).
-                           */
-                          glyphScale?: number;
+                          glyph?: {
+                            type: 'arrow' | 'barb';
+                            /**
+                             * Global multiplier for glyph size (not data-driven).
+                             */
+                            scale?: number;
+                          };
                           pivot?: 'tail' | 'middle' | 'tip';
-                          skip?: number;
                           /**
                            * CSS color or hex.
                            */

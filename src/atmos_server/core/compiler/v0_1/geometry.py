@@ -10,6 +10,7 @@ from .context import CompileContext
 from .ids import safe_id
 from .artifacts import add_geojson_artifact
 
+
 def _get_runtime_time_index(ctx: CompileContext, view_id: str) -> int | None:
     runtime_state = getattr(ctx, "runtime_state", None)
     if not isinstance(runtime_state, dict):
@@ -396,9 +397,12 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
         raise ValueError("vector geometry requires input object")
 
     input_data = inp.get("data")
+    if not isinstance(input_data, str):
+        raise ValueError("vector geometry requires input.data")
+
     input_var = inp.get("var")
-    if not isinstance(input_data, str) or not isinstance(input_var, str):
-        raise ValueError("vector geometry requires input.data and input.variable")
+    input_speed = inp.get("speed")
+    input_direction = inp.get("direction")
 
     base_data = input_data
     if input_data in ctx.derived_data_to_base_data:
@@ -415,14 +419,24 @@ def _resolved_vector(ctx: CompileContext, *, geom: dict[str, Any]) -> dict[str, 
     resolved = dict(geom.get("_resolved") or {})
     resolved["latKey"] = lat_key
     resolved["lonKey"] = lon_key
-
-    resolved["speedKey"] = f"{input_var}.speed"
-    resolved["directionKey"] = f"{input_var}.direction"
-    resolved["variableId"] = input_var
     resolved["baseDataId"] = base_data
     resolved["dataId"] = input_data
 
-    return resolved
+    # Case 1: derived/vector variable reference, e.g. input.var = "wind10"
+    if isinstance(input_var, str):
+        resolved["speedKey"] = f"{input_var}.speed"
+        resolved["directionKey"] = f"{input_var}.direction"
+        resolved["variableId"] = input_var
+        return resolved
+
+    # Case 2: explicit polar keys
+    if isinstance(input_speed, str) and isinstance(input_direction, str):
+        resolved["speedKey"] = input_speed
+        resolved["directionKey"] = input_direction
+        resolved["variableId"] = "wind"
+        return resolved
+
+    raise ValueError("vector geometry requires input.var or input.speed + input.direction")
 
 
 def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str, Any]:
