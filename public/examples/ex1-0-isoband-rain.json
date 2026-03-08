@@ -1,34 +1,16 @@
 {
   "data": [
     {
-      "id": "wrfEns",
-      "type": "collection",
-
-      "members": {
-        "count": 3,
-        "indexStart": 0,
-        "idPattern": "m{index}"
-      },
-
-      "sourceTemplate": {
-        "type": "netcdf",
-        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
-      },
-
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
       "dims": {
         "lat": { "key": "XLAT" },
         "lon": { "key": "XLONG" },
-        "time": {
-          "dim": "Time",
-          "key": "Times",
-          "type": "datetime",
-          "timezone": "UTC",
-          "format": "WRF_Times"
-        }
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
       },
-
       "vars": [
-        { "id": "t2m", "key": "T2" }
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" }
       ]
     },
     {
@@ -42,43 +24,48 @@
 
   "transform": [
     {
-      "type": "reduce",
-      "across": "member",
+      "type": "derive",
       "expr": {
-        "op": "mean",
+        "op": "add",
         "args": [
-          { "data": "wrfEns", "var": "t2m" }
+          { "data": "r001", "var": "rainnc" },
+          { "data": "r001", "var": "rainc" }
         ]
       },
-      "out": {
-        "data": "ensT2mMean",
-        "var": "t2mMean"
-      }
+      "out": { "data": "r001Rain", "var": "accRain" }
     }
   ],
+  
   "composition": {
     "layout": {
       "columns": 2
     },
-
     "views": [
       {
         "id": "view1",
         "frame": { "type": "map" },
         "layers": [
           {
-            "id": "temp",
+            "id": "lrain",
             "geometry": {
-              "type": "mesh",
-              "input": { "data": "ensT2mMean", "var": "t2mMean", "dims": { "time": [40, 50, 60, 70] } },
+              "type": "isoband",
+              "input": { "data": "r001Rain", "var": "accRain", "dims": { "time": [40, 50, 60, 70] } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+                  }
+                }
+              ],
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "t2mMean",
+                    "field": "accRain",
                     "scale": {
                       "type": "sequential",
-                      "scheme": "Inferno",
-                      "domain": [290, 294],
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
                       "clamp": false
                     }
                   },

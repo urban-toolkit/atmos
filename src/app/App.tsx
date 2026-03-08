@@ -20,17 +20,19 @@ type Manifest = {
 }
 
 
-// const firstExamplePath = "/examples/ex1-0-wind.json"
-// const firstExamplePath = "/examples/ex1-0-stations.json"
-// const firstExamplePath = "/examples/ex1-0-isoband.json"
-// const firstExamplePath = "/examples/ex1-1-mesh-rain.json"
-// const firstExamplePath = "/examples/ex1-0-mesh.json"
-// const firstExamplePath = "/examples/ex1-1-isoband-rain.json"
-const firstExamplePath = "/examples/ex1-1-isoband-rain-sequential.json"
-// const firstExamplePath = "/examples/ex1-1-isoband-rain-stations.json"
-// const firstExamplePath = "/examples/ex1-1-isoband-slider.json"
-// const firstExamplePath = "/examples/ex1-2-isoband-rain-slider.json"
+
+// const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
+// const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
+// const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
+// const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
+// const firstExamplePath = "/examples/ex2-0-wind.json"
+// const firstExamplePath = "/examples/ex3-0-stations.json"
+// const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
 // const firstExamplePath = "/examples/ex4-1-ens.json"
+const firstExamplePath = "/examples/ex4-3-ens-rain.json"
+// const firstExamplePath = "/examples/ex4-4-ens-rain.json"
+
+
 
 export default function App() {
 
@@ -51,7 +53,9 @@ export default function App() {
   const [timeValue, setTimeValue] = useState<number>(0)
   
   const timeMax = (manifest as any)?.uiState?.timeMax ?? 0
-  const hasTimeSlider = !!getTimeBinding(appliedSpec) && timeMax > 0
+  const hasTimeSlider =
+    (hasTimeInteraction(appliedSpec) || !!getTimeBinding(appliedSpec)) &&
+    timeMax > 0
 
   const columns = appliedSpec?.composition?.layout?.columns ?? 1
 
@@ -66,6 +70,18 @@ export default function App() {
     geoByLayerKey: Record<string, any>
     baseUrl: string
   }>(null)
+
+  function hasTimeInteraction(specObj: any): boolean {
+    const interactions = specObj?.composition?.interactions
+    if (!Array.isArray(interactions)) return false
+
+    for (const intr of interactions) {
+      const dim = intr?.action?.select?.dim
+      if (dim === "time") return true
+    }
+
+    return false
+  }
 
   function getTimeBinding(specObj: any): { scope: "view" | "composition"; viewIndex?: number; value: number } | null {
     const comp = specObj?.composition
@@ -99,6 +115,7 @@ export default function App() {
     } else {
       next.composition.time.value = nextValue
     }
+
     return next
   }
 
@@ -106,12 +123,17 @@ export default function App() {
     setTimeValue(v)
 
     if (!appliedSpec) return
+
     const nextSpec = setTimeBinding(appliedSpec, v)
-    setAppliedSpec(nextSpec) // keep editor + UI in sync immediately
+
+    // Only update appliedSpec if the spec actually has a real time binding
+    if (getTimeBinding(appliedSpec)) {
+      setAppliedSpec(nextSpec)
+    }
 
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
     debounceRef.current = window.setTimeout(() => {
-      handleApply(nextSpec)
+      handleApply(nextSpec, { timeIndex: v })
     }, 150)
   }
 
@@ -129,9 +151,9 @@ export default function App() {
     setMapsVersion((v) => v + 1)
   }
 
-  async function handleApply(nextSpec: any) {
+  async function handleApply(nextSpec: any, runtimeState?: { timeIndex?: number }) {
     try {
-      const result = await runSpec(nextSpec, "v0.1")
+      const result = await runSpec(nextSpec, "v0.1", runtimeState)
 
       // const effectiveBaseUrl = result.baseUrl ?? baseUrl
       
@@ -322,28 +344,37 @@ export default function App() {
             overflow: "auto", // no scrollbars
           }}
         >
-          {maps.map((m) => (
-            <div
-              key={m.viewId}
-              style={{
-                minHeight: tileH,
-                border: "1px solid #eee",
-                borderRadius: 8,
-                overflow: "hidden",
-                display: "grid",
-                gridTemplateRows: "28px 1fr",
-              }}
-            >
-              <div style={{ padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 12, color: "#555" }}>
-                {m.layers[0]?.repeat?.index != null ? `t = ${m.layers[0].repeat.index}` : m.viewId}
+          {maps.map((m) => {
+            const rep = m.layers[0]?.repeat
+            return (
+              <div
+                key={m.viewId}
+                style={{
+                  minHeight: tileH,
+                  border: "1px solid #eee",
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  display: "grid",
+                  gridTemplateRows: "28px 1fr",
+                }}
+              >
+                <div style={{ padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 12, color: "#555" }}>
+                  {rep?.type === "timestep"
+                  ? `t = ${rep.index}`
+                  : rep?.type === "member"
+                    ? `member = ${rep.index}`
+                    : m.viewId}
+                </div>
+
+                <AtmosMap
+                  // key={`${m.viewId}:${mapsVersion}`}
+                  layers={m.layers.map((l) => ({ ...l, geojson: geoByLayerKey[l.key] }))}
+                />
               </div>
 
-              <AtmosMap
-                // key={`${m.viewId}:${mapsVersion}`}
-                layers={m.layers.map((l) => ({ ...l, geojson: geoByLayerKey[l.key] }))}
-              />
-            </div>
-          ))}
+            )
+          }
+          )}
         </div>
 
       </div>

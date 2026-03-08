@@ -1,23 +1,23 @@
 {
-    "data": [
+  "data": [
     {
       "id": "r001",
       "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
-      "dimensions": {
-        "latitude": { "key": "XLAT" },
-        "longitude": { "key": "XLONG" },
-        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
       },
-      "variables": [
-        { "id": "rainnc", "key": "RAINNC", "kind": "grid" },
-        { "id": "rainc", "key": "RAINC", "kind": "grid" }
+      "vars": [
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" }
       ]
     },
     {
       "id": "boundaries",
       "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
-      "properties": {
-        "geoid": { "key": "GEOID" }
+      "dims": {
+        "id": { "key": "GEOID" }
       }
     }
   ],
@@ -25,37 +25,31 @@
   "transform": [
     {
       "type": "derive",
-      "input": {
-        "data": "r001"
-      },
-      "expression": {
+      "expr": {
         "op": "add",
         "args": [
-          { "variable": "rainnc" },
-          { "variable": "rainc" }
+          { "data": "r001", "var": "rainnc" },
+          { "data": "r001", "var": "rainc" }
         ]
       },
-      "output": {
-        "data": "rain_r001",
-        "variables": [
-          { "id": "accRain", "kind": "grid" }
-        ]
-      }
+      "out": { "data": "r001Rain", "var": "accRain" }
     }
   ],
   
   "composition": {
-    "layout": {
-      "columns": 3,
-      "rows": 2,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [50, 55, 60, 65, 68, 72],
-          "view": "view1"
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              { "view": "view1", "layers": ["lrain"] }
+            ]
+          }
         }
-      ]
-    },
+      }
+    ],
 
     "views": [
       {
@@ -63,10 +57,10 @@
         "frame": { "type": "map" },
         "layers": [
           {
-            "id": "rain",
+            "id": "lrain",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "rain_r001", "variable": "accRain" },
+              "input": { "data": "r001Rain", "var": "accRain" },
               "build": [
                 {
                   "levels": {
@@ -79,12 +73,14 @@
                 "channels": {
                   "fill": {
                     "field": "accRain",
-                    "scale": { "type": "sequential", "scheme": "Viridis", "domain": [0, 160] }
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
                   },
                   "opacity": { "value": 0.9 }
-                },
-                "style": {
-                  "nodataColor": "rgba(0,0,0,0)"
                 }
               }
             }
@@ -98,9 +94,6 @@
                 "channels": {
                   "fill": { "value": "transparent"},
                   "stroke": {"value": "#000000"}
-                },
-                "style": {
-                  "strokeWidth": 1
                 }
               }
             }
