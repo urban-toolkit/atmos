@@ -54,6 +54,9 @@
             "geometry": {
               "type": "vector",
               "input": { "data": "r001Wind10", "var": "wind10", "dims": { "time": [40, 50, 60, 70]} },
+              "sampling": {
+                "skip": 2
+              },
               "encoding": {
                 "channels": {
                   "stroke": { "value": "#2c7bb6" },
@@ -67,7 +70,12 @@
                   },
                   "opacity": { "value": 0.9 }
                 },
-                "style": { "glyph": "arrow", "glyphScale": 1.0, "skip": 2 }
+                "style": { 
+                  "glyph": {
+                    "type":"arrow",
+                    "scale": 1.0
+                  }
+                }
               }
             }
           },

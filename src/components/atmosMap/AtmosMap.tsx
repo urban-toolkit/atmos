@@ -2,17 +2,9 @@ import { useEffect, useMemo, useRef } from "react"
 import maplibregl, { Map } from "maplibre-gl"
 import { convertPaint } from "../../helpers/colors"
 
-/**
- * -------------------------------------------
- * Types (grow these as Atmos grows)
- * -------------------------------------------
- */
-
 type GeoJSONFeatureCollection = GeoJSON.FeatureCollection
 
 type MapLayerRole = "field" | "boundary" | "unknown"
-
-// MapLibre layer types we’ll use (expand later as needed)
 type MapLibreLayerType = "fill" | "line" | "circle" | "symbol"
 
 type MapLibreRenderSpec =
@@ -32,7 +24,6 @@ type MapLibreRenderSpec =
     }
   | {
       renderer: "maplibre"
-      // OLD (legacy)
       layerType: "fill" | "line" | "circle"
       paint?: Record<string, any>
       layout?: Record<string, any>
@@ -46,6 +37,7 @@ export type AtmosMapLayer = {
   geojson: GeoJSONFeatureCollection
   render?: RenderSpec
   geometryType?: string
+  glyph?: "arrow" | "barb"
 }
 
 export type AtmosMapProps = {
@@ -54,16 +46,163 @@ export type AtmosMapProps = {
   mapStyle?: string | any
   initialViewState?: ViewState
   onViewStateChange?: (vs: ViewState) => void
-
 }
 
-export type ViewState = { center: [number, number]; zoom: number; bearing: number; pitch: number }
+export type ViewState = {
+  center: [number, number]
+  zoom: number
+  bearing: number
+  pitch: number
+}
 
-/**
- * -------------------------------------------
- * Wind helpers
- * -------------------------------------------
- */
+function toKnots(speed: number, units: "m/s" | "kt" | "mph" = "m/s"): number {
+  if (!Number.isFinite(speed)) return 0
+  if (units === "kt") return speed
+  if (units === "mph") return speed * 0.868976
+  return speed * 1.94384 // m/s -> kt
+}
+
+function barbBucket(speed: number): number {
+  const kt = toKnots(speed, "m/s")
+  if (kt < 2.5) return 0
+  return Math.round(kt / 5) * 5
+}
+
+// function barbBucket(speed: number): number {
+//   // round to nearest 5 kt-style bucket
+//   if (!Number.isFinite(speed) || speed < 2.5) return 0
+//   return Math.round(speed / 5) * 5
+// }
+
+function ensureBarbIcon(map: maplibregl.Map, bucket: number) {
+  const name = `atmos-barb-${bucket}`
+  if (map.hasImage(name)) return
+
+  const size = 64
+  const canvas = document.createElement("canvas")
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return
+
+  ctx.clearRect(0, 0, size, size)
+  ctx.strokeStyle = "#000"
+  ctx.fillStyle = "#000"
+  ctx.lineWidth = 3
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
+
+  const cx = size / 2
+  const cy = size / 2
+
+  // Draw upright barb; MapLibre rotates it later
+  const shaftTopY = 10
+  const shaftBottomY = 50
+
+  // shaft
+  ctx.beginPath()
+  ctx.moveTo(cx, shaftBottomY)
+  ctx.lineTo(cx, shaftTopY)
+  ctx.stroke()
+
+  let remaining = bucket
+  let y = shaftTopY + 2
+  const spacing = 8
+
+  // 50-unit flags
+  while (remaining >= 50) {
+    ctx.beginPath()
+    ctx.moveTo(cx, y)
+    ctx.lineTo(cx + 16, y + 6)
+    ctx.lineTo(cx, y + 12)
+    ctx.closePath()
+    ctx.fill()
+    remaining -= 50
+    y += spacing + 4
+  }
+
+  // 10-unit full barbs
+  while (remaining >= 10) {
+    ctx.beginPath()
+    ctx.moveTo(cx, y)
+    ctx.lineTo(cx + 16, y + 6)
+    ctx.stroke()
+    remaining -= 10
+    y += spacing
+  }
+
+  // 5-unit half barb
+  if (remaining >= 5) {
+    ctx.beginPath()
+    ctx.moveTo(cx, y)
+    ctx.lineTo(cx + 10, y + 4)
+    ctx.stroke()
+  }
+
+  const imageData = ctx.getImageData(0, 0, size, size)
+  map.addImage(name, imageData, { pixelRatio: 2, sdf: true })
+}
+
+function buildBarbIconGeoJSON(fc: GeoJSONFeatureCollection): GeoJSONFeatureCollection {
+  const features: GeoJSON.Feature[] = []
+
+  for (const f of fc.features ?? []) {
+    if (!f || f.geometry?.type !== "Point") continue
+
+    const props: any = { ...(f.properties ?? {}) }
+    const speed = Number(props["wind10.speed"])
+    const dir = Number(props["wind10.direction"])
+
+    if (!Number.isFinite(speed) || !Number.isFinite(dir)) continue
+
+    const bucket = barbBucket(speed)
+    props.__barbIcon = `atmos-barb-${bucket}`
+
+    features.push({
+      type: "Feature",
+      geometry: f.geometry,
+      properties: props,
+    })
+  }
+
+  return {
+    type: "FeatureCollection",
+    features,
+  }
+}
+
+function buildBarbLayers(atmosLayer: AtmosMapLayer) {
+  const source = derivedSrcId(atmosLayer.layerId, "barb-icons")
+  const data = buildBarbIconGeoJSON(atmosLayer.geojson)
+  const id = lyrId(atmosLayer.layerId, "barb")
+
+  return {
+    extraSources: [{ source, data }],
+    layers: [
+      {
+        id,
+        def: {
+          id,
+          type: "symbol",
+          source,
+          layout: {
+            "icon-image": ["get", "__barbIcon"],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-anchor": "center",
+            "icon-rotation-alignment": "map",
+            "icon-rotate": ["to-number", ["get", "wind10.direction"]],
+            "icon-size": 0.8,
+          },
+          paint: {
+            "icon-opacity": 0.9,
+            "icon-color": "#2c7bb6",
+          },
+        },
+      },
+    ],
+  }
+}
 
 function ensureArrowIcon(map: maplibregl.Map) {
   const name = "atmos-arrow"
@@ -77,17 +216,13 @@ function ensureArrowIcon(map: maplibregl.Map) {
   if (!ctx) return
 
   ctx.clearRect(0, 0, size, size)
-
-  // Draw arrow pointing UP (north). Keep it solid black.
   ctx.fillStyle = "#000"
   ctx.translate(size / 2, size / 2)
 
-  // stem
   ctx.beginPath()
   ctx.rect(-3, -18, 6, 26)
   ctx.fill()
 
-  // head
   ctx.beginPath()
   ctx.moveTo(0, -30)
   ctx.lineTo(14, -10)
@@ -98,8 +233,6 @@ function ensureArrowIcon(map: maplibregl.Map) {
   ctx.setTransform(1, 0, 0, 1, 0, 0)
 
   const imageData = ctx.getImageData(0, 0, size, size)
-
-  // IMPORTANT: sdf:true enables icon-color / halo, etc.
   map.addImage(name, imageData, { pixelRatio: 2, sdf: true })
 }
 
@@ -121,46 +254,36 @@ function extentForField(fc: any, field: string): [number, number] | null {
   let max = -Infinity
 
   for (const f of fc.features) {
-    const props = f?.properties
-    const n = getPropNumber(props, field)
+    const n = getPropNumber(f?.properties, field)
     if (n == null) continue
     if (n < min) min = n
     if (n > max) max = n
   }
 
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null
-  if (min === max) return [min, max] // still valid; caller can handle
   return [min, max]
 }
 
 function resolveNumberScaleToExpression(scaleObj: any, fc: any) {
-  // Expected:
-  // { kind:"number-scale", field:"wind10.speed", scale:{type,domain:{type:"extent"}, range:{values:[a,b]}} }
-
   const field = scaleObj?.field
   const scale = scaleObj?.scale
   const range = scale?.range?.values
 
   if (typeof field !== "string") return null
   if (!Array.isArray(range) || range.length !== 2) return null
+
   const r0 = Number(range[0])
   const r1 = Number(range[1])
   if (!Number.isFinite(r0) || !Number.isFinite(r1)) return null
 
-  // domain extent => compute from data
-  const domainType = scale?.domain?.type
-  if (domainType !== "extent") return null
+  if (scale?.domain?.type !== "extent") return null
 
   const ext = extentForField(fc, field)
   if (!ext) return null
 
   const [d0, d1] = ext
-  if (d0 === d1) {
-    // constant radius if all speeds equal
-    return r0
-  }
+  if (d0 === d1) return r0
 
-  // MapLibre expression
   return [
     "interpolate",
     ["linear"],
@@ -177,7 +300,7 @@ function resolvePaintWithData(paint: Record<string, any> | undefined, fc: any) {
   const out: Record<string, any> = { ...paint }
 
   for (const [k, v] of Object.entries(out)) {
-    if (v && typeof v === "object" && v.kind === "number-scale") {
+    if (v && typeof v === "object" && (v as any).kind === "number-scale") {
       const expr = resolveNumberScaleToExpression(v, fc)
       if (expr != null) out[k] = expr
     }
@@ -186,69 +309,15 @@ function resolvePaintWithData(paint: Record<string, any> | undefined, fc: any) {
   return out
 }
 
-function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
-  const id = layerDef.id
-  const existing = map.getLayer(id)
-
-  // If it doesn't exist yet, add it once
-  if (!existing) {
-    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
-    map.addLayer(layerDef, safeBeforeId)
-    return
-  }
-
-  // If type/source changed, we must recreate (rare)
-  // @ts-ignore: MapLibre layer has type/source fields
-  const existingType = (existing as any).type
-  const existingSource = (existing as any).source
-  if (existingType !== layerDef.type || existingSource !== layerDef.source) {
-    map.removeLayer(id)
-    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
-    map.addLayer(layerDef, safeBeforeId)
-    return
-  }
-
-  // Otherwise patch in-place (no flicker)
-  patchLayer(map, id, layerDef)
-}
-
-function patchLayer(map: Map, id: string, nextDef: any) {
-  // paint
-  const paint = nextDef.paint ?? {}
-  for (const [k, v] of Object.entries(paint)) {
-    try { map.setPaintProperty(id, k, v as any) } catch {}
-  }
-
-  // layout
-  const layout = nextDef.layout ?? {}
-  for (const [k, v] of Object.entries(layout)) {
-    try { map.setLayoutProperty(id, k, v as any) } catch {}
-  }
-
-  // filter
-  if ("filter" in nextDef) {
-    try { map.setFilter(id, nextDef.filter) } catch {}
-  }
-
-  // zoom range
-  if (typeof nextDef.minzoom === "number" || typeof nextDef.maxzoom === "number") {
-    const minz = typeof nextDef.minzoom === "number" ? nextDef.minzoom : 0
-    const maxz = typeof nextDef.maxzoom === "number" ? nextDef.maxzoom : 24
-    try { map.setLayerZoomRange(id, minz, maxz) } catch {}
-  }
-}
-
-/**
- * -------------------------------------------
- * ID helpers (namespacing prevents collisions)
- * -------------------------------------------
- */
 function srcId(layerId: string) {
   return `src:${layerId}`
 }
 
+function derivedSrcId(layerId: string, suffix: string) {
+  return `src:${layerId}:${suffix}`
+}
+
 function lyrId(layerId: string, local?: string) {
-  // local lets one Atmos layer produce many MapLibre layers
   return local ? `lyr:${layerId}:${local}` : `lyr:${layerId}`
 }
 
@@ -260,20 +329,15 @@ function isAtmosLayer(id: string) {
   return id.startsWith("lyr:")
 }
 
-/**
- * -------------------------------------------
- * Geo helpers
- * -------------------------------------------
- */
 type BBox = [number, number, number, number]
 
 function bboxFromFeatureCollection(fc: any): BBox | null {
   if (!fc || fc.type !== "FeatureCollection" || !Array.isArray(fc.features)) return null
 
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
 
   const push = (x: number, y: number) => {
     if (x < minX) minX = x
@@ -296,7 +360,7 @@ function bboxFromFeatureCollection(fc: any): BBox | null {
     if (coords) walk(coords)
   }
 
-  if (!isFinite(minX)) return null
+  if (!Number.isFinite(minX)) return null
   return [minX, minY, maxX, maxY]
 }
 
@@ -308,19 +372,12 @@ function firstNonEmptyBBox(layers: AtmosMapLayer[]): BBox | null {
   return null
 }
 
-/**
- * -------------------------------------------
- * MapLibre upsert utilities
- * -------------------------------------------
- */
-
 function upsertGeoJSONSource(map: Map, id: string, data: GeoJSONFeatureCollection) {
   const existing = map.getSource(id) as any
   if (!existing) {
     map.addSource(id, { type: "geojson", data })
     return
   }
-  // GeoJSONSource has setData
   if (typeof existing.setData === "function") existing.setData(data)
 }
 
@@ -332,138 +389,221 @@ function removeSourceIfExists(map: Map, id: string) {
   if (map.getSource(id)) map.removeSource(id)
 }
 
-/**
- * -------------------------------------------
- * Renderer adapters (future: deck.gl, etc.)
- * -------------------------------------------
- */
-const renderers = {
-  maplibre: {
-    buildLayers(atmosLayer: AtmosMapLayer) {
-      const render = atmosLayer.render
-      if (!render || render.renderer !== "maplibre") return []
+function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
+  const id = layerDef.id
+  const existing = map.getLayer(id)
 
-      const source = srcId(atmosLayer.layerId)
+  if (!existing) {
+    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+    map.addLayer(layerDef, safeBeforeId)
+    return
+  }
 
-      // VECTOR OVERRIDE: draw arrows
-      if (atmosLayer.geometryType === "vector") {
-        const source = srcId(atmosLayer.layerId)
+  const existingType = (existing as any).type
+  const existingSource = (existing as any).source
 
-        // Your current manifest puts the number-scale under circle-radius
-        const legacyPaint =
-          "layers" in render ? render.layers?.[0]?.paint : render.paint
+  if (existingType !== layerDef.type || existingSource !== layerDef.source) {
+    map.removeLayer(id)
+    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+    map.addLayer(layerDef, safeBeforeId)
+    return
+  }
 
-        const resolvedPaint = resolvePaintWithData(legacyPaint ?? {}, atmosLayer.geojson)
-        const radiusExpr = resolvedPaint?.["circle-radius"] // number OR expression
+  patchLayer(map, id, layerDef)
+}
 
-        const iconColor =
-          typeof resolvedPaint?.["circle-color"] === "string"
-            ? resolvedPaint["circle-color"]
-            : "#2c7bb6" // fallback
+function patchLayer(map: Map, id: string, nextDef: any) {
+  const paint = nextDef.paint ?? {}
+  for (const [k, v] of Object.entries(paint)) {
+    try {
+      map.setPaintProperty(id, k, v as any)
+    } catch {}
+  }
 
-        const iconOpacity =
-          typeof resolvedPaint?.["circle-opacity"] === "number"
-            ? resolvedPaint["circle-opacity"]
-            : 1.0
+  const layout = nextDef.layout ?? {}
+  for (const [k, v] of Object.entries(layout)) {
+    try {
+      map.setLayoutProperty(id, k, v as any)
+    } catch {}
+  }
 
-        // Convert radius (2..12) into a reasonable icon-size (~0.2..1.2)
-        // MapLibre icon-size is a multiplier (1.0 = original icon).        
-        const glyphScale =
-          typeof (render as any)?.glyphScale === "number" && (render as any).glyphScale > 0
-            ? (render as any).glyphScale
-            : 1.0
+  if ("filter" in nextDef) {
+    try {
+      map.setFilter(id, nextDef.filter)
+    } catch {}
+  }
 
-        // radiusExpr is either a number or an expression
-        const iconSize =
-          Array.isArray(radiusExpr)
-            ? ["*", radiusExpr, 0.1 * glyphScale] // 2..12 -> 0.2..1.2, then glyphScale
-            : typeof radiusExpr === "number"
-              ? Math.max(0.05, radiusExpr * 0.1 * glyphScale)
-              : 0.6 * glyphScale
+  if (typeof nextDef.minzoom === "number" || typeof nextDef.maxzoom === "number") {
+    const minz = typeof nextDef.minzoom === "number" ? nextDef.minzoom : 0
+    const maxz = typeof nextDef.maxzoom === "number" ? nextDef.maxzoom : 24
+    try {
+      map.setLayerZoomRange(id, minz, maxz)
+    } catch {}
+  }
+}
 
-        const id = lyrId(atmosLayer.layerId, "arrow")
-
-        const def: any = {
-          id,
-          type: "symbol",
-          source,
-          layout: {
-            "icon-image": "atmos-arrow",
-            "icon-allow-overlap": true,
-            "icon-ignore-placement": true,
-            "icon-anchor": "center",
-            "icon-rotation-alignment": "map",
-
-            // direction field (degrees clockwise from north) => perfect for icon-rotate
-            // NOTE: your field key includes a dot, so keep it EXACTLY the same string.
-            "icon-rotate": ["to-number", ["get", "wind10.direction"]],
-
-            "icon-size": iconSize,
-          },
-          paint: {
-            "icon-opacity": iconOpacity,
-            // Works only if sdf:true in addImage
-            "icon-color": iconColor,
-          },
-        }
-
-        return [{ id, def }]
-      }
-
-      // ---- default path (your current code) ----
-      const layers =
-        "layers" in render
-          ? render.layers
-          : [{ id: "main", type: render.layerType, paint: render.paint, layout: render.layout }]
-
-      return layers.map((l, i) => {
-        const id = lyrId(atmosLayer.layerId, l.id ?? String(i))
-        const def: any = { id, type: l.type, source }
-
-        // IMPORTANT: resolve paint with data BEFORE convertPaint, so extent scales work.
-        if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
-
-        if (l.layout) def.layout = l.layout
-        if (l.filter) def.filter = l.filter
-        if (typeof l.minzoom === "number") def.minzoom = l.minzoom
-        if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
-        if (l["source-layer"]) def["source-layer"] = l["source-layer"]
-
-        return { id, def, beforeId: (l as any).beforeId }
-      })
-    }
-  },
-} as const
-
-/**
- * -------------------------------------------
- * Cleanup logic
- * -------------------------------------------
- */
 function reconcileAtmosObjects(map: Map, keepLayerIds: Set<string>, keepSourceIds: Set<string>) {
-  // Remove stale layers first (safe: layers reference sources)
   const style = map.getStyle()
-  const existingLayers = style.layers ?? []
-  for (const l of existingLayers) {
+
+  for (const l of style.layers ?? []) {
     if (isAtmosLayer(l.id) && !keepLayerIds.has(l.id)) {
       removeLayerIfExists(map, l.id)
     }
   }
 
-  // Then remove stale sources
-  const existingSources = style.sources ?? {}
-  for (const id of Object.keys(existingSources)) {
+  for (const id of Object.keys(style.sources ?? {})) {
     if (isAtmosSource(id) && !keepSourceIds.has(id)) {
       removeSourceIfExists(map, id)
     }
   }
 }
 
-/**
- * -------------------------------------------
- * Main component
- * -------------------------------------------
- */
+function getLegacyPaint(render: RenderSpec) {
+  if (!render || render.renderer !== "maplibre") return {}
+  return "layers" in render ? (render.layers?.[0]?.paint ?? {}) : (render.paint ?? {})
+}
+
+function buildArrowLayer(atmosLayer: AtmosMapLayer) {
+  const source = srcId(atmosLayer.layerId)
+  const resolvedPaint = resolvePaintWithData(getLegacyPaint(atmosLayer.render), atmosLayer.geojson) ?? {}
+
+  const radiusExpr = resolvedPaint["circle-radius"]
+  const iconColor =
+    typeof resolvedPaint["circle-color"] === "string" ? resolvedPaint["circle-color"] : "#2c7bb6"
+  const iconOpacity =
+    typeof resolvedPaint["circle-opacity"] === "number" ? resolvedPaint["circle-opacity"] : 1.0
+
+  const iconSize =
+    Array.isArray(radiusExpr)
+      ? ["*", radiusExpr, 0.1]
+      : typeof radiusExpr === "number"
+        ? Math.max(0.05, radiusExpr * 0.1)
+        : 0.6
+
+  const id = lyrId(atmosLayer.layerId, "arrow")
+
+  return [
+    {
+      id,
+      def: {
+        id,
+        type: "symbol",
+        source,
+        layout: {
+          "icon-image": "atmos-arrow",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "center",
+          "icon-rotation-alignment": "map",
+          "icon-rotate": ["to-number", ["get", "wind10.direction"]],
+          "icon-size": iconSize,
+        },
+        paint: {
+          "icon-opacity": iconOpacity,
+          "icon-color": iconColor,
+        },
+      },
+    },
+  ]
+}
+
+function buildBarbStemGeoJSON(fc: GeoJSONFeatureCollection): GeoJSONFeatureCollection {
+  const features: GeoJSON.Feature[] = []
+
+  for (const f of fc.features ?? []) {
+    if (!f || f.geometry?.type !== "Point") continue
+
+    const props: any = f.properties ?? {}
+    const speed = getPropNumber(props, "wind10.speed")
+    const dir = getPropNumber(props, "wind10.direction")
+    if (speed == null || dir == null) continue
+
+    const coords = (f.geometry as GeoJSON.Point).coordinates
+    const [lon, lat] = coords
+    if (typeof lon !== "number" || typeof lat !== "number") continue
+
+    const len = 0.3
+    const rad = (dir * Math.PI) / 180
+    const dx = len * Math.sin(rad)
+    const dy = len * Math.cos(rad)
+
+    features.push({
+      type: "Feature",
+      properties: props,
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [lon, lat],
+          [lon + dx, lat + dy],
+        ],
+      },
+    })
+  }
+
+  return {
+    type: "FeatureCollection",
+    features,
+  }
+}
+
+const renderers = {
+  maplibre: {
+    buildPlan(atmosLayer: AtmosMapLayer) {
+      const ops: Array<
+        | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
+        | { kind: "layer"; id: string; def: any; beforeId?: string }
+      > = []
+
+      const render = atmosLayer.render
+      if (!render || render.renderer !== "maplibre") return ops
+
+      const source = srcId(atmosLayer.layerId)
+      ops.push({ kind: "source", id: source, data: atmosLayer.geojson })
+
+      if (atmosLayer.geometryType === "vector") {
+        const glyph = atmosLayer.glyph.type ?? "arrow"
+
+        if (glyph === "barb") {
+          const barb = buildBarbLayers(atmosLayer)
+          for (const s of barb.extraSources) {
+            ops.push({ kind: "source", id: s.source, data: s.data })
+          }
+          for (const l of barb.layers) {
+            ops.push({ kind: "layer", id: l.id, def: l.def })
+          }
+          return ops
+        }
+
+        for (const l of buildArrowLayer(atmosLayer)) {
+          ops.push({ kind: "layer", id: l.id, def: l.def })
+        }
+        return ops
+      }
+
+      const layers =
+        "layers" in render
+          ? render.layers
+          : [{ id: "main", type: render.layerType, paint: render.paint, layout: render.layout }]
+
+      for (const [i, l] of layers.entries()) {
+        const id = lyrId(atmosLayer.layerId, l.id ?? String(i))
+        const def: any = { id, type: l.type, source }
+
+        if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
+        if (l.layout) def.layout = l.layout
+        if (l.filter) def.filter = l.filter
+        if (typeof l.minzoom === "number") def.minzoom = l.minzoom
+        if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
+        if (l["source-layer"]) def["source-layer"] = l["source-layer"]
+
+        ops.push({ kind: "layer", id, def, beforeId: (l as any).beforeId })
+      }
+
+      return ops
+    },
+  },
+} as const
+
 export default function AtmosMap({
   layers,
   autoFitBounds = true,
@@ -475,7 +615,6 @@ export default function AtmosMap({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const didAutoFitRef = useRef(false)
 
-  // Precompute “what MapLibre layers should exist” (pure, testable)
   const plan = useMemo(() => {
     const sourceIds = new Set<string>()
     const layerIds = new Set<string>()
@@ -487,16 +626,11 @@ export default function AtmosMap({
     for (const l of layers ?? []) {
       if (!l?.layerId || !l?.geojson) continue
 
-      const sid = srcId(l.layerId)
-      sourceIds.add(sid)
-      ops.push({ kind: "source", id: sid, data: l.geojson })
-
-      // If no explicit render given yet, you can choose a default later based on role/type.
-      // For now: render only if provided.
-      const built = renderers.maplibre.buildLayers(l)
-      for (const b of built) {
-        layerIds.add(b.id)
-        ops.push({ kind: "layer", id: b.id, def: b.def, beforeId: b.beforeId })
+      const built = renderers.maplibre.buildPlan(l)
+      for (const op of built) {
+        if (op.kind === "source") sourceIds.add(op.id)
+        if (op.kind === "layer") layerIds.add(op.id)
+        ops.push(op)
       }
     }
 
@@ -515,7 +649,6 @@ export default function AtmosMap({
       logoPosition: undefined,
     })
 
-    // restore camera if provided; otherwise allow one auto-fit later
     if (initialViewState) {
       map.jumpTo({
         center: initialViewState.center,
@@ -548,9 +681,8 @@ export default function AtmosMap({
       map.remove()
       mapRef.current = null
     }
-  }, [mapStyle]) // OK: map created once per style
+  }, [mapStyle, initialViewState, onViewStateChange])
 
-  // Resize listener
   useEffect(() => {
     const onResize = () => mapRef.current?.resize()
     window.addEventListener("resize", onResize)
@@ -572,20 +704,24 @@ export default function AtmosMap({
 
       const doApply = () => {
         if (cancelled) return
-        if (myToken !== token) return // newer update arrived
+        if (myToken !== token) return
+
         if (!map.isStyleLoaded()) {
-          // wait until style stabilizes
           map.once("load", doApply)
           return
         }
 
         try {
+          for (const bucket of [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]) {
+            ensureBarbIcon(map, bucket)
+          }
           ensureArrowIcon(map)
           reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
 
           for (const op of plan.ops) {
             if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
           }
+
           for (const op of plan.ops) {
             if (op.kind === "layer") upsertLayer(map, op.def, op.beforeId)
           }
@@ -594,11 +730,16 @@ export default function AtmosMap({
             const bb = firstNonEmptyBBox(layers ?? [])
             if (bb) {
               didAutoFitRef.current = true
-              map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
+              map.fitBounds(
+                [
+                  [bb[0], bb[1]],
+                  [bb[2], bb[3]],
+                ],
+                { padding: 30, duration: 400 }
+              )
             }
           }
-        } catch (e) {
-          // schedule a single retry on the next tick (not styledata spam)
+        } catch {
           if (!scheduled) {
             scheduled = true
             requestAnimationFrame(doApply)
@@ -613,64 +754,7 @@ export default function AtmosMap({
     return () => {
       cancelled = true
     }
-  }, [plan, autoFitBounds])
-
-  // // Apply plan whenever layers change
-  // useEffect(() => {
-  //   const map = mapRef.current
-  //   if (!map) return
-
-  //   let cancelled = false
-
-  //   const apply = () => {
-  //     if (cancelled) return
-  //     if (!map.isStyleLoaded()) return // still not ready
-
-  //     try {
-  //       ensureArrowIcon(map)
-  //       reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
-
-  //       // sources first
-  //       for (const op of plan.ops) {
-  //         if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
-  //       }
-
-  //       // then layers
-  //       for (const op of plan.ops) {
-  //         if (op.kind === "layer") replaceLayer(map, op.def, op.beforeId)
-  //       }
-
-  //       // Fit bounds
-  //       if (autoFitBounds && !didAutoFitRef.current) {
-  //         const bb = firstNonEmptyBBox(layers ?? [])
-  //         if (bb) {
-  //           didAutoFitRef.current = true
-  //           map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 30, duration: 400 })
-  //         }
-  //       }
-  //     } catch (e) {
-  //       // If style is in flux, sources/layers can throw. Retry on next styledata tick.
-  //       console.warn("apply failed; will retry on styledata", e)
-  //       map.once("styledata", apply)
-  //     }
-  //   }
-
-  //   // Always: ensure we apply after style events too
-  //   // const onStyleData = () => apply()
-
-  //   if (!map.isStyleLoaded()) {
-  //     map.once("load", apply)
-  //   } else {
-  //     apply()
-  //   }
-
-  //   // map.on("styledata", onStyleData)
-
-  //   return () => {
-  //     cancelled = true
-  //     // map.off("styledata", onStyleData)
-  //   }
-  // }, [plan, autoFitBounds])
+  }, [plan, autoFitBounds, layers])
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 }

@@ -21,6 +21,7 @@ export type MapLayerRuntime = {
   render?: any
   geometryType?: string
   repeat?: any
+  glyph?: any
 }
 
 function joinUrl(baseUrl: string, path: string) {
@@ -57,6 +58,7 @@ export function interpretManifestToMapLayers(manifest: Manifest, baseUrl: string
         render: a.metadata?.render,
         geometryType: a.metadata?.geometryType,
         repeat: a.metadata?.repeat,
+        glyph: a.metadata?.glyph
       }
     })
 }
