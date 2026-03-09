@@ -24,6 +24,164 @@ from atmos_server.core.executor.geometry_converters import (
 # Small shared helpers
 # -------------------------------------------------------------------
 
+import pandas as pd
+import xarray as xr
+import numpy as np
+
+def _dataframe_to_grid_dataset(
+    rows: pd.DataFrame,
+    *,
+    lat_key: str,
+    lon_key: str,
+    var_key: str,
+    grid_type: str,
+) -> xr.Dataset:
+    if not isinstance(rows, pd.DataFrame):
+        raise TypeError("Expected pandas DataFrame")
+
+    needed = [lat_key, lon_key, var_key]
+    missing = [c for c in needed if c not in rows.columns]
+    if missing:
+        raise KeyError(f"Missing columns for gridding: {missing}")
+
+    df = rows[[lat_key, lon_key, var_key]].copy()
+    df[lat_key] = pd.to_numeric(df[lat_key], errors="coerce")
+    df[lon_key] = pd.to_numeric(df[lon_key], errors="coerce")
+    df[var_key] = pd.to_numeric(df[var_key], errors="coerce")
+    df = df.dropna(subset=[lat_key, lon_key, var_key])
+
+    if df.empty:
+        raise ValueError("No valid rows available to build grid dataset")
+
+    if not isinstance(grid_type, str) or not grid_type:
+        raise ValueError("grid_type must be a non-empty string")
+
+    grid_type = grid_type.lower().strip()
+
+    # ------------------------------------------------------------
+    # RECTILINEAR GRID
+    # lat/lon behave like separable axes
+    # ------------------------------------------------------------
+    if grid_type == "rectilinear":
+        lat_vals = np.sort(df[lat_key].unique())
+        lon_vals = np.sort(df[lon_key].unique())
+
+        if len(lat_vals) < 2 or len(lon_vals) < 2:
+            raise ValueError(
+                "Rectilinear grid requires at least 2 unique latitude values "
+                "and 2 unique longitude values"
+            )
+
+        max_cells = 2_000_000
+        n_cells = len(lat_vals) * len(lon_vals)
+        if n_cells > max_cells:
+            raise ValueError(
+                f"Rectilinear grid would create {n_cells} cells, which exceeds "
+                f"the safety limit of {max_cells}. Check whether this dataset "
+                f"is really rectilinear."
+            )
+
+        try:
+            grid = df.pivot(index=lat_key, columns=lon_key, values=var_key)
+        except ValueError as e:
+            raise ValueError(
+                "Could not pivot rectilinear grid. This usually means there are "
+                "duplicate (lat, lon) pairs for the selected slice."
+            ) from e
+
+        grid = grid.reindex(index=lat_vals, columns=lon_vals)
+        val2d = grid.to_numpy()
+
+        if val2d.shape[0] < 2 or val2d.shape[1] < 2:
+            raise ValueError(
+                f"Rectilinear grid must be at least (2, 2), got {val2d.shape}"
+            )
+
+        lon2d, lat2d = np.meshgrid(lon_vals, lat_vals)
+
+        return xr.Dataset(
+            data_vars={
+                var_key: (("y", "x"), val2d),
+                lat_key: (("y", "x"), lat2d),
+                lon_key: (("y", "x"), lon2d),
+            }
+        )
+
+    # ------------------------------------------------------------
+    # CURVILINEAR GRID
+    # lat/lon are 2D coordinates over a structured grid
+    # This version assumes the CSV preserves row-major grid order.
+    # ------------------------------------------------------------
+    if grid_type == "curvilinear":
+        lat = df[lat_key].to_numpy()
+        lon = df[lon_key].to_numpy()
+        val = df[var_key].to_numpy()
+        n = len(df)
+
+        if n < 4:
+            raise ValueError("Need at least 4 rows to build a curvilinear grid")
+
+        # Try to infer width from longitude reset pattern
+        nx = None
+        first_lon = lon[0]
+        for i in range(1, n):
+            if lon[i] == first_lon:
+                nx = i
+                break
+
+        if nx is None or nx < 2:
+            # Try latitude reset as a fallback
+            first_lat = lat[0]
+            for i in range(1, n):
+                if lat[i] == first_lat:
+                    nx = i
+                    break
+
+        if nx is None or nx < 2:
+            raise ValueError(
+                "Could not infer grid width from CSV row order for curvilinear data. "
+                "For curvilinear CSV, the rows must preserve structured grid order, "
+                "or the file must include explicit grid indices."
+            )
+
+        if n % nx != 0:
+            raise ValueError(
+                f"Row count {n} is not divisible by inferred grid width {nx}"
+            )
+
+        ny = n // nx
+        if ny < 2:
+            raise ValueError(
+                f"Inferred grid height {ny} is too small for contouring"
+            )
+
+        lat2d = lat.reshape(ny, nx)
+        lon2d = lon.reshape(ny, nx)
+        val2d = val.reshape(ny, nx)
+
+        return xr.Dataset(
+            data_vars={
+                var_key: (("y", "x"), val2d),
+                lat_key: (("y", "x"), lat2d),
+                lon_key: (("y", "x"), lon2d),
+            }
+        )
+
+    # ------------------------------------------------------------
+    # SCATTERED DATA
+    # no implicit grid topology
+    # ------------------------------------------------------------
+    if grid_type == "scattered":
+        raise ValueError(
+            "Cannot build a grid dataset from scattered data directly. "
+            "Use a point geometry, or apply an interpolation/gridding transform first."
+        )
+
+    raise ValueError(
+        f"Unsupported grid_type '{grid_type}'. "
+        "Expected one of: rectilinear, curvilinear, scattered."
+    )
+
 def _sampling_dict(g: dict[str, Any]) -> dict[str, Any]:
     sampling = g.get("sampling") or {}
     return sampling if isinstance(sampling, dict) else {}
@@ -165,8 +323,11 @@ def _execute_mesh_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> 
 
 
 def _execute_isoband_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> dict[str, Any]:
-    upstream = _require_data_object(upstream_obj, step_id=step.id, gtype="isoband")
     resolved = _resolved_dict(g)
+    grid_type = resolved.get("gridType")
+
+    if not isinstance(grid_type, str) or not grid_type:
+      raise ValueError(f"isoband geometry could not resolve gridType (step {step.id})")
 
     levels = _levels_from_geometry_spec(g)
     if not levels or len(levels) < 2:
@@ -175,23 +336,43 @@ def _execute_isoband_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
     var_key, var_id = _require_variable_key_and_id(resolved, step_id=step.id)
     lat_key, lon_key = _require_lat_lon_keys(resolved, step_id=step.id)
 
-    ds = upstream.dataset
-    print("geometry dims =", ds.dims)
-    print("geometry var dims =", ds[var_key].dims)
+    if isinstance(upstream_obj, DataObject):
+        ds = upstream_obj.dataset
+        return _isoband_to_geojson(
+            ds,
+            var_key=var_key,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            levels=levels,
+            out_field=var_id,
+        )
 
-    return _isoband_to_geojson(
-        upstream.dataset,
-        var_key=var_key,
-        lat_key=lat_key,
-        lon_key=lon_key,
-        levels=levels,
-        out_field=var_id,
-    )
+    if isinstance(upstream_obj, pd.DataFrame):
+        ds = _dataframe_to_grid_dataset(
+            upstream_obj,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            var_key=var_key,
+            grid_type=grid_type
+        )
+        return _isoband_to_geojson(
+            ds,
+            var_key=var_key,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            levels=levels,
+            out_field=var_id,
+        )
+
+    raise TypeError(f"isoband geometry expects DataObject or DataFrame upstream (step {step.id})")
 
 
 def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> dict[str, Any]:
-    upstream = _require_data_object(upstream_obj, step_id=step.id, gtype="isoline")
     resolved = _resolved_dict(g)
+    grid_type = resolved.get("gridType")
+
+    if not isinstance(grid_type, str) or not grid_type:
+        raise ValueError(f"isoline geometry could not resolve gridType (step {step.id})")
 
     levels = _levels_from_geometry_spec(g)
     if not levels or len(levels) < 1:
@@ -210,8 +391,16 @@ def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
     if not isinstance(fmt, str) or not fmt:
         fmt = ".0f"
 
+    ds = _dataframe_to_grid_dataset(
+        upstream_obj,
+        lat_key=lat_key,
+        lon_key=lon_key,
+        var_key=var_key,
+        grid_type=grid_type
+    )
+
     lines_fc = _isoline_to_geojson(
-        upstream.dataset,
+        ds,
         var_key=var_key,
         lat_key=lat_key,
         lon_key=lon_key,

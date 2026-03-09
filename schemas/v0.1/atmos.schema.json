@@ -379,6 +379,23 @@
                     },
                     "additionalProperties": false
                   },
+                  "grid": {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "rectilinear",
+                          "curvilinear",
+                          "scattered"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
                   "vars": {
                     "type": "array",
                     "description": "Variables available in the dataset.",
@@ -401,15 +418,13 @@
                       ],
                       "additionalProperties": false
                     }
-                  },
-                  "description": {
-                    "type": "string"
                   }
                 },
                 "required": [
                   "id",
                   "dims",
-                  "vars"
+                  "vars",
+                  "grid"
                 ]
               },
               {

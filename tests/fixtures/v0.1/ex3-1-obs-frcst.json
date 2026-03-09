@@ -1,0 +1,144 @@
+{
+  "data": [
+    {
+      "id": "wrfData",
+      "type": "dataset",
+      "source": {
+        "type": "csv",
+        "path": "tests/data/chicago_match/original/t2_wrf_t0_t71.csv"
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+
+      "dims": {
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": {
+          "key": "datetime",
+          "type": "datetime",
+          "timezone": "UTC"
+        }
+      },
+      
+      "vars": [
+        { "id": "frcst", "key": "value" }
+      ]  
+     },
+    {
+      "id": "stationsMatch",
+      "type": "dataset",
+      "source": {
+        "type": "csv",
+        "path": "tests/data/chicago_match/processed/station_wrf_matched.csv"
+      },
+
+       "grid": {
+        "type": "scattered"
+      },
+
+      "dims": {
+        "id": { "key": "id" },
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": {
+          "key": "datetime",
+          "type": "datetime",
+          "timezone": "UTC"
+        }
+      },
+      
+      "vars": [
+        { "id": "obs", "key": "station_value" },
+        { "id": "frcst", "key": "wrf_value" }
+      ]  
+     },
+     {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/geo/cb_2018_us_county_20m.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "composition": {
+    "layout": {
+      "columns": 2
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lt2m",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfData", "var": "frcst", "dims": { "time": [0, 1, 2, 3, 4, 5] } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [5, 10, 15, 20, 25, 30, 35, 40]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "frcst",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [5,40],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          },
+          {
+            "id": "stations",
+            "geometry": {
+              "type": "point",
+              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": [0, 1, 2, 3, 4, 5]} },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "obs",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Inferno",
+                      "domain": [14, 18],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+
+  }
+}

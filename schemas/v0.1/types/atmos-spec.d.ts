@@ -131,6 +131,9 @@ export interface AtmosSpec {
               }[]
             ];
           };
+          grid: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
           /**
            * Variables available in the dataset.
            */
@@ -144,7 +147,6 @@ export interface AtmosSpec {
              */
             key: string;
           }[];
-          description?: string;
           [k: string]: unknown;
         } & {
           /**
@@ -289,6 +291,9 @@ export interface AtmosSpec {
               }[]
             ];
           };
+          grid: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
           /**
            * Variables available in the dataset.
            */
@@ -302,7 +307,6 @@ export interface AtmosSpec {
              */
             key: string;
           }[];
-          description?: string;
           [k: string]: unknown;
         } & {
           type: 'collection';
@@ -482,6 +486,9 @@ export interface AtmosSpec {
               }[]
             ];
           };
+          grid: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
           /**
            * Variables available in the dataset.
            */
@@ -495,7 +502,6 @@ export interface AtmosSpec {
              */
             key: string;
           }[];
-          description?: string;
           [k: string]: unknown;
         } & {
           /**
@@ -640,6 +646,9 @@ export interface AtmosSpec {
               }[]
             ];
           };
+          grid: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
           /**
            * Variables available in the dataset.
            */
@@ -653,7 +662,6 @@ export interface AtmosSpec {
              */
             key: string;
           }[];
-          description?: string;
           [k: string]: unknown;
         } & {
           type: 'collection';

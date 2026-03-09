@@ -28,6 +28,7 @@ def compile_load_steps(ctx: CompileContext) -> None:
             "type": kind,
             "dims": d.get("dims"),
             "vars": d.get("vars"),
+            "grid": d.get("grid")
         }
 
         if kind == "collection":

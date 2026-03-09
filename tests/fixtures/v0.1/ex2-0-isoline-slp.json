@@ -8,6 +8,11 @@
         "lon": { "key": "XLONG" },
         "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
       },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
       "vars": [
         { "id": "psfc", "key": "PSFC"},
         { "id": "t2m", "key": "T2" },

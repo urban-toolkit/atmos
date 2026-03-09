@@ -8,6 +8,11 @@
         "lon": { "key": "XLONG" },
         "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
       },
+      
+      "grid": {
+        "type": "curvilinear"
+      },
+
       "vars": [
         { "id": "rainnc", "key": "RAINNC" },
         { "id": "rainc", "key": "RAINC" }

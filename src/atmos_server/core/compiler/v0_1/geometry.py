@@ -11,6 +11,28 @@ from .ids import safe_id
 from .artifacts import add_geojson_artifact
 
 
+def _grid_type_for_input(ctx: CompileContext, input_data: str) -> str | None:
+    d = ctx.data_by_id.get(input_data)
+    if not isinstance(d, dict):
+        return None
+    grid = d.get("grid")
+    if not isinstance(grid, dict):
+        return None
+    gt = grid.get("type")
+    return gt if isinstance(gt, str) and gt else None
+
+def _validate_geometry_grid_compatibility(ctx, gtype: str, input_data: str) -> None:
+    grid_type = _grid_type_for_input(ctx, input_data)
+
+    if gtype == "point":
+        return
+
+    if gtype in ("isoband", "isoline", "mesh", "vector"):
+        if grid_type not in ("rectilinear", "curvilinear"):
+            raise ValueError(
+                f"{gtype} requires gridded data; got grid.type='{grid_type}' for data '{input_data}'"
+            )
+
 def _get_runtime_time_index(ctx: CompileContext, view_id: str) -> int | None:
     runtime_state = getattr(ctx, "runtime_state", None)
     if not isinstance(runtime_state, dict):
@@ -116,6 +138,19 @@ def _layer_varies_with_repeat(
 
     return False
 
+def _resolved_time_key_for_input(ctx: CompileContext, input_data: str) -> str | None:
+    d = ctx.data_by_id.get(input_data)
+    if not isinstance(d, dict):
+        return None
+
+    dims = d.get("dims") or {}
+    time_dim = dims.get("time")
+    if isinstance(time_dim, dict):
+        k = time_dim.get("key")
+        if isinstance(k, str) and k:
+            return k
+    return None
+
 def compile_geometry_and_artifacts(
     ctx: CompileContext,
     ports: CompilerPorts,
@@ -190,18 +225,29 @@ def compile_geometry_and_artifacts(
                 if time_idx is None and _is_time_controlled_for_view(ctx, view_id):
                     time_idx = 0
 
-                print("final time_idx =", time_idx, "for", view_id, layer_id)
-
+    
                 if isinstance(time_idx, int):
                     input_data = ginput.get("data")
                     if isinstance(input_data, str) and _is_time_indexable_data(ctx, input_data):
                         tstep_id = f"transform:time:{view_id}:{layer_id}"
+
+                        resolved = {}
+                        time_key = _resolved_time_key_for_input(ctx, input_data)
+                        if isinstance(time_key, str):
+                            resolved["timeKey"] = time_key
+
+                        params={
+                            "type": "select_time_index",
+                            "index": time_idx,
+                            "_resolved": resolved
+                        }
+
                         ctx.steps.append(
                             Step(
                                 id=tstep_id,
                                 kind="transform",
                                 depends_on=(upstream_step,) if upstream_step else (),
-                                params={"type": "select_time_index", "index": time_idx},
+                                params=params,
                             )
                         )
                         upstream_step = tstep_id
@@ -213,28 +259,40 @@ def compile_geometry_and_artifacts(
                 input_data = ginput.get("data")
 
                 if isinstance(idx, int) and isinstance(input_data, str):
-                    if not upstream_step:
-                        raise ValueError(f"repeatView: unknown data '{input_data}'")
+                  if not upstream_step:
+                      raise ValueError(f"repeatView: unknown data '{input_data}'")
 
-                    if rtype == "timestep" and _is_time_indexable_data(ctx, input_data):
-                        step_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
-                        params = {"type": "select_time_index", "index": idx}
-                    elif rtype == "member":
-                        step_id = f"transform:repeat:{view_id}:{layer_id}:m{idx:03d}"
-                        params = {"type": "select_member_index", "index": idx}
-                    else:
-                        step_id = None
+                  step_id = None
+                  params: dict[str, Any] | None = None
 
-                    if step_id:
-                        ctx.steps.append(
-                            Step(
-                                id=step_id,
-                                kind="transform",
-                                depends_on=(upstream_step,),
-                                params=params,
-                            )
-                        )
-                        upstream_step = step_id
+                  if rtype == "timestep" and _is_time_indexable_data(ctx, input_data):
+                      step_id = f"transform:repeat:{view_id}:{layer_id}:t{idx:03d}"
+
+                      resolved = {}
+                      time_key = _resolved_time_key_for_input(ctx, input_data)
+                      if isinstance(time_key, str):
+                          resolved["timeKey"] = time_key
+
+                      params = {
+                          "type": "select_time_index",
+                          "index": idx,
+                          "_resolved": resolved,
+                      }
+
+                  elif rtype == "member":
+                      step_id = f"transform:repeat:{view_id}:{layer_id}:m{idx:03d}"
+                      params = {"type": "select_member_index", "index": idx}
+
+                  if step_id and params is not None:
+                      ctx.steps.append(
+                          Step(
+                              id=step_id,
+                              kind="transform",
+                              depends_on=(upstream_step,),
+                              params=params,
+                          )
+                      )
+                      upstream_step = step_id
             
             # ---- geometry params (+ _resolved) ----
             geom_params = dict(geom)
@@ -243,6 +301,10 @@ def compile_geometry_and_artifacts(
 
             _strip_repeated_dims_from_geom_input(geom_params, repeat=repeat)
             _maybe_enrich_geometry_resolved(ctx, geom_params, gtype=gtype, ginput=ginput, geom=geom)
+
+            input_data = ginput.get("data")
+            if isinstance(input_data, str):
+                _validate_geometry_grid_compatibility(ctx, gtype, input_data)
 
             # ---- geometry step ----
             if reuse_geom_step_id is None:
@@ -303,11 +365,18 @@ def _get_time_index_for_view(view: dict[str, Any], composition: dict[str, Any]) 
 
 def _is_time_indexable_data(ctx: CompileContext, input_data: str) -> bool:
     if input_data in ctx.derived_data_to_step:
-        return True  # derived outputs are DataObjects (time-indexable)
+        return True
 
     d = ctx.data_by_id.get(input_data)
     if not isinstance(d, dict):
         return False
+
+    dims = d.get("dims") or {}
+    time_dim = dims.get("time")
+    if isinstance(time_dim, dict):
+        time_key = time_dim.get("key")
+        if isinstance(time_key, str) and time_key:
+            return True
 
     src = d.get("source") or {}
     return isinstance(src, dict) and src.get("type") == "netcdf"
@@ -361,13 +430,20 @@ def _resolved_mesh_like(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[
     lat_key = None
     lon_key = None
     var_key = None
+    grid_type = None
 
     if base_data is not None:
         d = ctx.data_by_id[base_data]
         dims = d.get("dims") or {}
 
-        lat_key = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
-        lon_key = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
+        lat_key   = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
+        lon_key   = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
+
+        grid = d.get("grid") or {}
+        if isinstance(grid, dict):
+            gt = grid.get("type")
+            if isinstance(gt, str) and gt:
+                grid_type = gt
 
         # For derived datasets, the xarray variable name should be the derived variable id itself
         if isinstance(input_data, str) and input_data in ctx.derived_data_to_step:
@@ -388,6 +464,7 @@ def _resolved_mesh_like(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[
         "latKey": lat_key,
         "lonKey": lon_key,
         "baseDataId": base_data,
+        "gridType": grid_type
     }
 
 
@@ -444,6 +521,7 @@ def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str,
     input_var = ginput.get("var")
 
     lat_key = lon_key = site_key = time_key = var_key = None
+    grid_type = None
 
     if isinstance(input_data, str) and input_data in ctx.data_by_id:
         d = ctx.data_by_id[input_data]
@@ -463,6 +541,14 @@ def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str,
                         var_key = k.strip()
                     break
 
+        if input_data is not None:
+            d = ctx.data_by_id[input_data]
+            grid = d.get("grid") or {}
+            if isinstance(grid, dict):
+                gt = grid.get("type")
+                if isinstance(gt, str) and gt:
+                    grid_type = gt
+
     return {
         "dataId": input_data,
         "variableId": input_var,
@@ -472,4 +558,5 @@ def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str,
         "siteKey": site_key,
         "timeKey": time_key,
         "baseDataId": input_data,
+        "gridType": grid_type
     }
