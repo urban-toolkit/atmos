@@ -9,6 +9,7 @@ import AtmosMap from "../components/atmosMap/AtmosMap"
 import { interpretManifestToCharts } from "../interpreters/chartInterpreter"
 import type { ChartRuntime } from "../interpreters/chartInterpreter"
 import AtmosChart from "../components/chart/AtmosChart"
+import FloatingPanel from "../components/floatingPanel/FloatingPanel"
 
 type Manifest = {
   kind: string
@@ -35,14 +36,22 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex4-4-ens-rain.json"
 // const firstExamplePath = "/examples/ex4-5-ens-prob.json"
 // const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
-
 const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
+
 type FirstSnapshot = {
   spec: any
   manifest: Manifest
   mapLayers: MapLayerRuntime[]
   geoByLayerKey: Record<string, any>
   baseUrl: string
+}
+
+function isViewFloating(specObj: any, viewId: string): boolean {
+  const views = specObj?.composition?.views
+  if (!Array.isArray(views)) return false
+
+  const view = views.find((v: any) => v?.id === viewId)
+  return view?.floating === true
 }
 
 function hasTimeInteraction(specObj: any): boolean {
@@ -104,6 +113,12 @@ export default function App() {
   const [timeValue, setTimeValue] = useState<number>(0)
   const [charts, setCharts] = useState<ChartRuntime[]>([])
 
+  const [floatingPositions, setFloatingPositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({})
+
+  const [closedFloatingViews, setClosedFloatingViews] = useState<Record<string, boolean>>({})
+
   const debounceRef = useRef<number | null>(null)
   const loadedRef = useRef(false)
   const firstExampleRef = useRef<any>(null)
@@ -126,19 +141,19 @@ export default function App() {
     const clickedId = info.properties?.id
     if (clickedId == null) return
 
-    const runtimeState: {
-      timeIndex?: number
-      selections: Record<string, Record<string, any>>
-    } = {
+    // reopen floating chart
+    setClosedFloatingViews((prev) => ({
+      ...prev,
+      view2: false,
+    }))
+
+    const runtimeState = {
       selections: {
         view2: {
           id: clickedId,
         },
       },
-    }
-
-    if (typeof timeValue === "number") {
-      runtimeState.timeIndex = timeValue
+      timeIndex: timeValue,
     }
 
     handleApply(appliedSpec ?? spec, runtimeState)
@@ -238,6 +253,18 @@ export default function App() {
     return out
   }, [maps, charts])
 
+  const gridTiles = useMemo(() => {
+    return tiles.filter((t) => !isViewFloating(appliedSpec, t.viewId))
+  }, [tiles, appliedSpec])
+
+  const floatingTiles = useMemo(() => {
+    return tiles.filter((t) => isViewFloating(appliedSpec, t.viewId))
+  }, [tiles, appliedSpec])
+
+  const visibleFloatingTiles = useMemo(() => {
+    return floatingTiles.filter((t) => !closedFloatingViews[t.viewId])
+  }, [floatingTiles, closedFloatingViews])
+
   useEffect(() => {
     if (!appliedSpec) return
     const binding = getTimeBinding(appliedSpec)
@@ -328,7 +355,8 @@ export default function App() {
   const pad = 10
 
   // const n = maps.length
-  const n = tiles.length
+  // const n = tiles.length
+  const n = gridTiles.length
   const cols = Math.max(1, columns)
   const rows = Math.max(1, Math.ceil(n / cols))
 
@@ -392,7 +420,7 @@ export default function App() {
             overflow: "auto",
           }}
         >
-          {tiles.map((t) => {
+          {gridTiles.map((t) => {
         const rep = t.type === "map" ? t.layers[0]?.repeat : null
 
             return (
@@ -440,6 +468,57 @@ export default function App() {
           })}
         </div>
       </div>
+      {visibleFloatingTiles.map((t, i) => {
+        const rep = t.type === "map" ? t.layers[0]?.repeat : null
+
+        const title =
+          rep?.type === "timestep"
+            ? `t = ${rep.index}`
+            : rep?.type === "member"
+              ? `member = ${rep.index}`
+              : t.viewId
+
+        const pos = floatingPositions[t.viewId] ?? {
+          x: window.innerWidth - 460,
+          y: 64 + i * 320,
+        }
+
+        return (
+          <FloatingPanel
+            key={`floating-${t.viewId}`}
+            viewId={t.viewId}
+            title={title}
+            initialX={pos.x}
+            initialY={pos.y}
+            onMove={(viewId, nextPos) => {
+              setFloatingPositions((prev) => ({
+                ...prev,
+                [viewId]: nextPos,
+              }))
+            }}
+            onClose={(viewId) => {
+              setClosedFloatingViews((prev) => ({
+                ...prev,
+                [viewId]: true,
+              }))
+            }}
+          >
+            {t.type === "map" ? (
+              <AtmosMap
+                layers={t.layers
+                  .filter((l) => geoByLayerKey[l.key])
+                  .map((l) => ({
+                    ...l,
+                    geojson: geoByLayerKey[l.key],
+                  }))}
+                onFeatureClick={(info) => handleMapFeatureClick(t.viewId, info)}
+              />
+            ) : (
+              <AtmosChart url={t.url} />
+            )}
+          </FloatingPanel>
+        )
+      })}
 
       <Editor
         initialData={spec}

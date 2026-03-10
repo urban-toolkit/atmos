@@ -582,23 +582,23 @@ const renderers = {
           for (const s of barb.extraSources) {
             ops.push({ kind: "source", id: s.source, data: s.data })
           }
-          for (const l of barb.layers) {
-            ops.push({
-              kind: "layer",
-              id,
-              def,
-              beforeId: (l as any).beforeId,
-              atmosLayerId: atmosLayer.layerId,
-            })
-          }
+         for (const l of barb.layers) {
+          ops.push({
+            kind: "layer",
+            id: l.id,
+            def: l.def,
+            beforeId: (l as any).beforeId,
+            atmosLayerId: atmosLayer.layerId,
+          })
+        }
           return ops
         }
 
         for (const l of buildArrowLayer(atmosLayer)) {
           ops.push({
             kind: "layer",
-            id,
-            def,
+            id: l.id,
+            def: l.def,
             beforeId: (l as any).beforeId,
             atmosLayerId: atmosLayer.layerId,
           })
@@ -622,7 +622,13 @@ const renderers = {
         if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
         if (l["source-layer"]) def["source-layer"] = l["source-layer"]
 
-        ops.push({ kind: "layer", id, def, beforeId: (l as any).beforeId })
+        ops.push({
+          kind: "layer",
+          id,
+          def,
+          beforeId: (l as any).beforeId,
+          atmosLayerId: atmosLayer.layerId,
+        })
       }
 
       return ops
@@ -647,7 +653,7 @@ export default function AtmosMap({
     const layerIds = new Set<string>()
     const ops: Array<
       | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
-      | { kind: "layer"; id: string; def: any; beforeId?: string }
+      | { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string }
     > = []
 
     for (const l of layers ?? []) {
