@@ -10270,9 +10270,12 @@ export interface AtmosSpec {
             /**
              * Dataset id used as the default data source for the Vega-Lite spec.
              */
-            data: string;
+            input: {
+              data?: string;
+              [k: string]: unknown;
+            };
             /**
-             * Raw Vega-Lite specification object.
+             * Raw Vega-Lite specification object, except for the data.
              */
             vegaLite: {
               [k: string]: unknown;
@@ -19630,9 +19633,12 @@ export interface AtmosSpec {
             /**
              * Dataset id used as the default data source for the Vega-Lite spec.
              */
-            data: string;
+            input: {
+              data?: string;
+              [k: string]: unknown;
+            };
             /**
-             * Raw Vega-Lite specification object.
+             * Raw Vega-Lite specification object, except for the data.
              */
             vegaLite: {
               [k: string]: unknown;
@@ -20133,5 +20139,5 @@ export interface Items2 {
   /**
    * @minItems 1
    */
-  layers: [string, ...string[]];
+  layers?: [string, ...string[]];
 }

@@ -4055,19 +4055,24 @@
                           }
                         }
                       },
-                      "data": {
-                        "type": "string",
-                        "minLength": 1,
+                      "input": {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
                         "description": "Dataset id used as the default data source for the Vega-Lite spec."
                       },
                       "vegaLite": {
                         "type": "object",
-                        "description": "Raw Vega-Lite specification object."
+                        "description": "Raw Vega-Lite specification object, except for the data."
                       }
                     },
                     "required": [
                       "frame",
-                      "data",
+                      "input",
                       "vegaLite"
                     ]
                   }
@@ -4257,8 +4262,7 @@
                             }
                           },
                           "required": [
-                            "view",
-                            "layers"
+                            "view"
                           ],
                           "additionalProperties": false
                         },

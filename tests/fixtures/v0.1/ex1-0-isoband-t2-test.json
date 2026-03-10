@@ -45,33 +45,19 @@
         { "id": "frcst", "key": "wrf_value" }
       ]  
      },
-     {
+    {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/geo/cb_2018_us_county_20m.geojson" },
+      "source": { "type": "geojson", "path": "tests/data/chicago/illinois_county.json" },
       "dims": {
         "id": { "key": "GEOID" }
       }
     }
   ],
-
+  
   "composition": {
     "layout": {
-      "columns": 1
+      "columns": 2
     },
-
-    "interactions": [
-      {
-        "type": "click",
-        "source": [{ "view": "view1", "layers": ["stations"] }],
-        "action": { 
-          "select": {
-            "dim": "id",
-            "target": [{ "view": "view2" }]
-          }
-        }
-      }
-    ],
-
     "views": [
       {
         "id": "view1",
@@ -81,12 +67,12 @@
             "id": "lt2m",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "t2WRFUS", "var": "t2m", "dims": { "time": 0 } },
+              "input": { "data": "t2WRFUS", "var": "t2m", "dims": { "time": [68, 69, 70, 71] } },
               "build": [
                 {
                   "levels": {
                     "type": "explicit",
-                    "values": [0, 10, 20, 30, 40]
+                    "values": [0, 5, 10, 15, 20, 25, 30, 35, 40]
                   }
                 }
               ],
@@ -123,7 +109,7 @@
             "id": "stations",
             "geometry": {
               "type": "point",
-              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": 0 } },
+              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": [68, 69, 70, 71] } },
               "encoding": {
                 "channels": {
                   "fill": {
@@ -131,7 +117,7 @@
                     "scale": {
                       "type": "sequential",
                       "scheme": "Inferno",
-                      "domain": [14, 18],
+                      "domain": [0, 40],
                       "clamp": false
                     }
                   },
@@ -141,49 +127,6 @@
             }
           }
         ]
-      },
-      {
-        "id": "view2",
-        "frame": { "type": "chart" },
-        "input": { "data": "stationsMatch" },
-        "vegaLite": {
-          "transform": [
-            {
-              "fold": ["obs", "frcst"],
-              "as": ["source", "temperature"]
-            }
-          ],
-          "mark": {
-            "type": "line",
-            "point": true
-          },
-          "encoding": {
-            "x": {
-              "field": "time",
-              "type": "temporal",
-              "title": "Time"
-            },
-            "y": {
-              "field": "temperature",
-              "type": "quantitative",
-              "title": "Temperature"
-            },
-            "color": {
-              "field": "source",
-              "type": "nominal",
-              "title": "Series"
-            },
-            "detail": {
-              "field": "id"
-            },
-            "tooltip": [
-              { "field": "id", "type": "nominal", "title": "Station" },
-              { "field": "time", "type": "temporal", "title": "Time" },
-              { "field": "source", "type": "nominal", "title": "Series" },
-              { "field": "temperature", "type": "quantitative", "title": "Value" }
-            ]
-          }
-        }
       }
     ]
   }
