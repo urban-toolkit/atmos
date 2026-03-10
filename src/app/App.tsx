@@ -6,6 +6,9 @@ import type { MapLayerRuntime } from "../interpreters/manifestInterpreter"
 
 import Editor from "../components/editor/Editor"
 import AtmosMap from "../components/atmosMap/AtmosMap"
+import { interpretManifestToCharts } from "../interpreters/chartInterpreter"
+import type { ChartRuntime } from "../interpreters/chartInterpreter"
+import AtmosChart from "../components/chart/AtmosChart"
 
 type Manifest = {
   kind: string
@@ -24,7 +27,7 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
 // const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
 // const firstExamplePath = "/examples/ex2-0-wind-arrows.json"
-const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
+// const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
 // const firstExamplePath = "/examples/ex3-0-stations.json"
 // const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
 // const firstExamplePath = "/examples/ex4-1-ens.json"
@@ -33,6 +36,7 @@ const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
 // const firstExamplePath = "/examples/ex4-5-ens-prob.json"
 // const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
 
+const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
 type FirstSnapshot = {
   spec: any
   manifest: Manifest
@@ -98,6 +102,7 @@ export default function App() {
   const [appliedSpec, setAppliedSpec] = useState<any>(null)
   const [baseUrl, setBaseUrl] = useState<string>("/artifacts/")
   const [timeValue, setTimeValue] = useState<number>(0)
+  const [charts, setCharts] = useState<ChartRuntime[]>([])
 
   const debounceRef = useRef<number | null>(null)
   const loadedRef = useRef(false)
@@ -111,7 +116,38 @@ export default function App() {
 
   const columns = appliedSpec?.composition?.layout?.columns ?? 1
 
-  async function handleApply(nextSpec: any, runtimeState?: { timeIndex?: number }) {
+  function handleMapFeatureClick(viewId: string, info: {
+    layerId: string
+    properties: Record<string, any>
+  }) {
+    if (viewId !== "view1") return
+    if (info.layerId !== "stations") return
+
+    const clickedId = info.properties?.id
+    if (clickedId == null) return
+
+    const runtimeState: {
+      timeIndex?: number
+      selections: Record<string, Record<string, any>>
+    } = {
+      selections: {
+        view2: {
+          id: clickedId,
+        },
+      },
+    }
+
+    if (typeof timeValue === "number") {
+      runtimeState.timeIndex = timeValue
+    }
+
+    handleApply(appliedSpec ?? spec, runtimeState)
+  }
+
+  async function handleApply(nextSpec: any,  runtimeState?: {
+    timeIndex?: number
+    selections?: Record<string, Record<string, any>>
+  }) {
     try {
       const result = await runSpec(nextSpec, "v0.1", runtimeState)
       const nextBaseUrl = result.baseUrl ?? baseUrl
@@ -122,6 +158,9 @@ export default function App() {
       const layers = interpretManifestToMapLayers(result.manifest, nextBaseUrl)
       setMapLayers(layers)
       setGeoByLayerKey({})
+
+      const chartViews = interpretManifestToCharts(result.manifest, nextBaseUrl)
+      setCharts(chartViews)
 
       setAppliedSpec(nextSpec)
       setShowAlert(false)
@@ -181,6 +220,23 @@ export default function App() {
 
     return entries.map(([viewId, layers]) => ({ viewId, layers }))
   }, [mapLayers])
+
+  const tiles = useMemo(() => {
+    const out: Array<
+      | { type: "map"; viewId: string; layers: MapLayerRuntime[] }
+      | { type: "chart"; viewId: string; url: string }
+    > = []
+
+    for (const m of maps) {
+      out.push({ type: "map", viewId: m.viewId, layers: m.layers })
+    }
+
+    for (const c of charts) {
+      out.push({ type: "chart", viewId: c.viewId, url: c.url })
+    }
+
+    return out
+  }, [maps, charts])
 
   useEffect(() => {
     if (!appliedSpec) return
@@ -271,7 +327,8 @@ export default function App() {
   const gap = 8
   const pad = 10
 
-  const n = maps.length
+  // const n = maps.length
+  const n = tiles.length
   const cols = Math.max(1, columns)
   const rows = Math.max(1, Math.ceil(n / cols))
 
@@ -335,12 +392,12 @@ export default function App() {
             overflow: "auto",
           }}
         >
-          {maps.map((m) => {
-            const rep = m.layers[0]?.repeat
+          {tiles.map((t) => {
+        const rep = t.type === "map" ? t.layers[0]?.repeat : null
 
             return (
               <div
-                key={m.viewId}
+                key={t.viewId}
                 style={{
                   minHeight: tileH,
                   border: "1px solid #eee",
@@ -361,18 +418,23 @@ export default function App() {
                   {rep?.type === "timestep"
                     ? `t = ${rep.index}`
                     : rep?.type === "member"
-                      ? `member = ${rep.index}`
-                      : m.viewId}
+                    ? `member = ${rep.index}`
+                    : t.viewId}
                 </div>
 
-                <AtmosMap
-                  layers={m.layers
-                    .filter((l) => geoByLayerKey[l.key])
-                    .map((l) => ({
-                      ...l,
-                      geojson: geoByLayerKey[l.key],
-                    }))}
-                />
+                {t.type === "map" ? (
+                  <AtmosMap
+                    layers={t.layers
+                      .filter((l) => geoByLayerKey[l.key])
+                      .map((l) => ({
+                        ...l,
+                        geojson: geoByLayerKey[l.key],
+                      }))}
+                      onFeatureClick={(info) => handleMapFeatureClick(t.viewId, info)}
+                  />
+                ) : (
+                  <AtmosChart url={t.url} />
+                )}
               </div>
             )
           })}

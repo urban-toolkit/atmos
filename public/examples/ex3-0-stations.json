@@ -8,6 +8,10 @@
         "path": "tests/data/stations/stations.csv"
       },
 
+      "grid": {
+        "type": "scattered"
+      },
+
       "dims": {
         "id": { "key": "id" },
         "lat": { "key": "lat" },

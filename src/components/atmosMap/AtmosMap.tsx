@@ -40,12 +40,26 @@ export type AtmosMapLayer = {
   glyph?: "arrow" | "barb"
 }
 
+// export type AtmosMapProps = {
+//   layers: AtmosMapLayer[]
+//   autoFitBounds?: boolean
+//   mapStyle?: string | any
+//   initialViewState?: ViewState
+//   onViewStateChange?: (vs: ViewState) => void
+// }
+
 export type AtmosMapProps = {
   layers: AtmosMapLayer[]
   autoFitBounds?: boolean
   mapStyle?: string | any
   initialViewState?: ViewState
   onViewStateChange?: (vs: ViewState) => void
+  onFeatureClick?: (info: {
+    layerId: string
+    viewId?: string
+    feature: GeoJSON.Feature
+    properties: Record<string, any>
+  }) => void
 }
 
 export type ViewState = {
@@ -551,7 +565,7 @@ const renderers = {
     buildPlan(atmosLayer: AtmosMapLayer) {
       const ops: Array<
         | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
-        | { kind: "layer"; id: string; def: any; beforeId?: string }
+        | { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string }
       > = []
 
       const render = atmosLayer.render
@@ -569,13 +583,25 @@ const renderers = {
             ops.push({ kind: "source", id: s.source, data: s.data })
           }
           for (const l of barb.layers) {
-            ops.push({ kind: "layer", id: l.id, def: l.def })
+            ops.push({
+              kind: "layer",
+              id,
+              def,
+              beforeId: (l as any).beforeId,
+              atmosLayerId: atmosLayer.layerId,
+            })
           }
           return ops
         }
 
         for (const l of buildArrowLayer(atmosLayer)) {
-          ops.push({ kind: "layer", id: l.id, def: l.def })
+          ops.push({
+            kind: "layer",
+            id,
+            def,
+            beforeId: (l as any).beforeId,
+            atmosLayerId: atmosLayer.layerId,
+          })
         }
         return ops
       }
@@ -610,6 +636,7 @@ export default function AtmosMap({
   mapStyle = "https://demotiles.maplibre.org/style.json",
   initialViewState,
   onViewStateChange,
+  onFeatureClick
 }: AtmosMapProps) {
   const mapRef = useRef<Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -755,6 +782,43 @@ export default function AtmosMap({
       cancelled = true
     }
   }, [plan, autoFitBounds, layers])
+
+  useEffect(() => {
+  const map = mapRef.current
+  if (!map || !onFeatureClick) return
+
+  const clickableLayerIds = plan.ops
+    .filter((op): op is { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string } => op.kind === "layer")
+    .map((op) => op.id)
+
+  if (!clickableLayerIds.length) return
+
+  const handleClick = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: clickableLayerIds })
+    if (!features.length) return
+
+    const f = features[0]
+    const clickedLayerId = f.layer.id
+
+    const op = plan.ops.find(
+      (x): x is { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string } =>
+        x.kind === "layer" && x.id === clickedLayerId
+    )
+    if (!op) return
+
+    onFeatureClick({
+      layerId: op.atmosLayerId,
+      feature: f as unknown as GeoJSON.Feature,
+      properties: (f.properties ?? {}) as Record<string, any>,
+    })
+  }
+
+  map.on("click", handleClick)
+
+  return () => {
+    map.off("click", handleClick)
+  }
+}, [plan, onFeatureClick])
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 }
