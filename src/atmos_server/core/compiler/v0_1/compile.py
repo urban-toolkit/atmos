@@ -3,13 +3,13 @@ from typing import Any
 
 from atmos_server.core.compiler.models import Plan, PlanMeta
 from atmos_server.core.compiler.ports import CompilerPorts
-from atmos_server.bootstrap.wiring import make_default_ports
 
 from atmos_server.core.compiler.v0_1.context import CompileContext
 from atmos_server.core.compiler.v0_1.data_load import compile_load_steps
 from atmos_server.core.compiler.v0_1.transforms import compile_transform_steps
 from atmos_server.core.compiler.v0_1.repeat import expand_repeat_views
 from atmos_server.core.compiler.v0_1.geometry import compile_geometry_and_artifacts
+from atmos_server.core.compiler.v0_1.chart import compile_chart_artifacts
 
 
 def compile_v0_1(
@@ -19,7 +19,6 @@ def compile_v0_1(
     ports: CompilerPorts,
     runtime_state: dict[str, Any] | None = None,
 ) -> Plan:
-    ports = ports or make_default_ports()
 
     ctx = CompileContext(
         spec=spec,
@@ -34,6 +33,7 @@ def compile_v0_1(
     compile_transform_steps(ctx)
     views = expand_repeat_views(ctx, ports)
     compile_geometry_and_artifacts(ctx, ports, views)
+    compile_chart_artifacts(ctx, views)
 
     meta = PlanMeta(schema_version=schema_version, spec_id=spec.get("id"))
     return Plan(

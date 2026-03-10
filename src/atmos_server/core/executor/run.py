@@ -3,11 +3,30 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import pandas as pd
 
 from atmos_server.core.executor.context import ExecutionContext
 from atmos_server.core.executor.dispatch import execute_step
 from atmos_server.core.executor.dag import topological_sort
 from atmos_server.core.compiler.models import Plan
+
+def _dataframe_to_vl_values(df, field_map: dict[str, str]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+
+    for _, row in df.iterrows():
+        rec: dict[str, Any] = {}
+        for atmos_field, source_col in field_map.items():
+            if source_col in row:
+                value = row[source_col]
+                if hasattr(value, "isoformat"):
+                    try:
+                        value = value.isoformat()
+                    except Exception:
+                        pass
+                rec[atmos_field] = value
+        records.append(rec)
+
+    return records
 
 
 def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
@@ -213,6 +232,30 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
                         "metadata": a.metadata,
                     }
                 )
+        elif a.format == "vega-lite":
+            if not isinstance(obj, pd.DataFrame):
+                raise TypeError(f"Artifact {a.id} expects DataFrame from {a.producer_step}")
+
+            meta = a.metadata or {}
+            vl_spec = dict(meta.get("vegaLite") or {})
+            field_map = dict(meta.get("fieldMap") or {})
+
+            vl_spec["data"] = {
+                "values": _dataframe_to_vl_values(obj, field_map)
+            }
+
+            out_path.write_text(json.dumps(vl_spec, indent=2), encoding="utf-8")
+
+            materialized.append(
+                {
+                    "id": a.id,
+                    "format": a.format,
+                    "path": a.path,
+                    "producerStep": a.producer_step,
+                    "metadata": a.metadata,
+                }
+            )
+        
         else:
             raise NotImplementedError(f"Artifact format not supported yet: {a.format}")
     

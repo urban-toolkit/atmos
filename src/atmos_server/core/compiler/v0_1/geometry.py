@@ -520,13 +520,14 @@ def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str,
     input_data = ginput.get("data")
     input_var = ginput.get("var")
 
-    lat_key = lon_key = site_key = time_key = var_key = None
+    lat_key = lon_key = id_key = site_key = time_key = var_key = None
     grid_type = None
 
     if isinstance(input_data, str) and input_data in ctx.data_by_id:
         d = ctx.data_by_id[input_data]
         dims = d.get("dims") or {}
 
+        id_key = (dims.get("id") or {}).get("key") if isinstance(dims.get("id"), dict) else None
         lat_key = (dims.get("lat") or {}).get("key") if isinstance(dims.get("lat"), dict) else None
         lon_key = (dims.get("lon") or {}).get("key") if isinstance(dims.get("lon"), dict) else None
         site_key = (dims.get("site") or {}).get("key") if isinstance(dims.get("site"), dict) else None
@@ -541,22 +542,21 @@ def _resolved_point(ctx: CompileContext, *, ginput: dict[str, Any]) -> dict[str,
                         var_key = k.strip()
                     break
 
-        if input_data is not None:
-            d = ctx.data_by_id[input_data]
-            grid = d.get("grid") or {}
-            if isinstance(grid, dict):
-                gt = grid.get("type")
-                if isinstance(gt, str) and gt:
-                    grid_type = gt
+        grid = d.get("grid") or {}
+        if isinstance(grid, dict):
+            gt = grid.get("type")
+            if isinstance(gt, str) and gt:
+                grid_type = gt
 
     return {
         "dataId": input_data,
         "variableId": input_var,
         "variableKey": var_key,
+        "idKey": id_key,
         "latKey": lat_key,
         "lonKey": lon_key,
         "siteKey": site_key,
         "timeKey": time_key,
         "baseDataId": input_data,
-        "gridType": grid_type
+        "gridType": grid_type,
     }

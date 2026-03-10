@@ -486,8 +486,12 @@ def _execute_point_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) ->
     var_id = str(resolved.get("variableId") or "value")
 
     extra: list[str] = []
+    id_key = resolved.get("idKey")
     site_key = resolved.get("siteKey")
     time_key = resolved.get("timeKey")
+
+    if isinstance(id_key, str):
+        extra.append(id_key)
     if isinstance(site_key, str):
         extra.append(site_key)
     if isinstance(time_key, str):

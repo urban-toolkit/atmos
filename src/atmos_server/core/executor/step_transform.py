@@ -833,6 +833,20 @@ def _execute_dataframe_transform(
 ) -> pd.DataFrame:
     ttype = t.get("type")
 
+    if ttype == "empty_table":
+        return upstream_obj.iloc[0:0].copy()
+
+    if ttype == "select_rows_equal":
+        column = t.get("column")
+        value = t.get("value")
+
+        if not isinstance(column, str) or column not in upstream_obj.columns:
+            raise ValueError(
+                f"select_rows_equal: invalid column '{column}' (step {step.id})"
+            )
+
+        return upstream_obj[upstream_obj[column] == value].copy()
+
     if ttype == "select_time_index":
         idx = t.get("index")
         if not isinstance(idx, int) or idx < 0:

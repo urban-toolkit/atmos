@@ -37,7 +37,7 @@ class Step:
 # Artifacts
 # -------------------------
 
-ArtifactFormat = Literal["json", "geojson", "parquet", "arrow", "zarr", "bin"]
+ArtifactFormat = Literal["json", "geojson", "parquet", "arrow", "zarr", "bin", "vega-lite"]
 
 
 @dataclass(frozen=True)
