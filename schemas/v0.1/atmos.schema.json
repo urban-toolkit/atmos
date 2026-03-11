@@ -2129,25 +2129,9 @@
                         "type": "string",
                         "minLength": 1
                       },
-                      "time": {
-                        "description": "Optional view-local time selection. If omitted, view may inherit composition time.",
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "type"
-                        ],
-                        "properties": {
-                          "type": {
-                            "const": "index",
-                            "description": "Time selection mode. v0 supports discrete timestep selection by index only."
-                          },
-                          "value": {
-                            "type": "integer",
-                            "default": 0,
-                            "minimum": 0,
-                            "description": "Selected timestep index. If omitted, defaults to 0."
-                          }
-                        }
+                      "floating": {
+                        "type": "boolean",
+                        "default": false
                       },
                       "context": {
                         "description": "Optional view-local context (titles, legends, controls).",

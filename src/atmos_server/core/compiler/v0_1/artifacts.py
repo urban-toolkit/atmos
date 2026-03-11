@@ -9,6 +9,7 @@ def add_geojson_artifact(
     ports: CompilerPorts,
     artifacts: list[Artifact],
     view: dict[str, Any],
+    layer: dict[str, Any],
     view_id: str,
     layer_id: str,
     gtype: str,
@@ -44,6 +45,10 @@ def add_geojson_artifact(
 
     if isinstance(view.get("_repeat"), dict):
         metadata["repeat"] = view["_repeat"]
+    
+    mask = layer.get("mask")
+    if isinstance(mask, dict):
+        metadata["mask"] = mask
 
     artifacts.append(
         Artifact(

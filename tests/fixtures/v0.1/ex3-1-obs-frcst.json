@@ -51,12 +51,19 @@
       "dims": {
         "id": { "key": "GEOID" }
       }
+    },
+    {
+      "id": "boundaries2",
+      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
     }
   ],
 
   "composition": {
     "layout": {
-      "columns": 1
+      "columns": 2
     },
 
     "interactions": [
@@ -120,6 +127,19 @@
             }
           },
           {
+            "id": "bound2",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries2" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          },
+          {
             "id": "stations",
             "geometry": {
               "type": "point",
@@ -145,6 +165,7 @@
       {
         "id": "view2",
         "frame": { "type": "chart" },
+        "floating": true,
         "input": { "data": "stationsMatch" },
         "vegaLite": {
           "transform": [

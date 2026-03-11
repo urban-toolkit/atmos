@@ -326,6 +326,7 @@ def compile_geometry_and_artifacts(
                 ports=ports,
                 artifacts=ctx.artifacts,
                 view=view,
+                layer=layer,
                 view_id=view_id,
                 layer_id=layer_id,
                 gtype=gtype,

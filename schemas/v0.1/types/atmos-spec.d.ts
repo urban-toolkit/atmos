@@ -923,19 +923,7 @@ export interface AtmosSpec {
       (
         | ({
             id: string;
-            /**
-             * Optional view-local time selection. If omitted, view may inherit composition time.
-             */
-            time?: {
-              /**
-               * Time selection mode. v0 supports discrete timestep selection by index only.
-               */
-              type: 'index';
-              /**
-               * Selected timestep index. If omitted, defaults to 0.
-               */
-              value?: number;
-            };
+            floating?: boolean;
             context?: Context;
             /**
              * @minItems 1
@@ -10059,19 +10047,7 @@ export interface AtmosSpec {
           })
         | ({
             id: string;
-            /**
-             * Optional view-local time selection. If omitted, view may inherit composition time.
-             */
-            time?: {
-              /**
-               * Time selection mode. v0 supports discrete timestep selection by index only.
-               */
-              type: 'index';
-              /**
-               * Selected timestep index. If omitted, defaults to 0.
-               */
-              value?: number;
-            };
+            floating?: boolean;
             context?: Context;
             /**
              * @minItems 1
@@ -10286,19 +10262,7 @@ export interface AtmosSpec {
       ...(
         | ({
             id: string;
-            /**
-             * Optional view-local time selection. If omitted, view may inherit composition time.
-             */
-            time?: {
-              /**
-               * Time selection mode. v0 supports discrete timestep selection by index only.
-               */
-              type: 'index';
-              /**
-               * Selected timestep index. If omitted, defaults to 0.
-               */
-              value?: number;
-            };
+            floating?: boolean;
             context?: Context;
             /**
              * @minItems 1
@@ -19422,19 +19386,7 @@ export interface AtmosSpec {
           })
         | ({
             id: string;
-            /**
-             * Optional view-local time selection. If omitted, view may inherit composition time.
-             */
-            time?: {
-              /**
-               * Time selection mode. v0 supports discrete timestep selection by index only.
-               */
-              type: 'index';
-              /**
-               * Selected timestep index. If omitted, defaults to 0.
-               */
-              value?: number;
-            };
+            floating?: boolean;
             context?: Context;
             /**
              * @minItems 1
