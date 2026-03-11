@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from "react"
 import maplibregl, { Map } from "maplibre-gl"
 import { convertPaint } from "../../helpers/colors"
+import earcut from "earcut"
+import { interpolateViridis } from "d3-scale-chromatic"
 
 type GeoJSONFeatureCollection = GeoJSON.FeatureCollection
 
@@ -31,14 +33,66 @@ type MapLibreRenderSpec =
 
 type RenderSpec = MapLibreRenderSpec | undefined
 
+type MapOp =
+  | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
+  | { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId?: string }
+  | {
+      kind: "custom-mask"
+      id: string
+      targetSourceId: string
+      bounds: { west: number; south: number; east: number; north: number }
+      atmosLayerId: string
+      interactive?: { on?: string[] }
+    }
+
 export type AtmosMapLayer = {
   layerId: string
   role: MapLayerRole
   geojson: GeoJSONFeatureCollection
   render?: RenderSpec
   geometryType?: string
-  glyph?: "arrow" | "barb"
+  // glyph?: "arrow" | "barb"
+  glyph?: any
+  mask?: any
 }
+
+const vertexShaderSrc = `
+  attribute vec2 a_pos;
+  attribute vec2 a_lonlat;
+  attribute vec4 a_color;
+
+  uniform mat4 u_matrix;
+
+  varying vec2 v_lonlat;
+  varying vec4 v_color;
+
+  void main() {
+    v_lonlat = a_lonlat;
+    v_color = a_color;
+    gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
+  }
+  `
+
+const fragmentShaderSrc = `
+  precision mediump float;
+
+  uniform vec4 u_bounds; // west, south, east, north
+
+  varying vec2 v_lonlat;
+  varying vec4 v_color;
+
+  void main() {
+    float lon = v_lonlat.x;
+    float lat = v_lonlat.y;
+
+    if (lon < u_bounds.x || lon > u_bounds.z ||
+        lat < u_bounds.y || lat > u_bounds.w) {
+      discard;
+    }
+
+    gl_FragColor = v_color;
+  }
+  `
 
 // export type AtmosMapProps = {
 //   layers: AtmosMapLayer[]
@@ -67,6 +121,161 @@ export type ViewState = {
   zoom: number
   bearing: number
   pitch: number
+}
+
+function clamp01(x: number) {
+  return Math.max(0, Math.min(1, x))
+}
+
+function hexToRgba01(hex: string, alpha = 1): [number, number, number, number] {
+  const clean = hex.replace("#", "")
+  const full = clean.length === 3
+    ? clean.split("").map((c) => c + c).join("")
+    : clean
+
+  const n = parseInt(full, 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  return [r, g, b, alpha]
+}
+
+function cssColorToRgba01(color: string, alpha = 1): [number, number, number, number] {
+  if (color.startsWith("#")) return hexToRgba01(color, alpha)
+
+  // very small fallback for now
+  if (color === "transparent") return [0, 0, 0, 0]
+
+  // fallback to red if parser is not implemented
+  return [1, 0, 0, alpha]
+}
+
+function resolveMaskedFeatureColor(
+  props: Record<string, any>,
+  render?: RenderSpec
+): [number, number, number, number] {
+  if (!render || render.renderer !== "maplibre") {
+    return [1, 0, 0, 0.9]
+  }
+
+  const paint =
+    "layers" in render
+      ? (render.layers?.[0]?.paint ?? {})
+      : (render.paint ?? {})
+
+  const opacity =
+    typeof paint["fill-opacity"] === "number" ? paint["fill-opacity"] : 0.9
+
+  const fillColor = paint["fill-color"]
+
+  if (typeof fillColor === "string") {
+    return cssColorToRgba01(fillColor, opacity)
+  }
+
+  if (
+    fillColor &&
+    typeof fillColor === "object" &&
+    fillColor.kind === "color-scheme" &&
+    typeof fillColor.field === "string"
+  ) {
+    const field = fillColor.field
+    const v = Number(props[field])
+    const domain = Array.isArray(fillColor.domain) ? fillColor.domain : [0, 1]
+    const d0 = Number(domain[0])
+    const d1 = Number(domain[1])
+
+    if (Number.isFinite(v) && Number.isFinite(d0) && Number.isFinite(d1) && d1 !== d0) {
+      const t = clamp01((v - d0) / (d1 - d0))
+
+      if (fillColor.scheme === "Viridis") {
+        return cssColorToRgba01(interpolateViridis(t), opacity)
+      }
+    }
+  }
+
+  return [1, 0, 0, opacity]
+}
+
+function triangulateIsobands(fc: GeoJSONFeatureCollection, render?: RenderSpec) {
+  const positions: number[] = []
+  const lonlats: number[] = []
+  const colors: number[] = []
+
+  function pushPolygon(rings: number[][][], f: GeoJSON.Feature) {
+    if (!Array.isArray(rings) || !rings.length) return
+
+    const outer = rings[0]
+    if (!Array.isArray(outer) || outer.length < 3) return
+
+    const flatLonLat: number[] = []
+    for (const c of outer) {
+      flatLonLat.push(c[0], c[1])
+    }
+
+    const triangles = earcut(flatLonLat)
+    if (!triangles.length) return
+
+    const props = (f.properties ?? {}) as Record<string, any>
+    const color = resolveMaskedFeatureColor(props, render)
+
+    for (let i = 0; i < triangles.length; i++) {
+      const idx = triangles[i] * 2
+      const lon = flatLonLat[idx]
+      const lat = flatLonLat[idx + 1]
+
+      const merc = maplibregl.MercatorCoordinate.fromLngLat([lon, lat])
+
+      positions.push(merc.x, merc.y)
+      lonlats.push(lon, lat)
+      colors.push(...color)
+    }
+  }
+
+  for (const f of fc.features ?? []) {
+    const geom = f.geometry
+    if (!geom) continue
+
+    if (geom.type === "Polygon") {
+      pushPolygon(geom.coordinates, f)
+    } else if (geom.type === "MultiPolygon") {
+      for (const poly of geom.coordinates) {
+        pushPolygon(poly, f)
+      }
+    }
+  }
+
+  console.log("masked isoband triangles", {
+    featureCount: fc.features?.length ?? 0,
+    vertexCount: positions.length / 2,
+  })
+
+  return {
+    positions,
+    lonlats,
+    colors,
+    vertexCount: positions.length / 2,
+  }
+}
+
+function createProgram(
+  gl: WebGLRenderingContext,
+  vertexSrc: string,
+  fragmentSrc: string
+) {
+  const vs = gl.createShader(gl.VERTEX_SHADER)!
+  gl.shaderSource(vs, vertexSrc)
+  gl.compileShader(vs)
+
+  const fs = gl.createShader(gl.FRAGMENT_SHADER)!
+  gl.shaderSource(fs, fragmentSrc)
+  gl.compileShader(fs)
+
+  const program = gl.createProgram()!
+  gl.attachShader(program, vs)
+  gl.attachShader(program, fs)
+  gl.linkProgram(program)
+
+  return program
 }
 
 function toKnots(speed: number, units: "m/s" | "kt" | "mph" = "m/s"): number {
@@ -456,6 +665,181 @@ function patchLayer(map: Map, id: string, nextDef: any) {
   }
 }
 
+function upsertBBoxMaskLayers(
+  map: Map,
+  layerId: string,
+  bounds: { west: number; south: number; east: number; north: number }
+) {
+  const tuple: [number, number, number, number] = [
+    bounds.west,
+    bounds.south,
+    bounds.east,
+    bounds.north,
+  ]
+
+  upsertGeoJSONSource(map, maskFillSourceId(layerId), buildMaskFillGeoJSON(tuple))
+  upsertGeoJSONSource(map, maskOutlineSourceId(layerId), buildMaskOutlineGeoJSON(tuple))
+
+  upsertLayer(map, {
+    id: maskFillLayerId(layerId),
+    type: "fill",
+    source: maskFillSourceId(layerId),
+    paint: {
+      "fill-color": "#000000",
+      "fill-opacity": 0.30,
+    },
+  }, undefined)
+
+  upsertLayer(map, {
+    id: maskOutlineLayerId(layerId),
+    type: "line",
+    source: maskOutlineSourceId(layerId),
+    filter: ["==", ["get", "kind"], "outline"],
+    paint: {
+      "line-color": "#111111",
+      "line-width": 2,
+    },
+  })
+
+  upsertLayer(map, {
+    id: maskHandlesLayerId(layerId),
+    type: "circle",
+    source: maskOutlineSourceId(layerId),
+    filter: ["==", ["get", "kind"], "handle"],
+    paint: {
+      "circle-radius": 5,
+      "circle-color": "#ffffff",
+      "circle-stroke-color": "#111111",
+      "circle-stroke-width": 2,
+    },
+  })
+}
+
+function upsertMaskedIsobandLayer(
+  map: Map,
+  args: {
+    id: string
+    layerId: string
+    geojson?: GeoJSONFeatureCollection
+    bounds: { west: number; south: number; east: number; north: number }
+    render?: RenderSpec
+  }
+) {
+  if (!args.geojson) return
+
+  removeLayerIfExists(map, args.id)
+
+  const customLayer = makeMaskedIsobandLayer({
+    id: args.id,
+    geojson: args.geojson,
+    bounds: args.bounds,
+    render: args.render,
+  })
+
+  map.addLayer(customLayer as any)
+}
+
+function makeMaskedIsobandLayer(args: {
+  id: string
+  geojson: GeoJSONFeatureCollection
+  bounds: { west: number; south: number; east: number; north: number }
+  render?: RenderSpec
+}) {
+  let program: WebGLProgram | null = null
+  let posBuffer: WebGLBuffer | null = null
+  let lonlatBuffer: WebGLBuffer | null = null
+  let colorBuffer: WebGLBuffer | null = null
+  let vertexCount = 0
+
+  const triangles = triangulateIsobands(args.geojson, args.render)
+
+  return {
+    id: args.id,
+    type: "custom",
+    renderingMode: "2d",
+
+    onAdd(map: any, gl: WebGLRenderingContext) {
+      program = createProgram(gl, vertexShaderSrc, fragmentShaderSrc)
+      posBuffer = gl.createBuffer()
+      lonlatBuffer = gl.createBuffer()
+      colorBuffer = gl.createBuffer()
+
+      const positions = new Float32Array(triangles.positions)
+      const lonlats = new Float32Array(triangles.lonlats)
+      const colors = new Float32Array(triangles.colors)
+      vertexCount = triangles.vertexCount
+
+      console.log("custom masked layer onAdd", {
+        id: args.id,
+        vertexCount,
+        bounds: args.bounds,
+      })
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, lonlatBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, lonlats, gl.STATIC_DRAW)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW)
+    },
+
+    render(gl: WebGLRenderingContext | WebGL2RenderingContext, options: any) {
+      if (!program || !posBuffer || !lonlatBuffer || !colorBuffer) return
+
+      gl.disable(gl.DEPTH_TEST)
+      gl.depthMask(false)
+
+      gl.useProgram(program)
+
+      const uMatrix = gl.getUniformLocation(program, "u_matrix")
+      const uBounds = gl.getUniformLocation(program, "u_bounds")
+
+      const rawMatrix = options?.defaultProjectionData?.mainMatrix
+        if (!rawMatrix) return
+
+        const matrix =
+          rawMatrix instanceof Float32Array
+            ? rawMatrix
+            : new Float32Array(Array.from(rawMatrix as ArrayLike<number>))
+
+        gl.uniformMatrix4fv(uMatrix, false, matrix)
+
+      gl.uniform4f(
+        uBounds,
+        args.bounds.west,
+        args.bounds.south,
+        args.bounds.east,
+        args.bounds.north
+      )
+
+      const aPos = gl.getAttribLocation(program, "a_pos")
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer)
+      gl.enableVertexAttribArray(aPos)
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+
+      const aLonLat = gl.getAttribLocation(program, "a_lonlat")
+      gl.bindBuffer(gl.ARRAY_BUFFER, lonlatBuffer)
+      gl.enableVertexAttribArray(aLonLat)
+      gl.vertexAttribPointer(aLonLat, 2, gl.FLOAT, false, 0, 0)
+
+      const aColor = gl.getAttribLocation(program, "a_color")
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+      gl.enableVertexAttribArray(aColor)
+      gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0)
+
+      gl.enable(gl.BLEND)
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+      gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
+
+      const map = (this as any).map
+      if (map) map.triggerRepaint()
+    },
+  }
+}
+
 function reconcileAtmosObjects(map: Map, keepLayerIds: Set<string>, keepSourceIds: Set<string>) {
   const style = map.getStyle()
 
@@ -560,13 +944,123 @@ function buildBarbStemGeoJSON(fc: GeoJSONFeatureCollection): GeoJSONFeatureColle
   }
 }
 
+function isBBoxMask(mask: any): mask is {
+  type: "bbox"
+  bounds: { west: number; south: number; east: number; north: number }
+  interaction?: { on?: string[] }
+} {
+  return (
+    !!mask &&
+    mask.type === "bbox" &&
+    !!mask.bounds &&
+    typeof mask.bounds.west === "number" &&
+    typeof mask.bounds.south === "number" &&
+    typeof mask.bounds.east === "number" &&
+    typeof mask.bounds.north === "number"
+  )
+}
+
+function buildMaskFillGeoJSON(bounds: [number, number, number, number]): GeoJSONFeatureCollection {
+  const [west, south, east, north] = bounds
+
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [-180, -85],
+              [180, -85],
+              [180, 85],
+              [-180, 85],
+              [-180, -85],
+            ],
+            [
+              [west, south],
+              [east, south],
+              [east, north],
+              [west, north],
+              [west, south],
+            ],
+          ],
+        },
+      },
+    ],
+  }
+}
+
+function buildMaskOutlineGeoJSON(bounds: [number, number, number, number]): GeoJSONFeatureCollection {
+  const [west, south, east, north] = bounds
+
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { kind: "outline" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [west, south],
+            [east, south],
+            [east, north],
+            [west, north],
+            [west, south],
+          ]],
+        },
+      },
+      {
+        type: "Feature",
+        properties: { kind: "handle", handle: "sw" },
+        geometry: { type: "Point", coordinates: [west, south] },
+      },
+      {
+        type: "Feature",
+        properties: { kind: "handle", handle: "se" },
+        geometry: { type: "Point", coordinates: [east, south] },
+      },
+      {
+        type: "Feature",
+        properties: { kind: "handle", handle: "ne" },
+        geometry: { type: "Point", coordinates: [east, north] },
+      },
+      {
+        type: "Feature",
+        properties: { kind: "handle", handle: "nw" },
+        geometry: { type: "Point", coordinates: [west, north] },
+      },
+    ],
+  }
+}
+
+function maskFillSourceId(layerId: string) {
+  return derivedSrcId(layerId, "mask-fill")
+}
+
+function maskOutlineSourceId(layerId: string) {
+  return derivedSrcId(layerId, "mask-outline")
+}
+
+function maskFillLayerId(layerId: string) {
+  return lyrId(layerId, "mask-fill")
+}
+
+function maskOutlineLayerId(layerId: string) {
+  return lyrId(layerId, "mask-outline")
+}
+
+function maskHandlesLayerId(layerId: string) {
+  return lyrId(layerId, "mask-handles")
+}
+
 const renderers = {
   maplibre: {
     buildPlan(atmosLayer: AtmosMapLayer) {
-      const ops: Array<
-        | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
-        | { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string }
-      > = []
+      const ops: MapOp[] = []
 
       const render = atmosLayer.render
       if (!render || render.renderer !== "maplibre") return ops
@@ -605,6 +1099,26 @@ const renderers = {
         }
         return ops
       }
+
+      
+      const isMaskedIsoband =
+      atmosLayer.geometryType === "isoband" && isBBoxMask(atmosLayer.mask)
+      
+      if (isMaskedIsoband) {
+        const { west, south, east, north } = atmosLayer.mask.bounds
+
+        ops.push({
+          kind: "custom-mask",
+          id: `mask:${atmosLayer.layerId}`,
+          targetSourceId: source,
+          bounds: { west, south, east, north },
+          atmosLayerId: atmosLayer.layerId,
+          interactive: atmosLayer.mask.interaction,
+        })
+
+        return ops
+      }
+
 
       const layers =
         "layers" in render
@@ -651,18 +1165,25 @@ export default function AtmosMap({
   const plan = useMemo(() => {
     const sourceIds = new Set<string>()
     const layerIds = new Set<string>()
-    const ops: Array<
-      | { kind: "source"; id: string; data: GeoJSONFeatureCollection }
-      | { kind: "layer"; id: string; def: any; beforeId?: string; atmosLayerId: string }
-    > = []
+    const ops: MapOp[] = []
 
     for (const l of layers ?? []) {
       if (!l?.layerId || !l?.geojson) continue
 
       const built = renderers.maplibre.buildPlan(l)
       for (const op of built) {
-        if (op.kind === "source") sourceIds.add(op.id)
-        if (op.kind === "layer") layerIds.add(op.id)
+        if (op.kind === "source") {
+          sourceIds.add(op.id)
+        } else if (op.kind === "layer") {
+          layerIds.add(op.id)
+        } else if (op.kind === "custom-mask") {
+          sourceIds.add(maskFillSourceId(op.atmosLayerId))
+          sourceIds.add(maskOutlineSourceId(op.atmosLayerId))
+          layerIds.add(maskFillLayerId(op.atmosLayerId))
+          layerIds.add(maskOutlineLayerId(op.atmosLayerId))
+          layerIds.add(maskHandlesLayerId(op.atmosLayerId))
+        }
+
         ops.push(op)
       }
     }
@@ -752,11 +1273,23 @@ export default function AtmosMap({
           reconcileAtmosObjects(map, plan.layerIds, plan.sourceIds)
 
           for (const op of plan.ops) {
-            if (op.kind === "source") upsertGeoJSONSource(map, op.id, op.data)
+            if (op.kind === "source") {
+              upsertGeoJSONSource(map, op.id, op.data)
+            }
           }
 
           for (const op of plan.ops) {
-            if (op.kind === "layer") upsertLayer(map, op.def, op.beforeId)
+            if (op.kind === "layer") {
+              upsertLayer(map, op.def, op.beforeId)
+            } else if (op.kind === "custom-mask") {
+              upsertMaskedIsobandLayer(map, {
+                id: op.id,
+                layerId: op.atmosLayerId,
+                geojson: layers.find((l) => l.layerId === op.atmosLayerId)?.geojson,
+                bounds: op.bounds,
+                render: layers.find((l) => l.layerId === op.atmosLayerId)?.render,
+              })
+            }
           }
 
           if (autoFitBounds && !didAutoFitRef.current) {
