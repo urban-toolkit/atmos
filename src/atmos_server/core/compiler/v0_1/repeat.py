@@ -247,17 +247,38 @@ def expand_repeat_views(ctx: CompileContext, ports: CompilerPorts) -> list[dict[
         elif not (isinstance(indices, list) and all(isinstance(x, int) for x in indices)):
             raise ValueError(f"repeatView.indices must be array[int] (view '{base_view_id}')")
 
+        # for idx in indices:
+        #     inst = dict(view)
+        #     suffix = "t" if rtype == "timestep" else "m"
+        #     inst_id = f"{base_view_id}__{suffix}{idx:03d}"
+        #     inst["id"] = inst_id
+        #     inst["_repeat"] = {
+        #         "type": rtype,
+        #         "index": idx,
+        #         "baseViewId": base_view_id,
+        #     }
+        #     inst["_repeatDataId"] = data_id
+        #     expanded.append(inst)
         for idx in indices:
             inst = dict(view)
             suffix = "t" if rtype == "timestep" else "m"
             inst_id = f"{base_view_id}__{suffix}{idx:03d}"
             inst["id"] = inst_id
+
+            dim_name = "time" if rtype == "timestep" else "member"
+
             inst["_repeat"] = {
                 "type": rtype,
+                "dim": dim_name,
                 "index": idx,
+                "value": idx,
                 "baseViewId": base_view_id,
             }
             inst["_repeatDataId"] = data_id
+            inst["_templateVars"] = {
+                dim_name: idx
+            }
+
             expanded.append(inst)
 
     return expanded

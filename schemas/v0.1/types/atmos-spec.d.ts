@@ -18424,8 +18424,7 @@ export interface AtmosSpec {
      */
     context?: {
       title?: {
-        text: string;
-        subtitle?: string;
+        [k: string]: unknown;
       };
       /**
        * Interactive UI controls bound to view parameters (e.g., time).
@@ -18506,31 +18505,47 @@ export interface AtmosSpec {
       legends?: [
         {
           /**
-           * Encoding id this legend refers to.
-           */
-          encoding: string;
-          /**
            * Optional legend title override.
            */
           title?: string;
-          /**
-           * Legend type. 'auto' lets the renderer infer from encoding channels.
-           */
           type?: 'auto' | 'color' | 'size' | 'opacity';
+          /**
+           * @minItems 1
+           */
+          source: [
+            {
+              view: string;
+              layers: string[];
+              channel: 'fill' | 'stroke' | 'size' | 'opacity';
+            },
+            ...{
+              view: string;
+              layers: string[];
+              channel: 'fill' | 'stroke' | 'size' | 'opacity';
+            }[]
+          ];
         },
         ...{
           /**
-           * Encoding id this legend refers to.
-           */
-          encoding: string;
-          /**
            * Optional legend title override.
            */
           title?: string;
-          /**
-           * Legend type. 'auto' lets the renderer infer from encoding channels.
-           */
           type?: 'auto' | 'color' | 'size' | 'opacity';
+          /**
+           * @minItems 1
+           */
+          source: [
+            {
+              view: string;
+              layers: string[];
+              channel: 'fill' | 'stroke' | 'size' | 'opacity';
+            },
+            ...{
+              view: string;
+              layers: string[];
+              channel: 'fill' | 'stroke' | 'size' | 'opacity';
+            }[]
+          ];
         }[]
       ];
     };
@@ -18730,8 +18745,7 @@ export interface Items1 {
  */
 export interface Context {
   title?: {
-    text: string;
-    subtitle?: string;
+    [k: string]: unknown;
   };
   /**
    * Interactive UI controls bound to view parameters (e.g., time).
@@ -18812,31 +18826,47 @@ export interface Context {
   legends?: [
     {
       /**
-       * Encoding id this legend refers to.
-       */
-      encoding: string;
-      /**
        * Optional legend title override.
        */
       title?: string;
-      /**
-       * Legend type. 'auto' lets the renderer infer from encoding channels.
-       */
       type?: 'auto' | 'color' | 'size' | 'opacity';
+      /**
+       * @minItems 1
+       */
+      source: [
+        {
+          view: string;
+          layers: string[];
+          channel: 'fill' | 'stroke' | 'size' | 'opacity';
+        },
+        ...{
+          view: string;
+          layers: string[];
+          channel: 'fill' | 'stroke' | 'size' | 'opacity';
+        }[]
+      ];
     },
     ...{
       /**
-       * Encoding id this legend refers to.
-       */
-      encoding: string;
-      /**
        * Optional legend title override.
        */
       title?: string;
-      /**
-       * Legend type. 'auto' lets the renderer infer from encoding channels.
-       */
       type?: 'auto' | 'color' | 'size' | 'opacity';
+      /**
+       * @minItems 1
+       */
+      source: [
+        {
+          view: string;
+          layers: string[];
+          channel: 'fill' | 'stroke' | 'size' | 'opacity';
+        },
+        ...{
+          view: string;
+          layers: string[];
+          channel: 'fill' | 'stroke' | 'size' | 'opacity';
+        }[]
+      ];
     }[]
   ];
 }

@@ -35,11 +35,14 @@ def compile_v0_1(
     compile_geometry_and_artifacts(ctx, ports, views)
     compile_chart_artifacts(ctx, views)
 
+    raw_spec = dict(spec)
+    raw_spec["_expandedViews"] = views
+
     meta = PlanMeta(schema_version=schema_version, spec_id=spec.get("id"))
     return Plan(
         meta=meta,
         inputs=tuple(ctx.inputs),
         steps=tuple(ctx.steps),
         artifacts=tuple(ctx.artifacts),
-        raw_spec=spec,
+        raw_spec=raw_spec,
     )

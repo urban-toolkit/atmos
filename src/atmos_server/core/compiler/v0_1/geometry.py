@@ -190,6 +190,7 @@ def compile_geometry_and_artifacts(
             repeat = view.get("_repeat")
 
             is_dynamic = _layer_varies_with_repeat(ctx, repeat=repeat, ginput=ginput)
+            is_shared_static_repeat = isinstance(repeat, dict) and not is_dynamic
 
             base_view_id = view_id.split("__")[0] if isinstance(repeat, dict) else view_id
             static_key = (base_view_id, layer_id)
@@ -307,6 +308,23 @@ def compile_geometry_and_artifacts(
                 _validate_geometry_grid_compatibility(ctx, gtype, input_data)
 
             # ---- geometry step ----
+            # if reuse_geom_step_id is None:
+            #     ctx.steps.append(
+            #         Step(
+            #             id=geom_step_id,
+            #             kind="geometry",
+            #             depends_on=(upstream_step,) if upstream_step else (),
+            #             params=geom_params,
+            #         )
+            #     )
+            #     if isinstance(repeat, dict) and not is_dynamic:
+            #         compiled_static[static_key] = geom_step_id
+            # else:
+            #     geom_step_id = reuse_geom_step_id
+
+            artifact_producer_step_id = geom_step_id
+            reuse_from_step_id: str | None = None
+
             if reuse_geom_step_id is None:
                 ctx.steps.append(
                     Step(
@@ -319,9 +337,21 @@ def compile_geometry_and_artifacts(
                 if isinstance(repeat, dict) and not is_dynamic:
                     compiled_static[static_key] = geom_step_id
             else:
-                geom_step_id = reuse_geom_step_id
+                artifact_producer_step_id = reuse_geom_step_id
+                reuse_from_step_id = reuse_geom_step_id
 
             # ---- artifact ----
+            # add_geojson_artifact(
+            #     ports=ports,
+            #     artifacts=ctx.artifacts,
+            #     view=view,
+            #     layer=layer,
+            #     view_id=view_id,
+            #     layer_id=layer_id,
+            #     gtype=gtype,
+            #     geom_step_id=geom_step_id,
+            #     geom=geom,
+            # )
             add_geojson_artifact(
                 ports=ports,
                 artifacts=ctx.artifacts,
@@ -330,8 +360,10 @@ def compile_geometry_and_artifacts(
                 view_id=view_id,
                 layer_id=layer_id,
                 gtype=gtype,
-                geom_step_id=geom_step_id,
+                geom_step_id=artifact_producer_step_id,
                 geom=geom,
+                reuse_from_step_id=reuse_from_step_id,
+                shared_asset=is_shared_static_repeat
             )
 
 def _get_time_index_from_geom_input(ginput: dict[str, Any]) -> int | None:

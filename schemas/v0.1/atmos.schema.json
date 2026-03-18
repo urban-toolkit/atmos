@@ -3462,17 +3462,32 @@
             "title": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "text"
-              ],
               "properties": {
                 "text": {
                   "type": "string"
                 },
+                "template": {
+                  "type": "string"
+                },
                 "subtitle": {
                   "type": "string"
+                },
+                "subtitleTemplate": {
+                  "type": "string"
                 }
-              }
+              },
+              "oneOf": [
+                {
+                  "required": [
+                    "text"
+                  ]
+                },
+                {
+                  "required": [
+                    "template"
+                  ]
+                }
+              ]
             },
             "controls": {
               "type": "array",
@@ -3564,16 +3579,12 @@
               "description": "Legend specifications for encodings used in this view.",
               "items": {
                 "type": "object",
-                "description": "A legend for an encoding (by encoding id).",
+                "description": "A legend for one or more encodings across views/layers.",
                 "additionalProperties": false,
                 "required": [
-                  "encoding"
+                  "source"
                 ],
                 "properties": {
-                  "encoding": {
-                    "type": "string",
-                    "description": "Encoding id this legend refers to."
-                  },
                   "title": {
                     "type": "string",
                     "description": "Optional legend title override."
@@ -3586,8 +3597,42 @@
                       "size",
                       "opacity"
                     ],
-                    "default": "auto",
-                    "description": "Legend type. 'auto' lets the renderer infer from encoding channels."
+                    "default": "auto"
+                  },
+                  "source": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "view": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "layers": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "fill",
+                            "stroke",
+                            "size",
+                            "opacity"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "view",
+                        "layers",
+                        "channel"
+                      ]
+                    }
                   }
                 }
               },

@@ -4,11 +4,69 @@ import json
 from pathlib import Path
 from typing import Any
 import pandas as pd
+import re
 
 from atmos_server.core.executor.context import ExecutionContext
 from atmos_server.core.executor.dispatch import execute_step
 from atmos_server.core.executor.dag import topological_sort
 from atmos_server.core.compiler.models import Plan
+
+
+_TEMPLATE_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+def _resolve_legend_sources(
+    legend: dict[str, Any],
+    expanded_views: list[dict[str, Any]],
+) -> dict[str, Any]:
+    out = dict(legend)
+    sources = legend.get("source") or []
+    resolved = []
+
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+
+        src_view = src.get("view")
+        src_layers = src.get("layers")
+        src_channel = src.get("channel")
+
+        for v in expanded_views:
+            vid = v.get("id")
+            rep = v.get("_repeat") or {}
+            base_view_id = rep.get("baseViewId", vid)
+
+            if src_view == vid or src_view == base_view_id:
+                resolved.append({
+                    "view": vid,
+                    "layers": src_layers,
+                    "channel": src_channel,
+                })
+
+    out["resolvedSource"] = resolved
+    return out
+
+def _resolve_template_string(template: str, values: dict[str, Any]) -> str:
+    def repl(match):
+        key = match.group(1)
+        value = values.get(key)
+        return str(value) if value is not None else match.group(0)
+    return _TEMPLATE_RE.sub(repl, template)
+
+def _resolve_title_spec(title: dict[str, Any] | None, values: dict[str, Any]) -> dict[str, Any] | None:
+    if not isinstance(title, dict):
+        return None
+
+    out = dict(title)
+
+    template = title.get("template")
+    if isinstance(template, str):
+        out["text"] = _resolve_template_string(template, values)
+
+    subtitle_template = title.get("subtitleTemplate")
+    if isinstance(subtitle_template, str):
+        out["subtitle"] = _resolve_template_string(subtitle_template, values)
+
+    return out
 
 def _dataframe_to_vl_values(df, field_map: dict[str, str]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
@@ -27,7 +85,6 @@ def _dataframe_to_vl_values(df, field_map: dict[str, str]) -> list[dict[str, Any
         records.append(rec)
 
     return records
-
 
 def _infer_time_len_from_ctx(ctx: ExecutionContext, plan: Plan) -> int | None:
     """
@@ -157,6 +214,8 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
 
     # Materialize artifacts (prototype: geojson only for now)
     materialized: list[dict[str, Any]] = []
+    written_paths: set[str] = set()
+
     for a in plan.artifacts:
         if step_status.get(a.producer_step) != "ok":
             continue
@@ -221,7 +280,13 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
                 if not isinstance(obj, dict):
                     raise TypeError(f"Artifact {a.id} expects dict GeoJSON from {a.producer_step}")
 
-                out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+                path_key = str(out_path)
+
+                if path_key not in written_paths:
+                    out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+                    written_paths.add(path_key)
+
+                # out_path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
 
                 materialized.append(
                     {
@@ -259,6 +324,70 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
         else:
             raise NotImplementedError(f"Artifact format not supported yet: {a.format}")
     
+    
+    raw_spec = plan.raw_spec or {}
+    expanded_views = raw_spec.get("_expandedViews") or []
+    composition = raw_spec.get("composition") or {}
+
+    resolved_views = []
+
+    for v in expanded_views:
+        if not isinstance(v, dict):
+            continue
+
+        vid = v.get("id")
+        base = (v.get("_repeat") or {}).get("baseViewId", vid)
+        repeat = v.get("_repeat") or {}
+        template_vars = v.get("_templateVars") or {}
+
+        vctx = v.get("context") or {}
+        title = _resolve_title_spec(vctx.get("title"), template_vars)
+
+        layers = []
+        for layer in v.get("layers") or []:
+            if isinstance(layer, dict):
+                lid = layer.get("id")
+                if isinstance(lid, str):
+                    layers.append(lid)
+
+        resolved_views.append({
+            "id": vid,
+            "baseViewId": base,
+            "repeat": repeat,
+            "context": {
+                "title": title
+            },
+            "layers": layers
+        })
+
+    comp_ctx = composition.get("context") or {}
+    resolved_comp_ctx: dict[str, Any] = {}
+
+    # Title (static, no template resolution needed here)
+    if "title" in comp_ctx:
+        resolved_comp_ctx["title"] = comp_ctx["title"]
+
+    # Legends
+    legends = comp_ctx.get("legends") or []
+    if isinstance(legends, list):
+        resolved_legends = []
+        for lg in legends:
+            if isinstance(lg, dict):
+                resolved_legends.append(
+                    _resolve_legend_sources(lg, expanded_views)
+                )
+        if resolved_legends:
+            resolved_comp_ctx["legends"] = resolved_legends
+    
+    # manifest: dict[str, Any] = {
+    #     "kind": "atmos-server-manifest",
+    #     "schemaVersion": plan.meta.schema_version,
+    #     "specId": plan.meta.spec_id,
+    #     "inputs": [{"dataId": i.data_id} for i in plan.inputs],
+    #     "steps": executed,
+    #     "artifacts": materialized,
+    # }
+
     manifest: dict[str, Any] = {
         "kind": "atmos-server-manifest",
         "schemaVersion": plan.meta.schema_version,
@@ -267,6 +396,15 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
         "steps": executed,
         "artifacts": materialized,
     }
+
+    # Add composition
+    manifest["composition"] = {
+        "layout": composition.get("layout"),
+        "context": resolved_comp_ctx
+    }
+
+    # Add views
+    manifest["views"] = resolved_views
 
     tlen = _infer_time_len_from_ctx(ctx, plan)
     if isinstance(tlen, int) and tlen > 0:
