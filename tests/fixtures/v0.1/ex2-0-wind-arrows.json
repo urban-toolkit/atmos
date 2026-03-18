@@ -1,0 +1,104 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "u10", "key": "U10" },
+        { "id": "v10", "key": "V10" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+   "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "diagnostic.wind.polar",
+        "args": [
+          {"data": "r001", "var": "u10", "role": "u" },
+          {"data": "r001", "var": "v10", "role": "v" }
+        ]
+      },
+      "out": {
+        "data": "r001Wind10",
+        "var": "wind10"
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 3
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lwind",
+            "geometry": {
+              "type": "vector",
+              "input": { "data": "r001Wind10", "var": "wind10", "dims": { "time": [40, 50, 60, 70]} },
+              "sampling": {
+                "skip": 2
+              },
+              "encoding": {
+                "channels": {
+                  "stroke": { "value": "#2c7bb6" },
+                  "size": {
+                    "field": "wind10.speed",
+                    "scale": {
+                      "type": "linear",
+                      "domain": { "type": "extent" },
+                      "range": { "values": [5, 10] }
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                },
+                "style": { 
+                  "glyph": {
+                    "type":"arrow",
+                    "scale": 1.0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

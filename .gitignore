@@ -77,6 +77,11 @@ Desktop.ini
 /cache/
 /data/
 /tests/data/ens/
+/tests/data/R121
+/tests/data/chicago_match
+/tests/data/chicago/station-HourlyDryBulbTemperature.csv
+/tests/data/chicago/t2_wrf_t0_t71.csv
+/tests/data/chicago/t2_reconstructed.nc
 
 # =========================
 # Temporary files

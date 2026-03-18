@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from atmos_server.core.compiler.models import Artifact, InputRef, Step
+from atmos_server.core.compiler.models import InputRef, Artifact, Step
 
 @dataclass
 class CompileContext:
@@ -16,8 +16,10 @@ class CompileContext:
 
     data_by_id: dict[str, dict[str, Any]] = field(default_factory=dict)
     data_id_to_upstream_step: dict[str, str] = field(default_factory=dict)
-
     derived_data_to_step: dict[str, str] = field(default_factory=dict)
     derived_data_to_base_data: dict[str, str] = field(default_factory=dict)
 
+    derived_data_to_reduced_dims: dict[str, set[str]] = field(default_factory=dict)
+
     default_upstream_step: str = ""
+    runtime_state: dict[str, Any] = field(default_factory=dict)

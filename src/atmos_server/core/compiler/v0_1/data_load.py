@@ -22,12 +22,13 @@ def compile_load_steps(ctx: CompileContext) -> None:
         step_id = f"load:{data_id}"
         ctx.data_id_to_upstream_step[data_id] = step_id
 
-        kind = d.get("kind")
+        kind = d.get("type")
         params: dict[str, Any] = {
             "dataId": data_id,
-            "kind": kind,
-            "dimensions": d.get("dimensions"),
-            "variables": d.get("variables"),
+            "type": kind,
+            "dims": d.get("dims"),
+            "vars": d.get("vars"),
+            "grid": d.get("grid")
         }
 
         if kind == "collection":
@@ -37,7 +38,7 @@ def compile_load_steps(ctx: CompileContext) -> None:
         else:
             params["source"] = d.get("source")
 
-        ctx.steps.append(Step(id=step_id, kind="load", depends_on=(), params=params))
+        ctx.steps.append(Step(step_id, "load", (), params))
 
     # default upstream step (used later)
     default_data_id = ctx.inputs[0].data_id if ctx.inputs else None

@@ -14,6 +14,7 @@ class CompilerFn(Protocol):
         schema_version: str,
         *,
         ports: CompilerPorts,
+        runtime_state: dict | None = None
     ) -> Plan: ...
 
 

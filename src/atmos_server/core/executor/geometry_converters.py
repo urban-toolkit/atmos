@@ -38,12 +38,31 @@ def _levels_from_spec(levels_obj: Any) -> list[float] | None:
         return [float(x) for x in levels_obj]
 
     if isinstance(levels_obj, dict):
+
+        # explicit list
         values = levels_obj.get("values")
         if isinstance(values, list):
             return [float(x) for x in values]
 
-    return None
+        # step pattern
+        if levels_obj.get("type") == "step":
+            start = levels_obj.get("start")
+            stop = levels_obj.get("stop")
+            step = levels_obj.get("step")
 
+            if isinstance(start, (int, float)) and isinstance(stop, (int, float)) and isinstance(step, (int, float)):
+                vals = []
+                v = float(start)
+                stop = float(stop)
+                step = float(step)
+
+                while v <= stop + 1e-9:
+                    vals.append(v)
+                    v += step
+
+                return vals
+
+    return None
 
 def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
     if len(coords) < 2:
@@ -79,7 +98,6 @@ def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
     x0, y0 = coords[-1]
     return [float(x0), float(y0)]
 
-
 def _mesh_to_geojson(
     ds: xr.Dataset,
     *,
@@ -93,6 +111,12 @@ def _mesh_to_geojson(
     lat = ds[lat_key].values
     lon = ds[lon_key].values
     val = ds[var_key].values
+
+    while getattr(lat, "ndim", 0) > 2:
+        lat = lat[0]
+
+    while getattr(lon, "ndim", 0) > 2:
+        lon = lon[0]
 
     while getattr(val, "ndim", 0) > 2:
         val = val[0]

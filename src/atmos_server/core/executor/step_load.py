@@ -69,7 +69,7 @@ def load_dataset(data_id, params, step, repo_root):
 
         df = pd.read_csv(p)
 
-        dims = params.get("dimensions") or {}
+        dims = params.get("dims") or {}
         if isinstance(dims, dict):
             time_dim = dims.get("time")
             if isinstance(time_dim, dict):
@@ -148,9 +148,9 @@ def load_collection(data_id, params, step, repo_root, variables, dimensions):
 def execute_step_load(step: Step, repo_root: Path):
     params = step.params or {}
 
-    kind = params.get("kind")
-    variables = params.get("variables")
-    dimensions = params.get("dimensions")
+    kind = params.get("type")
+    variables = params.get("vars")
+    dimensions = params.get("dims")
 
     data_id = params.get("dataId")
     if not isinstance(data_id, str) or not data_id:

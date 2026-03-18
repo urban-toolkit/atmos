@@ -1,0 +1,114 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "psfc", "key": "PSFC"},
+        { "id": "t2m", "key": "T2" },
+        { "id": "q2m", "key": "Q2" },
+        { "id": "hgt", "key": "HGT" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "diagnostic.slp",
+        "args": [
+          { "data": "r001", "var": "psfc", "role": "sp" },
+          { "data": "r001", "var":  "t2m", "role": "at2m"},
+          { "data": "r001", "var":  "q2m", "role": "wvmr2m"},
+          { "data": "r001", "var": "hgt", "role": "hgt" }
+        ] 
+      },
+      "out": { 
+        "data": "r001SlpPa", 
+        "var": "slpPa"
+      }
+    },
+    {
+      "type": "derive",
+      "expr": {
+        "op": "div",
+        "args": [
+          { "data": "r001SlpPa", "var": "slpPa" },
+          { "const": 100 }
+        ]
+      },
+      "out": {
+        "data": "r001SlpHpa", "var": "slpHPa" 
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 2
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lslp",
+            "geometry": {
+              "type": "isoline",
+              "input": { "data": "r001SlpHpa", "var": "slpHPa", "dims": { "time": [40, 50, 60, 70]} },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": 992, "stop": 1040, "step": 4 }
+                }
+              ],
+              "encoding": {
+                "channels": { 
+                  "stroke": { 
+                    "value": "#000000"
+                  } 
+                },
+                "style": { 
+                  "strokeWidth": 1,
+                  "label": { "enabled": true, "format": ".0f" }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

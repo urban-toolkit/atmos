@@ -80,5 +80,5 @@ def test_compile_and_run_fixtures(version: str, name: str, spec_path: Path, tmp_
     assert manifest_path.exists(), f"Expected manifest at {manifest_path}"
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert manifest["kind"] == "atmos-server-manifest"
+    assert manifest["type"] == "atmos-server-manifest"
     assert manifest["schemaVersion"] == version

@@ -42,6 +42,9 @@ def api_run(
         raise HTTPException(status_code=400, detail="Missing 'spec' in request body")
 
     spec = payload["spec"]
+    runtime_state = payload.get("runtimeState", {})
+    print("API runtime_state =", runtime_state)
+
     if not isinstance(spec, dict):
         raise HTTPException(status_code=400, detail="'spec' must be a JSON object")
 
@@ -62,7 +65,7 @@ def api_run(
 
     try:
         ports = make_default_ports()
-        plan = compile_spec(spec, schema_version=version, ports=ports)
+        plan = compile_spec(spec, schema_version=version, ports=ports, runtime_state=runtime_state)
         manifest = run_plan(plan, out_dir, repo_root=REPO_ROOT)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Execution failed: {e}")

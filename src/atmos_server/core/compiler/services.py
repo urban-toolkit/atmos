@@ -12,6 +12,13 @@ def compile_spec(
     *,
     schema_version: str,
     ports: CompilerPorts,
+    runtime_state: dict | None = None
 ) -> Plan:
     compiler = get_compiler(schema_version)
-    return compiler(spec, schema_version, ports=ports)
+
+    return compiler(
+        spec,
+        schema_version,
+        ports=ports,
+        runtime_state=runtime_state,
+    )
