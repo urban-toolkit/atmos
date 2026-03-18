@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import maplibregl, { Map } from "maplibre-gl"
 import { convertPaint } from "../../helpers/colors"
 import earcut from "earcut"
 import { interpolateViridis } from "d3-scale-chromatic"
+import bboxClip from "@turf/bbox-clip"
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
+import bboxPolygon from "@turf/bbox-polygon"
 
 type GeoJSONFeatureCollection = GeoJSON.FeatureCollection
 
@@ -43,7 +46,166 @@ type MapOp =
       bounds: { west: number; south: number; east: number; north: number }
       atmosLayerId: string
       interactive?: { on?: string[] }
+      beforeId?: string
     }
+  | {
+      kind: "masked-layer-group"
+      atmosLayerId: string
+      sourceId: string
+      data: GeoJSONFeatureCollection
+      bounds: { west: number; south: number; east: number; north: number }
+      layers: Array<{ id: string; def: any; beforeId?: string }>
+      beforeId?: string
+    }
+
+type MaskBounds = { west: number; south: number; east: number; north: number }
+
+type DragMode =
+  | { type: "move"; layerId: string; startLngLat: maplibregl.LngLat; startBounds: MaskBounds }
+  | { type: "resize"; layerId: string; handle: "sw" | "se" | "ne" | "nw"; startLngLat: maplibregl.LngLat; startBounds: MaskBounds }
+  | null
+
+function buildMaskedMapLibreLayers(
+  atmosLayer: AtmosMapLayer,
+  maskedSource: string
+): Array<{ id: string; def: any; beforeId?: string }> {
+  const render = atmosLayer.render
+  if (!render || render.renderer !== "maplibre") return []
+
+  const layers =
+    "layers" in render
+      ? render.layers
+      : [{ id: "main", type: render.layerType, paint: render.paint, layout: render.layout }]
+
+  return layers.map((l, i) => {
+    const id = lyrId(atmosLayer.layerId, `masked:${l.id ?? String(i)}`)
+    const def: any = { id, type: l.type, source: maskedSource }
+
+    if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
+    if (l.layout) def.layout = l.layout
+    if (l.filter) def.filter = l.filter
+    if (typeof l.minzoom === "number") def.minzoom = l.minzoom
+    if (typeof l.maxzoom === "number") def.maxzoom = l.maxzoom
+    if (l["source-layer"]) def["source-layer"] = l["source-layer"]
+
+    return {
+      id,
+      def,
+      beforeId: (l as any).beforeId,
+    }
+  })
+}
+
+function clipFeatureCollectionToBounds(
+  fc: GeoJSONFeatureCollection,
+  bounds: { west: number; south: number; east: number; north: number }
+): GeoJSONFeatureCollection {
+  const bbox: [number, number, number, number] = [
+    bounds.west,
+    bounds.south,
+    bounds.east,
+    bounds.north,
+  ]
+
+  const bboxPoly = bboxPolygon(bbox)
+
+  const out: GeoJSON.Feature[] = []
+
+  for (const f of fc.features ?? []) {
+    if (!f.geometry) continue
+
+    const g = f.geometry
+
+    try {
+      if (g.type === "Point") {
+        if (booleanPointInPolygon(f as any, bboxPoly)) out.push(f)
+        continue
+      }
+
+      if (g.type === "MultiPoint") {
+        const kept = g.coordinates.filter((c) =>
+          booleanPointInPolygon(
+            { type: "Feature", geometry: { type: "Point", coordinates: c }, properties: {} } as any,
+            bboxPoly
+          )
+        )
+        if (kept.length) {
+          out.push({
+            ...f,
+            geometry: { type: "MultiPoint", coordinates: kept },
+          } as GeoJSON.Feature)
+        }
+        continue
+      }
+
+      if (
+        g.type === "LineString" ||
+        g.type === "MultiLineString" ||
+        g.type === "Polygon" ||
+        g.type === "MultiPolygon"
+      ) {
+        const clipped = bboxClip(f as any, bbox)
+        if (clipped?.geometry) out.push(clipped as GeoJSON.Feature)
+        continue
+      }
+
+      out.push(f)
+    } catch {
+      // fail soft: skip invalid feature
+    }
+  }
+
+  return {
+    type: "FeatureCollection",
+    features: out,
+  }
+}
+
+function normalizeBounds(b: MaskBounds): MaskBounds {
+  return {
+    west: Math.min(b.west, b.east),
+    east: Math.max(b.west, b.east),
+    south: Math.min(b.south, b.north),
+    north: Math.max(b.south, b.north),
+  }
+}
+
+function translateBounds(start: MaskBounds, dLng: number, dLat: number): MaskBounds {
+  return {
+    west: start.west + dLng,
+    east: start.east + dLng,
+    south: start.south + dLat,
+    north: start.north + dLat,
+  }
+}
+
+function resizeBounds(
+  start: MaskBounds,
+  handle: "sw" | "se" | "ne" | "nw",
+  lng: number,
+  lat: number
+): MaskBounds {
+  const next = { ...start }
+
+  if (handle.includes("w")) next.west = lng
+  if (handle.includes("e")) next.east = lng
+  if (handle.includes("s")) next.south = lat
+  if (handle.includes("n")) next.north = lat
+
+  return normalizeBounds(next)
+}
+
+function pointInBounds(lng: number, lat: number, b: MaskBounds) {
+  return lng >= b.west && lng <= b.east && lat >= b.south && lat <= b.north
+}
+
+function boundsKey(layerId: string) {
+  return `mask:${layerId}`
+}
+
+function cloneBounds(b: MaskBounds): MaskBounds {
+  return { west: b.west, south: b.south, east: b.east, north: b.north }
+}
 
 export type AtmosMapLayer = {
   layerId: string
@@ -93,14 +255,6 @@ const fragmentShaderSrc = `
     gl_FragColor = v_color;
   }
   `
-
-// export type AtmosMapProps = {
-//   layers: AtmosMapLayer[]
-//   autoFitBounds?: boolean
-//   mapStyle?: string | any
-//   initialViewState?: ViewState
-//   onViewStateChange?: (vs: ViewState) => void
-// }
 
 export type AtmosMapProps = {
   layers: AtmosMapLayer[]
@@ -244,11 +398,6 @@ function triangulateIsobands(fc: GeoJSONFeatureCollection, render?: RenderSpec) 
     }
   }
 
-  console.log("masked isoband triangles", {
-    featureCount: fc.features?.length ?? 0,
-    vertexCount: positions.length / 2,
-  })
-
   return {
     positions,
     lonlats,
@@ -290,12 +439,6 @@ function barbBucket(speed: number): number {
   if (kt < 2.5) return 0
   return Math.round(kt / 5) * 5
 }
-
-// function barbBucket(speed: number): number {
-//   // round to nearest 5 kt-style bucket
-//   if (!Number.isFinite(speed) || speed < 2.5) return 0
-//   return Math.round(speed / 5) * 5
-// }
 
 function ensureBarbIcon(map: maplibregl.Map, bucket: number) {
   const name = `atmos-barb-${bucket}`
@@ -612,12 +755,35 @@ function removeSourceIfExists(map: Map, id: string) {
   if (map.getSource(id)) map.removeSource(id)
 }
 
+// function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
+//   const id = layerDef.id
+//   const existing = map.getLayer(id)
+
+//   if (!existing) {
+//     const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+//     map.addLayer(layerDef, safeBeforeId)
+//     return
+//   }
+
+//   const existingType = (existing as any).type
+//   const existingSource = (existing as any).source
+
+//   if (existingType !== layerDef.type || existingSource !== layerDef.source) {
+//     map.removeLayer(id)
+//     const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
+//     map.addLayer(layerDef, safeBeforeId)
+//     return
+//   }
+
+//   patchLayer(map, id, layerDef)
+// }
+
 function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
   const id = layerDef.id
   const existing = map.getLayer(id)
+  const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
 
   if (!existing) {
-    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
     map.addLayer(layerDef, safeBeforeId)
     return
   }
@@ -627,12 +793,18 @@ function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
 
   if (existingType !== layerDef.type || existingSource !== layerDef.source) {
     map.removeLayer(id)
-    const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
     map.addLayer(layerDef, safeBeforeId)
     return
   }
 
   patchLayer(map, id, layerDef)
+
+  // IMPORTANT: if the layer already exists, enforce its order too
+  if (safeBeforeId) {
+    try {
+      map.moveLayer(id, safeBeforeId)
+    } catch {}
+  }
 }
 
 function patchLayer(map: Map, id: string, nextDef: any) {
@@ -668,7 +840,8 @@ function patchLayer(map: Map, id: string, nextDef: any) {
 function upsertBBoxMaskLayers(
   map: Map,
   layerId: string,
-  bounds: { west: number; south: number; east: number; north: number }
+  bounds: { west: number; south: number; east: number; north: number },
+  beforeId?: string
 ) {
   const tuple: [number, number, number, number] = [
     bounds.west,
@@ -680,26 +853,26 @@ function upsertBBoxMaskLayers(
   upsertGeoJSONSource(map, maskFillSourceId(layerId), buildMaskFillGeoJSON(tuple))
   upsertGeoJSONSource(map, maskOutlineSourceId(layerId), buildMaskOutlineGeoJSON(tuple))
 
-  upsertLayer(map, {
-    id: maskFillLayerId(layerId),
-    type: "fill",
-    source: maskFillSourceId(layerId),
-    paint: {
-      "fill-color": "#000000",
-      "fill-opacity": 0.30,
-    },
-  }, undefined)
+  // upsertLayer(map, {
+  //   id: maskFillLayerId(layerId),
+  //   type: "fill",
+  //   source: maskFillSourceId(layerId),
+  //   paint: {
+  //     "fill-color": "#000000",
+  //     "fill-opacity": 0.30,
+  //   },
+  // }, undefined)
 
-  upsertLayer(map, {
-    id: maskOutlineLayerId(layerId),
-    type: "line",
-    source: maskOutlineSourceId(layerId),
-    filter: ["==", ["get", "kind"], "outline"],
-    paint: {
-      "line-color": "#111111",
-      "line-width": 2,
-    },
-  })
+  // upsertLayer(map, {
+  //   id: maskOutlineLayerId(layerId),
+  //   type: "line",
+  //   source: maskOutlineSourceId(layerId),
+  //   filter: ["==", ["get", "kind"], "outline"],
+  //   paint: {
+  //     "line-color": "#111111",
+  //     "line-width": 2,
+  //   },
+  // })
 
   upsertLayer(map, {
     id: maskHandlesLayerId(layerId),
@@ -712,7 +885,7 @@ function upsertBBoxMaskLayers(
       "circle-stroke-color": "#111111",
       "circle-stroke-width": 2,
     },
-  })
+  }, beforeId)
 }
 
 function upsertMaskedIsobandLayer(
@@ -723,6 +896,7 @@ function upsertMaskedIsobandLayer(
     geojson?: GeoJSONFeatureCollection
     bounds: { west: number; south: number; east: number; north: number }
     render?: RenderSpec
+    beforeId?: string
   }
 ) {
   if (!args.geojson) return
@@ -736,8 +910,10 @@ function upsertMaskedIsobandLayer(
     render: args.render,
   })
 
-  map.addLayer(customLayer as any)
-}
+  // map.addLayer(customLayer as any)
+  const safeBeforeId = args.beforeId && map.getLayer(args.beforeId) ? args.beforeId : undefined
+    map.addLayer(customLayer as any, safeBeforeId)
+  }
 
 function makeMaskedIsobandLayer(args: {
   id: string
@@ -1059,7 +1235,7 @@ function maskHandlesLayerId(layerId: string) {
 
 const renderers = {
   maplibre: {
-    buildPlan(atmosLayer: AtmosMapLayer) {
+    buildPlan(atmosLayer: AtmosMapLayer, ctx: { maskBoundsByLayer: Record<string, MaskBounds> }) {
       const ops: MapOp[] = []
 
       const render = atmosLayer.render
@@ -1101,19 +1277,58 @@ const renderers = {
       }
 
       
-      const isMaskedIsoband =
-      atmosLayer.geometryType === "isoband" && isBBoxMask(atmosLayer.mask)
+      // const isMaskedIsoband =
+      // atmosLayer.geometryType === "isoband" && isBBoxMask(atmosLayer.mask)
       
-      if (isMaskedIsoband) {
-        const { west, south, east, north } = atmosLayer.mask.bounds
+      // if (isBBoxMask(atmosLayer.mask)) {
+      //   // const { west, south, east, north } = atmosLayer.mask.bounds
+
+      //   const runtimeBounds =
+      //     ctx.maskBoundsByLayer[boundsKey(atmosLayer.layerId)] ?? atmosLayer.mask.bounds
+
+      //   const { west, south, east, north } = runtimeBounds
+
+      //   ops.push({
+      //     kind: "custom-mask",
+      //     id: `mask:${atmosLayer.layerId}`,
+      //     targetSourceId: source,
+      //     bounds: { west, south, east, north },
+      //     atmosLayerId: atmosLayer.layerId,
+      //     interactive: atmosLayer.mask.interaction,
+      //   })
+
+      //   return ops
+      // }
+
+      if (isBBoxMask(atmosLayer.mask)) {
+        const runtimeBounds =
+          ctx.maskBoundsByLayer[boundsKey(atmosLayer.layerId)] ?? atmosLayer.mask.bounds
+
+        const { west, south, east, north } = runtimeBounds
+
+        if (atmosLayer.geometryType === "isoband") {
+          ops.push({
+            kind: "custom-mask",
+            id: `mask:${atmosLayer.layerId}`,
+            targetSourceId: source,
+            bounds: { west, south, east, north },
+            atmosLayerId: atmosLayer.layerId,
+            interactive: atmosLayer.mask.interaction,
+          })
+          return ops
+        }
+
+        const maskedSource = derivedSrcId(atmosLayer.layerId, "masked")
+        const clipped = clipFeatureCollectionToBounds(atmosLayer.geojson, runtimeBounds)
+        const maskedLayers = buildMaskedMapLibreLayers(atmosLayer, maskedSource)
 
         ops.push({
-          kind: "custom-mask",
-          id: `mask:${atmosLayer.layerId}`,
-          targetSourceId: source,
-          bounds: { west, south, east, north },
+          kind: "masked-layer-group",
           atmosLayerId: atmosLayer.layerId,
-          interactive: atmosLayer.mask.interaction,
+          sourceId: maskedSource,
+          data: clipped,
+          bounds: { west, south, east, north },
+          layers: maskedLayers,
         })
 
         return ops
@@ -1161,7 +1376,140 @@ export default function AtmosMap({
   const mapRef = useRef<Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const didAutoFitRef = useRef(false)
+  
+  const [maskBoundsByLayer, setMaskBoundsByLayer] = useState<Record<string, MaskBounds>>({})
+  
+  const maskBoundsRef = useRef(maskBoundsByLayer)
+  
+  const dragStateRef = useRef<DragMode>(null)
 
+  useEffect(() => {
+    maskBoundsRef.current = maskBoundsByLayer
+  }, [maskBoundsByLayer])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const interactiveMaskedLayers = (layers ?? []).filter(
+      (l) =>
+        isBBoxMask(l.mask) &&
+        Array.isArray(l.mask?.interaction?.on)
+    )
+
+    if (!interactiveMaskedLayers.length) return
+
+    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+      for (const layer of interactiveMaskedLayers) {
+        const on = layer.mask?.interaction?.on ?? []
+        const layerId = layer.layerId
+        const bounds = maskBoundsRef.current[boundsKey(layerId)] ?? layer.mask.bounds
+
+        const handleLayerId = maskHandlesLayerId(layerId)
+        const outlineLayerId = maskOutlineLayerId(layerId)
+
+        const handleHits = map.queryRenderedFeatures(e.point, { layers: [handleLayerId] })
+        // if (handleHits.length && on.includes("resize")) {
+        //   const handle = handleHits[0].properties?.handle as "sw" | "se" | "ne" | "nw"
+        //   dragStateRef.current = {
+        //     type: "resize",
+        //     layerId,
+        //     handle,
+        //     startLngLat: e.lngLat,
+        //     startBounds: cloneBounds(bounds),
+        //   }
+        //   map.dragPan.disable()
+        //   return
+        // }
+        if (handleHits.length && on.includes("resize")) {
+          const handle = handleHits[0].properties?.handle as "sw" | "se" | "ne" | "nw"
+
+          e.preventDefault()
+          e.originalEvent.stopPropagation()
+
+          dragStateRef.current = {
+            type: "resize",
+            layerId,
+            handle,
+            startLngLat: e.lngLat,
+            startBounds: cloneBounds(bounds),
+          }
+
+          map.dragPan.disable()
+          return
+        }
+
+        const outlineHits = map.queryRenderedFeatures(e.point, { layers: [outlineLayerId] })
+        // if ((outlineHits.length || pointInBounds(e.lngLat.lng, e.lngLat.lat, bounds)) && on.includes("drag")) {
+        //   dragStateRef.current = {
+        //     type: "move",
+        //     layerId,
+        //     startLngLat: e.lngLat,
+        //     startBounds: cloneBounds(bounds),
+        //   }
+        //   map.dragPan.disable()
+        //   return
+        // }
+        if ((outlineHits.length || pointInBounds(e.lngLat.lng, e.lngLat.lat, bounds)) && on.includes("drag")) {
+          e.preventDefault()
+          e.originalEvent.stopPropagation()
+
+          dragStateRef.current = {
+            type: "move",
+            layerId,
+            startLngLat: e.lngLat,
+            startBounds: cloneBounds(bounds),
+          }
+
+          map.dragPan.disable()
+          return
+        }
+      }
+    }
+
+    const onMouseMove = (e: maplibregl.MapMouseEvent) => {
+      const drag = dragStateRef.current
+      if (!drag) return
+
+      const dLng = e.lngLat.lng - drag.startLngLat.lng
+      const dLat = e.lngLat.lat - drag.startLngLat.lat
+
+      setMaskBoundsByLayer((prev) => {
+        const next = { ...prev }
+
+        if (drag.type === "move") {
+          next[boundsKey(drag.layerId)] = translateBounds(drag.startBounds, dLng, dLat)
+        } else {
+          next[boundsKey(drag.layerId)] = resizeBounds(
+            drag.startBounds,
+            drag.handle,
+            e.lngLat.lng,
+            e.lngLat.lat
+          )
+        }
+
+        return next
+      })
+    }
+
+    const onMouseUp = () => {
+      if (dragStateRef.current) {
+        dragStateRef.current = null
+        map.dragPan.enable()
+      }
+    }
+
+    map.on("mousedown", onMouseDown)
+    map.on("mousemove", onMouseMove)
+    map.on("mouseup", onMouseUp)
+
+    return () => {
+      map.off("mousedown", onMouseDown)
+      map.off("mousemove", onMouseMove)
+      map.off("mouseup", onMouseUp)
+    }
+  }, [layers])
+  
   const plan = useMemo(() => {
     const sourceIds = new Set<string>()
     const layerIds = new Set<string>()
@@ -1170,8 +1518,22 @@ export default function AtmosMap({
     for (const l of layers ?? []) {
       if (!l?.layerId || !l?.geojson) continue
 
-      const built = renderers.maplibre.buildPlan(l)
+      const built = renderers.maplibre.buildPlan(l, {
+        maskBoundsByLayer,
+      })
+
       for (const op of built) {
+        // if (op.kind === "source") {
+        //   sourceIds.add(op.id)
+        // } else if (op.kind === "layer") {
+        //   layerIds.add(op.id)
+        // } else if (op.kind === "custom-mask") {
+        //   sourceIds.add(maskFillSourceId(op.atmosLayerId))
+        //   sourceIds.add(maskOutlineSourceId(op.atmosLayerId))
+        //   layerIds.add(maskFillLayerId(op.atmosLayerId))
+        //   layerIds.add(maskOutlineLayerId(op.atmosLayerId))
+        //   layerIds.add(maskHandlesLayerId(op.atmosLayerId))
+        // }
         if (op.kind === "source") {
           sourceIds.add(op.id)
         } else if (op.kind === "layer") {
@@ -1179,17 +1541,59 @@ export default function AtmosMap({
         } else if (op.kind === "custom-mask") {
           sourceIds.add(maskFillSourceId(op.atmosLayerId))
           sourceIds.add(maskOutlineSourceId(op.atmosLayerId))
-          layerIds.add(maskFillLayerId(op.atmosLayerId))
-          layerIds.add(maskOutlineLayerId(op.atmosLayerId))
           layerIds.add(maskHandlesLayerId(op.atmosLayerId))
+        } else if (op.kind === "masked-layer-group") {
+          sourceIds.add(op.sourceId)
+          sourceIds.add(maskFillSourceId(op.atmosLayerId))
+          sourceIds.add(maskOutlineSourceId(op.atmosLayerId))
+          layerIds.add(maskHandlesLayerId(op.atmosLayerId))
+          for (const l of op.layers) layerIds.add(l.id)
         }
 
         ops.push(op)
       }
     }
 
+    // for (let i = 0; i < ops.length; i++) {
+    //   const op = ops[i]
+    //   if (op.kind !== "custom-mask") continue
+
+    //   let beforeId: string | undefined = undefined
+
+    //   for (let j = i + 1; j < ops.length; j++) {
+    //     const next = ops[j]
+    //     if (next.kind === "layer") {
+    //       beforeId = next.id
+    //       break
+    //     }
+    //   }
+
+    //   op.beforeId = beforeId
+    // }
+
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i]
+      if (op.kind !== "custom-mask" && op.kind !== "masked-layer-group") continue
+
+      let beforeId: string | undefined = undefined
+
+      for (let j = i + 1; j < ops.length; j++) {
+        const next = ops[j]
+        if (next.kind === "layer") {
+          beforeId = next.id
+          break
+        }
+        if (next.kind === "masked-layer-group" && next.layers.length) {
+          beforeId = next.layers[0].id
+          break
+        }
+      }
+
+      op.beforeId = beforeId
+    }
+
     return { sourceIds, layerIds, ops }
-  }, [layers])
+  }, [layers, maskBoundsByLayer])
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
@@ -1281,13 +1685,32 @@ export default function AtmosMap({
           for (const op of plan.ops) {
             if (op.kind === "layer") {
               upsertLayer(map, op.def, op.beforeId)
+            } else if (op.kind === "masked-layer-group") {
+              upsertGeoJSONSource(map, op.sourceId, op.data)
+              upsertBBoxMaskLayers(map, op.atmosLayerId, op.bounds, op.beforeId)
+
+              for (const l of op.layers) {
+                upsertLayer(map, l.def, op.beforeId)
+              }
             } else if (op.kind === "custom-mask") {
+              // upsertMaskedIsobandLayer(map, {
+              //   id: op.id,
+              //   layerId: op.atmosLayerId,
+              //   geojson: layers.find((l) => l.layerId === op.atmosLayerId)?.geojson,
+              //   bounds: op.bounds,
+              //   render: layers.find((l) => l.layerId === op.atmosLayerId)?.render,
+              // })
+              upsertBBoxMaskLayers(map, op.atmosLayerId, op.bounds, op.beforeId)
+
+              const targetLayer = layers.find((l) => l.layerId === op.atmosLayerId)
+
               upsertMaskedIsobandLayer(map, {
                 id: op.id,
                 layerId: op.atmosLayerId,
-                geojson: layers.find((l) => l.layerId === op.atmosLayerId)?.geojson,
+                geojson: targetLayer?.geojson,
                 bounds: op.bounds,
-                render: layers.find((l) => l.layerId === op.atmosLayerId)?.render,
+                render: targetLayer?.render,
+                beforeId: op.beforeId,
               })
             }
           }
@@ -1358,6 +1781,33 @@ export default function AtmosMap({
     map.off("click", handleClick)
   }
 }, [plan, onFeatureClick])
+
+  useEffect(() => {
+    setMaskBoundsByLayer((prev) => {
+      const next = { ...prev }
+
+      for (const layer of layers ?? []) {
+        // if (
+        //   layer.geometryType === "isoband" &&
+        //   layer.mask?.type === "bbox" &&
+        //   layer.mask?.bounds
+        // ) {
+        //   const key = boundsKey(layer.layerId)
+        //   if (!next[key]) {
+        //     next[key] = cloneBounds(layer.mask.bounds)
+        //   }
+        // }
+        if (isBBoxMask(layer.mask)) {
+          const key = boundsKey(layer.layerId)
+          if (!next[key]) {
+            next[key] = cloneBounds(layer.mask.bounds)
+          }
+        }
+      }
+
+      return next
+    })
+  }, [layers])
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 }

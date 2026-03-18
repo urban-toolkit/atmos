@@ -36,8 +36,8 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex4-4-ens-rain.json"
 // const firstExamplePath = "/examples/ex4-5-ens-prob.json"
 // const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
-const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
-// const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
+// const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
+const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
 
 type FirstSnapshot = {
   spec: any
