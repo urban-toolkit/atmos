@@ -3,51 +3,67 @@
     {
       "id": "r001",
       "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
-      "dimensions": {
-        "latitude": { "key": "XLAT" },
-        "longitude": { "key": "XLONG" },
-        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
       },
-      "variables": [
-        { "id": "psfc", "key": "PSFC", "kind": "grid", "units": "Pa" },
-        { "id": "t2m", "key": "T2", "kind": "grid", "units": "K" },
-        { "id": "q2m", "key": "Q2", "kind": "grid", "units": "kg/kg" },
-        { "id": "hgt", "key": "HGT", "kind": "grid", "units": "m" }
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "psfc", "key": "PSFC"},
+        { "id": "t2m", "key": "T2" },
+        { "id": "q2m", "key": "Q2" },
+        { "id": "hgt", "key": "HGT" }
       ]
     },
     {
       "id": "boundaries",
       "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
-      "properties": {
-        "geoid": { "key": "GEOID" }
+      "dims": {
+        "id": { "key": "GEOID" }
       }
     }
   ],
 
   "transform": [
     {
-      "type": "diagnostic.slp",
-      "input": {
-        "data": "r001",
-        "surfacePressure": "psfc",
-        "airTemperature2m": "t2m",
-        "waterVaporMixingRatio2m": "q2m",
-        "surfaceHeight": "hgt"
+      "type": "derive",
+      "expr": {
+        "op": "diagnostic.slp",
+        "args": [
+          { "data": "r001", "var": "psfc", "role": "sp" },
+          { "data": "r001", "var":  "t2m", "role": "at2m"},
+          { "data": "r001", "var":  "q2m", "role": "wvmr2m"},
+          { "data": "r001", "var": "hgt", "role": "hgt" }
+        ] 
       },
-      "output": { "data": "slp_r001", "variables": [{ "id": "slp", "kind": "grid", "units": "hPa" }] }
+      "out": { 
+        "data": "r001SlpPa", 
+        "var": "slpPa"
+      }
+    },
+    {
+      "type": "derive",
+      "expr": {
+        "op": "div",
+        "args": [
+          { "data": "r001SlpPa", "var": "slpPa" },
+          { "const": 100 }
+        ]
+      },
+      "out": {
+        "data": "r001SlpHpa", "var": "slpHPa" 
+      }
     }
   ],
   
   "composition": {
     "layout": {
-      "columns": 5,
-      "repeatView": [
-        {
-          "type": "timestep",
-          "indices": [0, 3, 4, 6, 8],
-          "view": "view1"
-        }
-      ]
+      "columns": 2
     },
 
     "views": [
@@ -56,10 +72,10 @@
         "frame": { "type": "map" },
         "layers": [
           {
-            "id": "slp_isobars",
+            "id": "lslp",
             "geometry": {
               "type": "isoline",
-              "input": { "data": "slp_r001", "variable": "slp" },
+              "input": { "data": "r001SlpHpa", "var": "slpHPa", "dims": { "time": [40, 50, 60, 70]} },
               "build": [
                 {
                   "levels": { "type": "step", "start": 992, "stop": 1040, "step": 4 }
@@ -87,9 +103,6 @@
                 "channels": {
                   "fill": { "value": "transparent"},
                   "stroke": {"value": "#000000"}
-                },
-                "style": {
-                  "strokeWidth": 1
                 }
               }
             }

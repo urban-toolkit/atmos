@@ -32,7 +32,8 @@
       },
 
       "vars": [
-        { "id": "t2m", "key": "T2" }
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" }
       ]
     },
     {
@@ -46,43 +47,81 @@
 
   "transform": [
     {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          { "data": "wrfEns", "var": "rainnc" },
+          { "data": "wrfEns", "var": "rainc" }
+        ]
+      },
+      "out": { "data": "wrfEnsRain", "var": "accRain" }
+    },
+    {
       "type": "reduce",
       "across": "member",
       "expr": {
-        "op": "mean",
+        "op": "prob",
         "args": [
-          { "data": "wrfEns", "var": "t2m" }
+          {
+            "op": "and",
+            "args": [
+              {
+                "op": "gt",
+                "args": [
+                  { "data": "wrfEnsRain", "var": "accRain" },
+                  { "const": 50 }
+                ]
+              },
+              {
+                "op": "lt",
+                "args": [
+                  { "data": "wrfEnsRain", "var": "accRain" },
+                  { "const": 70 }
+                ]
+              }
+            ]
+          }
         ]
       },
       "out": {
-        "data": "ensT2mMean",
-        "var": "t2mMean"
+        "data": "wrfEnsRainProb",
+        "var": "probRain5070"
       }
     }
   ],
+
   "composition": {
     "layout": {
-      "columns": 2
+      "columns": 1
     },
-
+    
     "views": [
       {
         "id": "view1",
         "frame": { "type": "map" },
         "layers": [
           {
-            "id": "temp",
+            "id": "lrain",
             "geometry": {
-              "type": "mesh",
-              "input": { "data": "ensT2mMean", "var": "t2mMean", "dims": { "time": [40, 50, 60, 70] } },
+              "type": "isoband",
+              "input": { "data": "wrfEnsRainProb", "var": "probRain5070", "dims": { "time": 72 } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+                  }
+                }
+              ],
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "t2mMean",
+                    "field": "probRain5070",
                     "scale": {
                       "type": "sequential",
-                      "scheme": "Inferno",
-                      "domain": [290, 294],
+                      "scheme": "Viridis",
+                      "domain": [0, 1],
                       "clamp": false
                     }
                   },
