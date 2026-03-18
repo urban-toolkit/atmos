@@ -13,131 +13,44 @@ export interface AtmosSpec {
    */
   data: [
     (
-      | ({
+      | (({
+          [k: string]: unknown;
+        } & {
           /**
            * Unique identifier for this data item.
            */
           id: string;
           /**
-           * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
+           * How to read dataset dimensions.
            */
-          dims: {
-            lat: Lat;
-            lon: Lat;
-            /**
-             * Time dimension definition.
-             */
-            time:
-              | Lat
-              | {
-                  /**
-                   * Name of the NetCDF dimension (e.g., 'Time')
-                   */
-                  dim?: string;
-                  description?: string;
-                  /**
-                   * Timezone of the dataset time coordinate.
-                   */
-                  timezone?: string | string | 'Z';
-                  /**
-                   * Key/name of the variable storing time values (e.g., 'Times' or 'XTIME').
-                   */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
                   key: string;
-                  /**
-                   * How to interpret time coordinate values.
-                   */
-                  type?: 'datetime' | 'numeric';
-                  /**
-                   * Optional datetime format hint for parsing non-standard time strings.
-                   */
+                  dim?: string;
+                  type?: string;
                   format?: string;
+                  timezone?: string;
                 };
-            /**
-             * Vertical dimension definition. Omit entirely for surface-only datasets. (null allowed for backward compatibility.)
-             */
-            vertical?: {
-              /**
-               * Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric').
-               */
-              dim: string;
-              /**
-               * Optional variable holding vertical coordinate values (if available).
-               */
-              coord?: string | null;
-              title?: string;
-              description?: string;
-              /**
-               * How vertical levels should be interpreted/decoded.
-               */
-              encoding:
-                | {
-                    type: 'model_level_index';
-                  }
-                | {
-                    type: 'pressure';
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'geometric_height';
-                    units: 'm' | 'km';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'hybrid_sigma';
-                    formula?: string;
-                    coefficients: {
-                      a: string;
-                      b: string;
-                    };
-                    reference_pressure: {
-                      p0: number | string;
-                    };
-                    surface_pressure: string;
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  };
-            } | null;
-            id?: Lat1;
-          };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
           /**
-           * Missing/invalid-data rules for this dataset (optional).
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
            */
-          missing?: {
-            nan?: boolean;
-            /**
-             * Exact values that should be treated as missing (e.g., 9999, -9999).
-             *
-             * @minItems 1
-             */
-            sentinels?: [number | string, ...(number | string)[]];
-            /**
-             * Numeric ranges to treat as missing (e.g., lt=-1e20).
-             *
-             * @minItems 1
-             */
-            ranges?: [
-              {
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              },
-              ...{
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              }[]
-            ];
-          };
-          grid: {
+          grid?: {
             type: 'rectilinear' | 'curvilinear' | 'scattered';
           };
           /**
-           * Variables available in the dataset.
+           * Variables/attributes available in the dataset.
            */
-          vars: {
+          vars?: {
             /**
              * Unique variable identifier (used for referencing in expressions).
              */
@@ -149,6 +62,52 @@ export interface AtmosSpec {
           }[];
           [k: string]: unknown;
         } & {
+          /**
+           * Unique identifier for this data item.
+           */
+          id: string;
+          /**
+           * How to read dataset dimensions.
+           */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
+                  key: string;
+                  dim?: string;
+                  type?: string;
+                  format?: string;
+                  timezone?: string;
+                };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
+          /**
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
+           */
+          grid?: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
+          /**
+           * Variables/attributes available in the dataset.
+           */
+          vars?: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
+          }[];
+          [k: string]: unknown;
+        }) & {
           /**
            * Defaults to 'dataset' if omitted.
            */
@@ -157,147 +116,52 @@ export interface AtmosSpec {
            * How to access the dataset bytes (path/url/etc).
            */
           source: {
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
-          } & {
             type: 'netcdf' | 'zarr' | 'csv' | 'json' | 'url' | 'geojson';
             /**
              * Path to a local file/folder (for file-based sources).
              */
-            path?: string;
-            /**
-             * URL (for url-based sources).
-             */
-            url?: string;
+            path: string;
           };
           [k: string]: unknown;
         })
-      | ({
+      | (({
+          [k: string]: unknown;
+        } & {
           /**
            * Unique identifier for this data item.
            */
           id: string;
           /**
-           * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
+           * How to read dataset dimensions.
            */
-          dims: {
-            lat: Lat;
-            lon: Lat;
-            /**
-             * Time dimension definition.
-             */
-            time:
-              | Lat
-              | {
-                  /**
-                   * Name of the NetCDF dimension (e.g., 'Time')
-                   */
-                  dim?: string;
-                  description?: string;
-                  /**
-                   * Timezone of the dataset time coordinate.
-                   */
-                  timezone?: string | string | 'Z';
-                  /**
-                   * Key/name of the variable storing time values (e.g., 'Times' or 'XTIME').
-                   */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
                   key: string;
-                  /**
-                   * How to interpret time coordinate values.
-                   */
-                  type?: 'datetime' | 'numeric';
-                  /**
-                   * Optional datetime format hint for parsing non-standard time strings.
-                   */
+                  dim?: string;
+                  type?: string;
                   format?: string;
+                  timezone?: string;
                 };
-            /**
-             * Vertical dimension definition. Omit entirely for surface-only datasets. (null allowed for backward compatibility.)
-             */
-            vertical?: {
-              /**
-               * Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric').
-               */
-              dim: string;
-              /**
-               * Optional variable holding vertical coordinate values (if available).
-               */
-              coord?: string | null;
-              title?: string;
-              description?: string;
-              /**
-               * How vertical levels should be interpreted/decoded.
-               */
-              encoding:
-                | {
-                    type: 'model_level_index';
-                  }
-                | {
-                    type: 'pressure';
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'geometric_height';
-                    units: 'm' | 'km';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'hybrid_sigma';
-                    formula?: string;
-                    coefficients: {
-                      a: string;
-                      b: string;
-                    };
-                    reference_pressure: {
-                      p0: number | string;
-                    };
-                    surface_pressure: string;
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  };
-            } | null;
-            id?: Lat1;
-          };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
           /**
-           * Missing/invalid-data rules for this dataset (optional).
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
            */
-          missing?: {
-            nan?: boolean;
-            /**
-             * Exact values that should be treated as missing (e.g., 9999, -9999).
-             *
-             * @minItems 1
-             */
-            sentinels?: [number | string, ...(number | string)[]];
-            /**
-             * Numeric ranges to treat as missing (e.g., lt=-1e20).
-             *
-             * @minItems 1
-             */
-            ranges?: [
-              {
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              },
-              ...{
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              }[]
-            ];
-          };
-          grid: {
+          grid?: {
             type: 'rectilinear' | 'curvilinear' | 'scattered';
           };
           /**
-           * Variables available in the dataset.
+           * Variables/attributes available in the dataset.
            */
-          vars: {
+          vars?: {
             /**
              * Unique variable identifier (used for referencing in expressions).
              */
@@ -309,6 +173,52 @@ export interface AtmosSpec {
           }[];
           [k: string]: unknown;
         } & {
+          /**
+           * Unique identifier for this data item.
+           */
+          id: string;
+          /**
+           * How to read dataset dimensions.
+           */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
+                  key: string;
+                  dim?: string;
+                  type?: string;
+                  format?: string;
+                  timezone?: string;
+                };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
+          /**
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
+           */
+          grid?: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
+          /**
+           * Variables/attributes available in the dataset.
+           */
+          vars?: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
+          }[];
+          [k: string]: unknown;
+        }) & {
           type: 'collection';
           /**
            * Defines the set of members in the collection.
@@ -332,167 +242,54 @@ export interface AtmosSpec {
            * How to access each member asset, using templates like {index} or {id}.
            */
           sourceTemplate: {
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
+            type: 'netcdf' | 'zarr' | 'csv' | 'json' | 'url' | 'geojson';
+            /**
+             * Template for local paths, e.g., '/ens/member_{index}/wrfout.nc' or '/ens/{id}/wrfout.nc'.
+             */
+            pathTemplate: string;
           };
-          /**
-           * Logical dimension name to use for the collection axis (for transforms/encodings).
-           */
-          memberDimension?: string;
           [k: string]: unknown;
         })
-      | {
-          /**
-           * Unique identifier for this data item.
-           */
-          id: string;
-          source: ({
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
-          }) & {
-            type: 'geojson';
-            [k: string]: unknown;
-          };
-          /**
-           * Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).
-           */
-          dims?: {
-            id: {
-              key: string;
-              [k: string]: unknown;
-            };
-            [k: string]: unknown;
-          };
-        }
     ),
     ...(
-      | ({
+      | (({
+          [k: string]: unknown;
+        } & {
           /**
            * Unique identifier for this data item.
            */
           id: string;
           /**
-           * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
+           * How to read dataset dimensions.
            */
-          dims: {
-            lat: Lat;
-            lon: Lat;
-            /**
-             * Time dimension definition.
-             */
-            time:
-              | Lat
-              | {
-                  /**
-                   * Name of the NetCDF dimension (e.g., 'Time')
-                   */
-                  dim?: string;
-                  description?: string;
-                  /**
-                   * Timezone of the dataset time coordinate.
-                   */
-                  timezone?: string | string | 'Z';
-                  /**
-                   * Key/name of the variable storing time values (e.g., 'Times' or 'XTIME').
-                   */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
                   key: string;
-                  /**
-                   * How to interpret time coordinate values.
-                   */
-                  type?: 'datetime' | 'numeric';
-                  /**
-                   * Optional datetime format hint for parsing non-standard time strings.
-                   */
+                  dim?: string;
+                  type?: string;
                   format?: string;
+                  timezone?: string;
                 };
-            /**
-             * Vertical dimension definition. Omit entirely for surface-only datasets. (null allowed for backward compatibility.)
-             */
-            vertical?: {
-              /**
-               * Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric').
-               */
-              dim: string;
-              /**
-               * Optional variable holding vertical coordinate values (if available).
-               */
-              coord?: string | null;
-              title?: string;
-              description?: string;
-              /**
-               * How vertical levels should be interpreted/decoded.
-               */
-              encoding:
-                | {
-                    type: 'model_level_index';
-                  }
-                | {
-                    type: 'pressure';
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'geometric_height';
-                    units: 'm' | 'km';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'hybrid_sigma';
-                    formula?: string;
-                    coefficients: {
-                      a: string;
-                      b: string;
-                    };
-                    reference_pressure: {
-                      p0: number | string;
-                    };
-                    surface_pressure: string;
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  };
-            } | null;
-            id?: Lat1;
-          };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
           /**
-           * Missing/invalid-data rules for this dataset (optional).
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
            */
-          missing?: {
-            nan?: boolean;
-            /**
-             * Exact values that should be treated as missing (e.g., 9999, -9999).
-             *
-             * @minItems 1
-             */
-            sentinels?: [number | string, ...(number | string)[]];
-            /**
-             * Numeric ranges to treat as missing (e.g., lt=-1e20).
-             *
-             * @minItems 1
-             */
-            ranges?: [
-              {
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              },
-              ...{
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              }[]
-            ];
-          };
-          grid: {
+          grid?: {
             type: 'rectilinear' | 'curvilinear' | 'scattered';
           };
           /**
-           * Variables available in the dataset.
+           * Variables/attributes available in the dataset.
            */
-          vars: {
+          vars?: {
             /**
              * Unique variable identifier (used for referencing in expressions).
              */
@@ -504,6 +301,52 @@ export interface AtmosSpec {
           }[];
           [k: string]: unknown;
         } & {
+          /**
+           * Unique identifier for this data item.
+           */
+          id: string;
+          /**
+           * How to read dataset dimensions.
+           */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
+                  key: string;
+                  dim?: string;
+                  type?: string;
+                  format?: string;
+                  timezone?: string;
+                };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
+          /**
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
+           */
+          grid?: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
+          /**
+           * Variables/attributes available in the dataset.
+           */
+          vars?: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
+          }[];
+          [k: string]: unknown;
+        }) & {
           /**
            * Defaults to 'dataset' if omitted.
            */
@@ -512,147 +355,52 @@ export interface AtmosSpec {
            * How to access the dataset bytes (path/url/etc).
            */
           source: {
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
-          } & {
             type: 'netcdf' | 'zarr' | 'csv' | 'json' | 'url' | 'geojson';
             /**
              * Path to a local file/folder (for file-based sources).
              */
-            path?: string;
-            /**
-             * URL (for url-based sources).
-             */
-            url?: string;
+            path: string;
           };
           [k: string]: unknown;
         })
-      | ({
+      | (({
+          [k: string]: unknown;
+        } & {
           /**
            * Unique identifier for this data item.
            */
           id: string;
           /**
-           * How to read coordinate axes (lat/lon/time/level/member) from this dataset.
+           * How to read dataset dimensions.
            */
-          dims: {
-            lat: Lat;
-            lon: Lat;
-            /**
-             * Time dimension definition.
-             */
-            time:
-              | Lat
-              | {
-                  /**
-                   * Name of the NetCDF dimension (e.g., 'Time')
-                   */
-                  dim?: string;
-                  description?: string;
-                  /**
-                   * Timezone of the dataset time coordinate.
-                   */
-                  timezone?: string | string | 'Z';
-                  /**
-                   * Key/name of the variable storing time values (e.g., 'Times' or 'XTIME').
-                   */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
                   key: string;
-                  /**
-                   * How to interpret time coordinate values.
-                   */
-                  type?: 'datetime' | 'numeric';
-                  /**
-                   * Optional datetime format hint for parsing non-standard time strings.
-                   */
+                  dim?: string;
+                  type?: string;
                   format?: string;
+                  timezone?: string;
                 };
-            /**
-             * Vertical dimension definition. Omit entirely for surface-only datasets. (null allowed for backward compatibility.)
-             */
-            vertical?: {
-              /**
-               * Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric').
-               */
-              dim: string;
-              /**
-               * Optional variable holding vertical coordinate values (if available).
-               */
-              coord?: string | null;
-              title?: string;
-              description?: string;
-              /**
-               * How vertical levels should be interpreted/decoded.
-               */
-              encoding:
-                | {
-                    type: 'model_level_index';
-                  }
-                | {
-                    type: 'pressure';
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'geometric_height';
-                    units: 'm' | 'km';
-                    positive?: 'up' | 'down';
-                  }
-                | {
-                    type: 'hybrid_sigma';
-                    formula?: string;
-                    coefficients: {
-                      a: string;
-                      b: string;
-                    };
-                    reference_pressure: {
-                      p0: number | string;
-                    };
-                    surface_pressure: string;
-                    units: 'Pa' | 'hPa' | 'mb';
-                    positive?: 'up' | 'down';
-                  };
-            } | null;
-            id?: Lat1;
-          };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
           /**
-           * Missing/invalid-data rules for this dataset (optional).
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
            */
-          missing?: {
-            nan?: boolean;
-            /**
-             * Exact values that should be treated as missing (e.g., 9999, -9999).
-             *
-             * @minItems 1
-             */
-            sentinels?: [number | string, ...(number | string)[]];
-            /**
-             * Numeric ranges to treat as missing (e.g., lt=-1e20).
-             *
-             * @minItems 1
-             */
-            ranges?: [
-              {
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              },
-              ...{
-                lt?: number;
-                lte?: number;
-                gt?: number;
-                gte?: number;
-              }[]
-            ];
-          };
-          grid: {
+          grid?: {
             type: 'rectilinear' | 'curvilinear' | 'scattered';
           };
           /**
-           * Variables available in the dataset.
+           * Variables/attributes available in the dataset.
            */
-          vars: {
+          vars?: {
             /**
              * Unique variable identifier (used for referencing in expressions).
              */
@@ -664,6 +412,52 @@ export interface AtmosSpec {
           }[];
           [k: string]: unknown;
         } & {
+          /**
+           * Unique identifier for this data item.
+           */
+          id: string;
+          /**
+           * How to read dataset dimensions.
+           */
+          dims:
+            | {
+                lat: Id;
+                lon: Id;
+                time: {
+                  key: string;
+                  dim?: string;
+                  type?: string;
+                  format?: string;
+                  timezone?: string;
+                };
+                level?: Id;
+                member?: Id;
+                id?: Id;
+              }
+            | {
+                id: Id;
+              };
+          /**
+           * Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.
+           */
+          grid?: {
+            type: 'rectilinear' | 'curvilinear' | 'scattered';
+          };
+          /**
+           * Variables/attributes available in the dataset.
+           */
+          vars?: {
+            /**
+             * Unique variable identifier (used for referencing in expressions).
+             */
+            id: string;
+            /**
+             * Key to access the variable in the data source.
+             */
+            key: string;
+          }[];
+          [k: string]: unknown;
+        }) & {
           type: 'collection';
           /**
            * Defines the set of members in the collection.
@@ -687,40 +481,14 @@ export interface AtmosSpec {
            * How to access each member asset, using templates like {index} or {id}.
            */
           sourceTemplate: {
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
+            type: 'netcdf' | 'zarr' | 'csv' | 'json' | 'url' | 'geojson';
+            /**
+             * Template for local paths, e.g., '/ens/member_{index}/wrfout.nc' or '/ens/{id}/wrfout.nc'.
+             */
+            pathTemplate: string;
           };
-          /**
-           * Logical dimension name to use for the collection axis (for transforms/encodings).
-           */
-          memberDimension?: string;
           [k: string]: unknown;
         })
-      | {
-          /**
-           * Unique identifier for this data item.
-           */
-          id: string;
-          source: ({
-            [k: string]: unknown;
-          } & {
-            [k: string]: unknown;
-          }) & {
-            type: 'geojson';
-            [k: string]: unknown;
-          };
-          /**
-           * Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).
-           */
-          dims?: {
-            id: {
-              key: string;
-              [k: string]: unknown;
-            };
-            [k: string]: unknown;
-          };
-        }
     )[]
   ];
   transform?: (
@@ -925,195 +693,6 @@ export interface AtmosSpec {
             id: string;
             floating?: boolean;
             context?: Context;
-            /**
-             * @minItems 1
-             */
-            interactions?: [
-              {
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              },
-              ...({
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              })[]
-            ];
             [k: string]: unknown;
           } & {
             frame: {
@@ -1149,16 +728,12 @@ export interface AtmosSpec {
              */
             layers: [
               {
-                id?: string;
+                id: string;
                 /**
                  * Geometry layer id (string) or a full GeometrySpec object.
                  */
                 geometry:
                   | ({
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -1439,10 +1014,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -1462,10 +1033,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -1734,10 +1301,6 @@ export interface AtmosSpec {
                       type: 'isoband';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -2015,10 +1578,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -2038,10 +1597,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -2303,10 +1858,6 @@ export interface AtmosSpec {
                       type: 'point';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -2823,10 +2374,6 @@ export interface AtmosSpec {
                       type: 'mesh';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -3365,10 +2912,6 @@ export interface AtmosSpec {
                       type: 'vector';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -3916,10 +3459,6 @@ export interface AtmosSpec {
                       type: 'trajectory';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -4184,7 +3723,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -4448,10 +3987,6 @@ export interface AtmosSpec {
                       type: 'polygon';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -4970,10 +4505,6 @@ export interface AtmosSpec {
                       type: 'particle';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -5238,7 +4769,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -5596,16 +5127,12 @@ export interface AtmosSpec {
                 ];
               },
               ...{
-                id?: string;
+                id: string;
                 /**
                  * Geometry layer id (string) or a full GeometrySpec object.
                  */
                 geometry:
                   | ({
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -5886,10 +5413,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -5909,10 +5432,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -6181,10 +5700,6 @@ export interface AtmosSpec {
                       type: 'isoband';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -6462,10 +5977,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -6485,10 +5996,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -6750,10 +6257,6 @@ export interface AtmosSpec {
                       type: 'point';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -7270,10 +6773,6 @@ export interface AtmosSpec {
                       type: 'mesh';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -7812,10 +7311,6 @@ export interface AtmosSpec {
                       type: 'vector';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -8363,10 +7858,6 @@ export interface AtmosSpec {
                       type: 'trajectory';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -8631,7 +8122,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -8895,10 +8386,6 @@ export interface AtmosSpec {
                       type: 'polygon';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -9417,10 +8904,6 @@ export interface AtmosSpec {
                       type: 'particle';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -9685,7 +9168,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -10049,195 +9532,6 @@ export interface AtmosSpec {
             id: string;
             floating?: boolean;
             context?: Context;
-            /**
-             * @minItems 1
-             */
-            interactions?: [
-              {
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              },
-              ...({
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              })[]
-            ];
             [k: string]: unknown;
           } & {
             frame: {
@@ -10264,195 +9558,6 @@ export interface AtmosSpec {
             id: string;
             floating?: boolean;
             context?: Context;
-            /**
-             * @minItems 1
-             */
-            interactions?: [
-              {
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              },
-              ...({
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              })[]
-            ];
             [k: string]: unknown;
           } & {
             frame: {
@@ -10488,16 +9593,12 @@ export interface AtmosSpec {
              */
             layers: [
               {
-                id?: string;
+                id: string;
                 /**
                  * Geometry layer id (string) or a full GeometrySpec object.
                  */
                 geometry:
                   | ({
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -10778,10 +9879,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -10801,10 +9898,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -11073,10 +10166,6 @@ export interface AtmosSpec {
                       type: 'isoband';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -11354,10 +10443,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -11377,10 +10462,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -11642,10 +10723,6 @@ export interface AtmosSpec {
                       type: 'point';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -12162,10 +11239,6 @@ export interface AtmosSpec {
                       type: 'mesh';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -12704,10 +11777,6 @@ export interface AtmosSpec {
                       type: 'vector';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -13255,10 +12324,6 @@ export interface AtmosSpec {
                       type: 'trajectory';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -13523,7 +12588,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -13787,10 +12852,6 @@ export interface AtmosSpec {
                       type: 'polygon';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -14309,10 +13370,6 @@ export interface AtmosSpec {
                       type: 'particle';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -14577,7 +13634,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -14935,16 +13992,12 @@ export interface AtmosSpec {
                 ];
               },
               ...{
-                id?: string;
+                id: string;
                 /**
                  * Geometry layer id (string) or a full GeometrySpec object.
                  */
                 geometry:
                   | ({
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -15225,10 +14278,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -15248,10 +14297,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -15520,10 +14565,6 @@ export interface AtmosSpec {
                       type: 'isoband';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -15801,10 +14842,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         },
                         ...{
                           /**
@@ -15824,10 +14861,6 @@ export interface AtmosSpec {
                                 stop: number;
                                 step: number;
                               };
-                          /**
-                           * Treat this value as missing (mask it out) before contouring.
-                           */
-                          mask_value?: number | null;
                         }[]
                       ];
                       encoding?: {
@@ -16089,10 +15122,6 @@ export interface AtmosSpec {
                       type: 'point';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -16609,10 +15638,6 @@ export interface AtmosSpec {
                       type: 'mesh';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -17151,10 +16176,6 @@ export interface AtmosSpec {
                       type: 'vector';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -17702,10 +16723,6 @@ export interface AtmosSpec {
                       type: 'trajectory';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -17970,7 +16987,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -18234,10 +17251,6 @@ export interface AtmosSpec {
                       type: 'polygon';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -18756,10 +17769,6 @@ export interface AtmosSpec {
                       type: 'particle';
                       [k: string]: unknown;
                     } & {
-                      /**
-                       * Unique identifier for the geometry layer.
-                       */
-                      id?: string;
                       type: string;
                       /**
                        * Optional geometry build pipeline. Its allowed items depend on the layer type.
@@ -19024,7 +18033,7 @@ export interface AtmosSpec {
                             /**
                              * Map of named variable ids (e.g., u/v/w, speed/direction).
                              */
-                            variables: {
+                            vars: {
                               [k: string]: string;
                             };
                           };
@@ -19388,195 +18397,6 @@ export interface AtmosSpec {
             id: string;
             floating?: boolean;
             context?: Context;
-            /**
-             * @minItems 1
-             */
-            interactions?: [
-              {
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              },
-              ...({
-                on: 'click' | 'hover';
-                source: {
-                  [k: string]: unknown;
-                };
-                /**
-                 * @minItems 1
-                 */
-                do: [
-                  (
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  ),
-                  ...(
-                    | {
-                        type: 'openView';
-                        viewId: string;
-                      }
-                    | {
-                        type: 'setFilter';
-                        target: {
-                          viewId: string;
-                        };
-                        filter: Filter;
-                      }
-                    | {
-                        type: 'showTooltip';
-                        title: string;
-                        /**
-                         * @minItems 1
-                         */
-                        items: [
-                          {
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          },
-                          ...{
-                            label: string;
-                            value: {
-                              data: string;
-                              variable: string;
-                              filter?: Filter;
-                            };
-                          }[]
-                        ];
-                      }
-                  )[]
-                ];
-              } & {
-                source: {
-                  layerId?: string;
-                };
-                [k: string]: unknown;
-              })[]
-            ];
             [k: string]: unknown;
           } & {
             frame: {
@@ -19869,25 +18689,9 @@ export interface AtmosSpec {
     ];
   };
 }
-/**
- * Basic dimension definition.
- */
-export interface Lat {
-  /**
-   * Key to access a coordinate variable in the data source
-   */
+export interface Id {
   key: string;
-  description?: string;
-}
-/**
- * Basic dimension definition.
- */
-export interface Lat1 {
-  /**
-   * Key to access a coordinate variable in the data source
-   */
-  key: string;
-  description?: string;
+  dim?: string;
 }
 export interface Out {
   /**
@@ -20035,12 +18839,6 @@ export interface Context {
       type?: 'auto' | 'color' | 'size' | 'opacity';
     }[]
   ];
-}
-export interface Filter {
-  dimension: string;
-  value: {
-    field: string;
-  };
 }
 export interface Input {
   data: string;

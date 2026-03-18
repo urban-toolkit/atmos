@@ -367,6 +367,86 @@ def _execute_isoband_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
     raise TypeError(f"isoband geometry expects DataObject or DataFrame upstream (step {step.id})")
 
 
+# def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> dict[str, Any]:
+#     resolved = _resolved_dict(g)
+#     grid_type = resolved.get("gridType")
+
+#     if not isinstance(grid_type, str) or not grid_type:
+#         raise ValueError(f"isoline geometry could not resolve gridType (step {step.id})")
+
+#     levels = _levels_from_geometry_spec(g)
+#     if not levels or len(levels) < 1:
+#         raise ValueError("isoline requires levels (need at least 1)")
+
+#     var_key, var_id = _require_variable_key_and_id(resolved, step_id=step.id)
+#     lat_key, lon_key = _require_lat_lon_keys(resolved, step_id=step.id)
+
+#     style = _encoding_style_dict(g)
+#     label_cfg = style.get("label") or {}
+#     if not isinstance(label_cfg, dict):
+#         label_cfg = {}
+
+#     labels_enabled = bool(label_cfg.get("enabled", False))
+#     fmt = label_cfg.get("format", ".0f")
+#     if not isinstance(fmt, str) or not fmt:
+#         fmt = ".0f"
+
+#     ds = _dataframe_to_grid_dataset(
+#         upstream_obj,
+#         lat_key=lat_key,
+#         lon_key=lon_key,
+#         var_key=var_key,
+#         grid_type=grid_type
+#     )
+
+#     lines_fc = _isoline_to_geojson(
+#         ds,
+#         var_key=var_key,
+#         lat_key=lat_key,
+#         lon_key=lon_key,
+#         levels=levels,
+#         out_field=var_id,
+#     )
+
+#     if not labels_enabled:
+#         return lines_fc
+
+#     label_features: list[dict[str, Any]] = []
+#     for feat in lines_fc.get("features", []):
+#         if not isinstance(feat, dict):
+#             continue
+#         geom = feat.get("geometry") or {}
+#         if not isinstance(geom, dict) or geom.get("type") != "LineString":
+#             continue
+#         coords = geom.get("coordinates")
+#         if not isinstance(coords, list) or len(coords) < 2:
+#             continue
+
+#         mid = _midpoint_of_linestring(coords)
+#         if mid is None:
+#             continue
+
+#         props = feat.get("properties") or {}
+#         lvl = props.get(var_id)
+#         if not isinstance(lvl, (int, float)):
+#             continue
+
+#         try:
+#             label_txt = format(float(lvl), fmt)
+#         except Exception:
+#             label_txt = str(lvl)
+
+#         label_features.append(
+#             {
+#                 "type": "Feature",
+#                 "properties": {"value": float(lvl), "label": label_txt},
+#                 "geometry": {"type": "Point", "coordinates": mid},
+#             }
+#         )
+
+#     labels_fc = {"type": "FeatureCollection", "features": label_features}
+#     return {"lines": lines_fc, "labels": labels_fc}
+
 def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> dict[str, Any]:
     resolved = _resolved_dict(g)
     grid_type = resolved.get("gridType")
@@ -391,13 +471,18 @@ def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
     if not isinstance(fmt, str) or not fmt:
         fmt = ".0f"
 
-    ds = _dataframe_to_grid_dataset(
-        upstream_obj,
-        lat_key=lat_key,
-        lon_key=lon_key,
-        var_key=var_key,
-        grid_type=grid_type
-    )
+    if isinstance(upstream_obj, DataObject):
+        ds = upstream_obj.dataset
+    elif isinstance(upstream_obj, pd.DataFrame):
+        ds = _dataframe_to_grid_dataset(
+            upstream_obj,
+            lat_key=lat_key,
+            lon_key=lon_key,
+            var_key=var_key,
+            grid_type=grid_type,
+        )
+    else:
+        raise TypeError(f"isoline geometry expects DataObject or DataFrame upstream (step {step.id})")
 
     lines_fc = _isoline_to_geojson(
         ds,
@@ -446,7 +531,6 @@ def _execute_isoline_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) 
 
     labels_fc = {"type": "FeatureCollection", "features": label_features}
     return {"lines": lines_fc, "labels": labels_fc}
-
 
 def _execute_vector_geometry(step: Step, g: dict[str, Any], upstream_obj: Any) -> dict[str, Any]:
     upstream = _require_data_object(upstream_obj, step_id=step.id, gtype="vector")

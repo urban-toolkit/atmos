@@ -45,342 +45,87 @@
                     "description": "Unique identifier for this data item."
                   },
                   "dims": {
-                    "description": "How to read coordinate axes (lat/lon/time/level/member) from this dataset.",
-                    "type": "object",
-                    "properties": {
-                      "lat": {
+                    "description": "How to read dataset dimensions.",
+                    "oneOf": [
+                      {
                         "type": "object",
-                        "description": "Basic dimension definition.",
-                        "properties": {
-                          "key": {
-                            "type": "string",
-                            "description": "Key to access a coordinate variable in the data source"
-                          },
-                          "description": {
-                            "type": "string"
-                          }
-                        },
                         "required": [
-                          "key"
+                          "lat",
+                          "lon",
+                          "time"
                         ],
-                        "additionalProperties": false
-                      },
-                      "lon": {
-                        "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat"
-                      },
-                      "time": {
-                        "description": "Time dimension definition.",
-                        "oneOf": [
-                          {
-                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat"
+                        "properties": {
+                          "lat": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
                           },
-                          {
+                          "lon": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "time": {
                             "type": "object",
-                            "description": "Time dimension definition. Use 'key' + 'type' + 'timezone'. (No visual encoding here.)",
-                            "properties": {
-                              "dim": {
-                                "type": "string",
-                                "description": "Name of the NetCDF dimension (e.g., 'Time')"
-                              },
-                              "description": {
-                                "type": "string"
-                              },
-                              "timezone": {
-                                "description": "Timezone of the dataset time coordinate.",
-                                "oneOf": [
-                                  {
-                                    "type": "string",
-                                    "description": "IANA timezone name, e.g., 'America/New_York', 'Europe/Berlin', 'Etc/UTC', or 'UTC'.",
-                                    "pattern": "^(UTC|Etc/UTC|Etc/GMT|[A-Za-z_]+(?:/[A-Za-z0-9._+-]+)+)$"
-                                  },
-                                  {
-                                    "type": "string",
-                                    "description": "Fixed UTC offset in the form '+HH:MM' (recommended) or '+HH'. Not DST-aware.",
-                                    "pattern": "^[+-](?:0\\d|1\\d|2[0-3])(?::[0-5]\\d)?$"
-                                  },
-                                  {
-                                    "type": "string",
-                                    "const": "Z"
-                                  }
-                                ]
-                              },
-                              "key": {
-                                "type": "string",
-                                "description": "Key/name of the variable storing time values (e.g., 'Times' or 'XTIME')."
-                              },
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "datetime",
-                                  "numeric"
-                                ],
-                                "default": "datetime",
-                                "description": "How to interpret time coordinate values."
-                              },
-                              "format": {
-                                "type": "string",
-                                "description": "Optional datetime format hint for parsing non-standard time strings."
-                              }
-                            },
                             "required": [
                               "key"
                             ],
-                            "additionalProperties": false
-                          }
-                        ]
-                      },
-                      "vertical": {
-                        "description": "Vertical dimension definition. Omit entirely for surface-only datasets. (null allowed for backward compatibility.)",
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "description": "Vertical dimension definition (e.g., model levels, pressure levels, geometric height, hybrid sigma).",
                             "properties": {
+                              "key": {
+                                "type": "string"
+                              },
                               "dim": {
-                                "type": "string",
-                                "description": "Name of the vertical dimension (e.g., 'bottom_top', 'level', 'isobaric')."
-                              },
-                              "coord": {
-                                "description": "Optional variable holding vertical coordinate values (if available).",
-                                "oneOf": [
-                                  {
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "title": {
                                 "type": "string"
                               },
-                              "description": {
+                              "type": {
                                 "type": "string"
                               },
-                              "encoding": {
-                                "description": "How vertical levels should be interpreted/decoded.",
-                                "oneOf": [
-                                  {
-                                    "type": "object",
-                                    "description": "Vertical coordinate is interpreted as model level indices (no physical units implied).",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "const": "model_level_index"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  {
-                                    "type": "object",
-                                    "description": "Vertical coordinate represents pressure levels (e.g., hPa or Pa).",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "const": "pressure"
-                                      },
-                                      "units": {
-                                        "type": "string",
-                                        "enum": [
-                                          "Pa",
-                                          "hPa",
-                                          "mb"
-                                        ]
-                                      },
-                                      "positive": {
-                                        "type": "string",
-                                        "enum": [
-                                          "up",
-                                          "down"
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "units"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  {
-                                    "type": "object",
-                                    "description": "Vertical coordinate represents geometric height (e.g., meters above mean sea level).",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "const": "geometric_height"
-                                      },
-                                      "units": {
-                                        "type": "string",
-                                        "enum": [
-                                          "m",
-                                          "km"
-                                        ]
-                                      },
-                                      "positive": {
-                                        "type": "string",
-                                        "enum": [
-                                          "up",
-                                          "down"
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "units"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  {
-                                    "type": "object",
-                                    "description": "Hybrid sigma/pressure coordinate. Requires coefficients and reference pressures to compute pressure at model levels.",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "const": "hybrid_sigma"
-                                      },
-                                      "formula": {
-                                        "type": "string"
-                                      },
-                                      "coefficients": {
-                                        "type": "object",
-                                        "properties": {
-                                          "a": {
-                                            "type": "string"
-                                          },
-                                          "b": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "a",
-                                          "b"
-                                        ],
-                                        "additionalProperties": false
-                                      },
-                                      "reference_pressure": {
-                                        "type": "object",
-                                        "properties": {
-                                          "p0": {
-                                            "oneOf": [
-                                              {
-                                                "type": "number"
-                                              },
-                                              {
-                                                "type": "string"
-                                              }
-                                            ]
-                                          }
-                                        },
-                                        "required": [
-                                          "p0"
-                                        ],
-                                        "additionalProperties": false
-                                      },
-                                      "surface_pressure": {
-                                        "type": "string"
-                                      },
-                                      "units": {
-                                        "type": "string",
-                                        "enum": [
-                                          "Pa",
-                                          "hPa",
-                                          "mb"
-                                        ]
-                                      },
-                                      "positive": {
-                                        "type": "string",
-                                        "enum": [
-                                          "up",
-                                          "down"
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "coefficients",
-                                      "reference_pressure",
-                                      "surface_pressure",
-                                      "units"
-                                    ],
-                                    "additionalProperties": false
-                                  }
-                                ]
+                              "format": {
+                                "type": "string"
+                              },
+                              "timezone": {
+                                "type": "string"
                               }
                             },
-                            "required": [
-                              "dim",
-                              "encoding"
-                            ],
                             "additionalProperties": false
                           },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
-                      "id": {
-                        "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/properties/lat",
-                        "description": "Optional identifier dimension for station/site-based datasets (e.g., station_id)."
-                      }
-                    },
-                    "required": [
-                      "lat",
-                      "lon",
-                      "time"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "missing": {
-                    "description": "Missing/invalid-data rules for this dataset (optional).",
-                    "type": "object",
-                    "properties": {
-                      "nan": {
-                        "type": "boolean",
-                        "default": true
-                      },
-                      "sentinels": {
-                        "type": "array",
-                        "description": "Exact values that should be treated as missing (e.g., 9999, -9999).",
-                        "items": {
-                          "type": [
-                            "number",
-                            "string"
-                          ]
-                        },
-                        "minItems": 1
-                      },
-                      "ranges": {
-                        "type": "array",
-                        "description": "Numeric ranges to treat as missing (e.g., lt=-1e20).",
-                        "minItems": 1,
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "lt": {
-                              "type": "number"
-                            },
-                            "lte": {
-                              "type": "number"
-                            },
-                            "gt": {
-                              "type": "number"
-                            },
-                            "gte": {
-                              "type": "number"
-                            }
+                          "level": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
                           },
-                          "additionalProperties": false,
-                          "minProperties": 1
-                        }
+                          "member": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "id": {
+                            "type": "object",
+                            "required": [
+                              "key"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "dim": {
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "id"
+                        ],
+                        "properties": {
+                          "id": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          }
+                        },
+                        "additionalProperties": false
                       }
-                    },
-                    "additionalProperties": false
+                    ]
                   },
                   "grid": {
                     "type": "object",
+                    "description": "Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.",
                     "required": [
                       "type"
                     ],
@@ -398,7 +143,7 @@
                   },
                   "vars": {
                     "type": "array",
-                    "description": "Variables available in the dataset.",
+                    "description": "Variables/attributes available in the dataset.",
                     "items": {
                       "type": "object",
                       "description": "Definition of a variable available in the data source.",
@@ -422,9 +167,31 @@
                 },
                 "required": [
                   "id",
-                  "dims",
-                  "vars",
-                  "grid"
+                  "dims"
+                ],
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "dims": {
+                          "type": "object",
+                          "required": [
+                            "lat",
+                            "lon"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dims"
+                      ]
+                    },
+                    "then": {
+                      "required": [
+                        "grid",
+                        "vars"
+                      ]
+                    }
+                  }
                 ]
               },
               {
@@ -439,7 +206,29 @@
                   },
                   "source": {
                     "description": "How to access the dataset bytes (path/url/etc).",
-                    "$ref": "#/properties/data/items/oneOf/2/properties/source/allOf/0"
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "netcdf",
+                          "zarr",
+                          "csv",
+                          "json",
+                          "url",
+                          "geojson"
+                        ]
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Path to a local file/folder (for file-based sources)."
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "path"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -531,78 +320,18 @@
                     "type": "object",
                     "properties": {
                       "type": {
-                        "$ref": "#/properties/data/items/oneOf/2/properties/source/allOf/0/properties/type"
+                        "$ref": "#/properties/data/items/oneOf/0/allOf/1/properties/source/properties/type"
                       },
                       "pathTemplate": {
                         "type": "string",
                         "description": "Template for local paths, e.g., '/ens/member_{index}/wrfout.nc' or '/ens/{id}/wrfout.nc'."
-                      },
-                      "urlTemplate": {
-                        "type": "string",
-                        "format": "uri",
-                        "description": "Template for URLs, e.g., 'https://example.com/run/{id}.nc'."
                       }
                     },
                     "required": [
-                      "type"
+                      "type",
+                      "pathTemplate"
                     ],
-                    "additionalProperties": false,
-                    "allOf": [
-                      {
-                        "if": {
-                          "properties": {
-                            "type": {
-                              "const": "url"
-                            }
-                          },
-                          "required": [
-                            "type"
-                          ]
-                        },
-                        "then": {
-                          "required": [
-                            "urlTemplate"
-                          ],
-                          "not": {
-                            "required": [
-                              "pathTemplate"
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "if": {
-                          "properties": {
-                            "type": {
-                              "enum": [
-                                "netcdf",
-                                "zarr",
-                                "csv",
-                                "json"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "type"
-                          ]
-                        },
-                        "then": {
-                          "required": [
-                            "pathTemplate"
-                          ],
-                          "not": {
-                            "required": [
-                              "urlTemplate"
-                            ]
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  "memberDimension": {
-                    "type": "string",
-                    "default": "member",
-                    "description": "Logical dimension name to use for the collection axis (for transforms/encodings)."
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -612,138 +341,6 @@
                 ]
               }
             ]
-          },
-          {
-            "type": "object",
-            "description": "A GeoJSON FeatureCollection dataset (e.g., administrative boundaries) used for overlays/joins.",
-            "additionalProperties": false,
-            "required": [
-              "id",
-              "source"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Unique identifier for this data item."
-              },
-              "source": {
-                "allOf": [
-                  {
-                    "type": "object",
-                    "description": "How to access a single concrete source asset (transport/location).",
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "netcdf",
-                          "zarr",
-                          "csv",
-                          "json",
-                          "url",
-                          "geojson"
-                        ]
-                      },
-                      "path": {
-                        "type": "string",
-                        "description": "Path to a local file/folder (for file-based sources)."
-                      },
-                      "url": {
-                        "type": "string",
-                        "format": "uri",
-                        "description": "URL (for url-based sources)."
-                      }
-                    },
-                    "required": [
-                      "type"
-                    ],
-                    "additionalProperties": false,
-                    "allOf": [
-                      {
-                        "if": {
-                          "properties": {
-                            "type": {
-                              "const": "url"
-                            }
-                          },
-                          "required": [
-                            "type"
-                          ]
-                        },
-                        "then": {
-                          "required": [
-                            "url"
-                          ],
-                          "not": {
-                            "required": [
-                              "path"
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "if": {
-                          "properties": {
-                            "type": {
-                              "enum": [
-                                "netcdf",
-                                "zarr",
-                                "csv",
-                                "json",
-                                "geojson"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "type"
-                          ]
-                        },
-                        "then": {
-                          "required": [
-                            "path"
-                          ],
-                          "not": {
-                            "required": [
-                              "url"
-                            ]
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "required": [
-                      "type"
-                    ],
-                    "properties": {
-                      "type": {
-                        "const": "geojson"
-                      }
-                    }
-                  }
-                ]
-              },
-              "dims": {
-                "type": "object",
-                "description": "Named attribute fields exposed from the GeoJSON properties object (used for joins/filters).",
-                "properties": {
-                  "id": {
-                    "type": "object",
-                    "properties": {
-                      "key": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "key"
-                    ]
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            }
           }
         ]
       },
@@ -2136,190 +1733,6 @@
                       "context": {
                         "description": "Optional view-local context (titles, legends, controls).",
                         "$ref": "#/properties/composition/properties/context"
-                      },
-                      "interactions": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "allOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "on",
-                                "source",
-                                "do"
-                              ],
-                              "properties": {
-                                "on": {
-                                  "type": "string",
-                                  "enum": [
-                                    "click",
-                                    "hover"
-                                  ]
-                                },
-                                "source": {
-                                  "type": "object"
-                                },
-                                "do": {
-                                  "type": "array",
-                                  "minItems": 1,
-                                  "items": {
-                                    "oneOf": [
-                                      {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "required": [
-                                          "type",
-                                          "viewId"
-                                        ],
-                                        "properties": {
-                                          "type": {
-                                            "const": "openView"
-                                          },
-                                          "viewId": {
-                                            "type": "string",
-                                            "minLength": 1
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "required": [
-                                          "type",
-                                          "target",
-                                          "filter"
-                                        ],
-                                        "properties": {
-                                          "type": {
-                                            "const": "setFilter"
-                                          },
-                                          "target": {
-                                            "type": "object",
-                                            "additionalProperties": false,
-                                            "required": [
-                                              "viewId"
-                                            ],
-                                            "properties": {
-                                              "viewId": {
-                                                "type": "string",
-                                                "minLength": 1
-                                              }
-                                            }
-                                          },
-                                          "filter": {
-                                            "type": "object",
-                                            "additionalProperties": false,
-                                            "required": [
-                                              "dimension",
-                                              "value"
-                                            ],
-                                            "properties": {
-                                              "dimension": {
-                                                "type": "string",
-                                                "minLength": 1
-                                              },
-                                              "value": {
-                                                "oneOf": [
-                                                  {
-                                                    "type": "object",
-                                                    "additionalProperties": false,
-                                                    "required": [
-                                                      "field"
-                                                    ],
-                                                    "properties": {
-                                                      "field": {
-                                                        "type": "string",
-                                                        "minLength": 1
-                                                      }
-                                                    }
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "required": [
-                                          "type",
-                                          "title",
-                                          "items"
-                                        ],
-                                        "properties": {
-                                          "type": {
-                                            "const": "showTooltip"
-                                          },
-                                          "title": {
-                                            "type": "string"
-                                          },
-                                          "items": {
-                                            "type": "array",
-                                            "minItems": 1,
-                                            "items": {
-                                              "type": "object",
-                                              "additionalProperties": false,
-                                              "required": [
-                                                "label",
-                                                "value"
-                                              ],
-                                              "properties": {
-                                                "label": {
-                                                  "type": "string"
-                                                },
-                                                "value": {
-                                                  "type": "object",
-                                                  "additionalProperties": false,
-                                                  "required": [
-                                                    "data",
-                                                    "variable"
-                                                  ],
-                                                  "properties": {
-                                                    "data": {
-                                                      "type": "string",
-                                                      "minLength": 1
-                                                    },
-                                                    "variable": {
-                                                      "type": "string",
-                                                      "minLength": 1
-                                                    },
-                                                    "filter": {
-                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/0/properties/interactions/items/allOf/0/properties/do/items/oneOf/1/properties/filter"
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              }
-                            },
-                            {
-                              "properties": {
-                                "source": {
-                                  "type": "object",
-                                  "additionalProperties": false,
-                                  "properties": {
-                                    "layerId": {
-                                      "type": "string",
-                                      "minLength": 1
-                                    }
-                                  }
-                                }
-                              },
-                              "required": [
-                                "source"
-                              ]
-                            }
-                          ]
-                        }
                       }
                     },
                     "required": [
@@ -2425,7 +1838,8 @@
                           "description": "A layer instance within a view, pairing geometry. Each may be a reference id or a full inline spec (fully validated).",
                           "additionalProperties": false,
                           "required": [
-                            "geometry"
+                            "geometry",
+                            "id"
                           ],
                           "properties": {
                             "id": {
@@ -2443,11 +1857,6 @@
                                     {
                                       "type": "object",
                                       "properties": {
-                                        "id": {
-                                          "type": "string",
-                                          "description": "Unique identifier for the geometry layer.",
-                                          "minLength": 1
-                                        },
                                         "type": {
                                           "type": "string"
                                         },
@@ -2584,17 +1993,6 @@
                                                       "step"
                                                     ],
                                                     "additionalProperties": false
-                                                  }
-                                                ]
-                                              },
-                                              "mask_value": {
-                                                "description": "Treat this value as missing (mask it out) before contouring.",
-                                                "oneOf": [
-                                                  {
-                                                    "type": "number"
-                                                  },
-                                                  {
-                                                    "type": "null"
                                                   }
                                                 ]
                                               }
@@ -3089,17 +2487,6 @@
                                             "properties": {
                                               "levels": {
                                                 "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/build/items/properties/levels"
-                                              },
-                                              "mask_value": {
-                                                "description": "Treat this value as missing (mask it out) before contouring.",
-                                                "oneOf": [
-                                                  {
-                                                    "type": "number"
-                                                  },
-                                                  {
-                                                    "type": "null"
-                                                  }
-                                                ]
                                               }
                                             },
                                             "required": [
@@ -3546,14 +2933,14 @@
                                               "additionalProperties": false,
                                               "required": [
                                                 "data",
-                                                "variables"
+                                                "vars"
                                               ],
                                               "properties": {
                                                 "data": {
                                                   "type": "string",
                                                   "minLength": 1
                                                 },
-                                                "variables": {
+                                                "vars": {
                                                   "type": "object",
                                                   "minProperties": 1,
                                                   "additionalProperties": {
