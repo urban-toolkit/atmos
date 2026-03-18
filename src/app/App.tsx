@@ -11,9 +11,66 @@ import type { ChartRuntime } from "../interpreters/chartInterpreter"
 import AtmosChart from "../components/chart/AtmosChart"
 import FloatingPanel from "../components/floatingPanel/FloatingPanel"
 
+// type Manifest = {
+//   kind: string
+//   schemaVersion: string
+//   artifacts: Array<{
+//     id: string
+//     format: string
+//     path: string
+//     producerStep: string
+//     metadata?: Record<string, any>
+//   }>
+// }
+
 type Manifest = {
   kind: string
   schemaVersion: string
+  composition?: {
+    layout?: Record<string, any>
+    context?: {
+      title?: {
+        text?: string
+        template?: string
+        subtitle?: string
+        subtitleTemplate?: string
+      }
+      legends?: Array<{
+        title?: string
+        type?: string
+        source?: Array<{
+          view: string
+          layers?: string[]
+          channel?: string
+        }>
+        resolvedSource?: Array<{
+          view: string
+          layers?: string[]
+          channel?: string
+        }>
+      }>
+    }
+  }
+  views?: Array<{
+    id: string
+    baseViewId?: string
+    repeat?: {
+      type?: string
+      dim?: string
+      index?: number
+      value?: number
+      baseViewId?: string
+    }
+    context?: {
+      title?: {
+        text?: string
+        template?: string
+        subtitle?: string
+        subtitleTemplate?: string
+      }
+    }
+    layers?: string[]
+  }>
   artifacts: Array<{
     id: string
     format: string
@@ -21,10 +78,13 @@ type Manifest = {
     producerStep: string
     metadata?: Record<string, any>
   }>
+  uiState?: {
+    timeMax?: number
+  }
 }
 
 // const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
-// const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
+const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
 // const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
 // const firstExamplePath = "/examples/ex2-0-wind-arrows.json"
@@ -37,7 +97,7 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex4-5-ens-prob.json"
 // const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
 // const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
-const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
+// const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
 
 type FirstSnapshot = {
   spec: any
@@ -45,6 +105,85 @@ type FirstSnapshot = {
   mapLayers: MapLayerRuntime[]
   geoByLayerKey: Record<string, any>
   baseUrl: string
+}
+
+function getGradientFromScheme(scheme?: string) {
+  if (scheme === "Viridis") {
+    return "linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725)"
+  }
+  if (scheme === "Blues") {
+    return "linear-gradient(to right, #f7fbff, #6baed6, #08306b)"
+  }
+  return "linear-gradient(to right, #ccc, #333)"
+}
+
+function getCompositionLegend(manifest: Manifest | null) {
+  return manifest?.composition?.context?.legends?.[0] ?? null
+}
+
+function findArtifactForLegendSource(
+  manifest: Manifest | null,
+  source: { view: string; layers?: string[]; channel?: string } | null | undefined
+) {
+  if (!manifest || !source) return null
+
+  const wantedView = source.view
+  const wantedLayer = source.layers?.[0]
+
+  // return (
+  //   manifest.artifacts.find((a) => {
+  //     const md = a.metadata ?? {}
+  //     return md.viewId === wantedView && md.layerId === wantedLayer
+  //   }) ?? null
+  // )
+  return (
+    manifest.artifacts.find((a) => {
+      const md = a.metadata ?? {}
+
+      const matchesLayer = md.layerId === wantedLayer
+
+      const matchesView =
+        md.viewId === wantedView ||
+        md.baseViewId === wantedView
+
+      return matchesLayer && matchesView
+    }) ?? null
+  )
+}
+
+function getLegendPaintSpec(manifest: Manifest | null) {
+  const legend = getCompositionLegend(manifest)
+  const src = legend?.resolvedSource?.[0]
+  const artifact = findArtifactForLegendSource(manifest, src)
+  const md = artifact?.metadata ?? {}
+  const render = md.render ?? {}
+  const paint = render.paint ?? {}
+
+  if (src?.channel === "fill") {
+    return paint["fill-color"] ?? null
+  }
+  if (src?.channel === "stroke") {
+    return paint["line-color"] ?? null
+  }
+  if (src?.channel === "opacity") {
+    return paint["fill-opacity"] ?? paint["line-opacity"] ?? null
+  }
+
+  return null
+}
+
+function getViewManifestEntry(manifest: Manifest | null, viewId: string) {
+  return manifest?.views?.find((v) => v.id === viewId) ?? null
+}
+
+function getViewTitle(manifest: Manifest | null, viewId: string) {
+  const v = getViewManifestEntry(manifest, viewId)
+  return v?.context?.title?.text ?? viewId
+}
+
+function getViewSubtitle(manifest: Manifest | null, viewId: string) {
+  const v = getViewManifestEntry(manifest, viewId)
+  return v?.context?.title?.subtitle ?? null
 }
 
 function isViewFloating(specObj: any, viewId: string): boolean {
@@ -132,6 +271,69 @@ export default function App() {
 
   const columns = appliedSpec?.composition?.layout?.columns ?? 1
 
+  const compositionTitle = manifest?.composition?.context?.title?.text ?? "Atmos Interface"
+
+  function SharedLegend({ manifest }: { manifest: Manifest | null }) {
+    const legend = getCompositionLegend(manifest)
+    const paintSpec = getLegendPaintSpec(manifest)
+
+    if (!legend) return null
+
+    const title = legend.title ?? "Legend"
+
+    const isColorScheme =
+      paintSpec &&
+      typeof paintSpec === "object" &&
+      paintSpec.kind === "color-scheme" &&
+      Array.isArray(paintSpec.domain)
+
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          right: 12,
+          zIndex: 20,
+          // background: getGradientFromScheme(paintSpec.scheme),//"rgba(255,255,255,0.95)",
+          background: "rgba(255,255,255,0.95)",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          padding: 10,
+          minWidth: 180,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{title}</div>
+
+        {isColorScheme ? (
+          <>
+            <div
+              style={{
+                height: 12,
+                borderRadius: 6,
+                background: "linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725)",
+                marginBottom: 6,
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#555",
+              }}
+            >
+              <span>{paintSpec.domain[0]}</span>
+              <span>{paintSpec.domain[1]}</span>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: "#666" }}>Legend preview not available yet.</div>
+        )}
+      </div>
+    )
+  }
+  
   function handleMapFeatureClick(viewId: string, info: {
     layerId: string
     properties: Record<string, any>
@@ -366,6 +568,7 @@ export default function App() {
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
+      <SharedLegend manifest={manifest} />
       <div
         style={{
           height: "100%",
@@ -384,7 +587,8 @@ export default function App() {
             borderBottom: "1px solid #eee",
           }}
         >
-          <div style={{ fontWeight: 700 }}>Atmos Interface</div>
+          {/* <div style={{ fontWeight: 700 }}>Atmos Interface</div> */}
+          <div style={{ fontWeight: 700 }}>{compositionTitle}</div>
 
           <div style={{ color: "#666" }}>
             {manifest ? `${manifest.kind} • ${manifest.schemaVersion}` : "No run yet"}
@@ -422,7 +626,7 @@ export default function App() {
           }}
         >
           {gridTiles.map((t) => {
-        const rep = t.type === "map" ? t.layers[0]?.repeat : null
+            // const rep = t.type === "map" ? t.layers[0]?.repeat : null
 
             return (
               <div
@@ -444,11 +648,31 @@ export default function App() {
                     color: "#555",
                   }}
                 >
-                  {rep?.type === "timestep"
+                  {/* {rep?.type === "timestep"
                     ? `t = ${rep.index}`
                     : rep?.type === "member"
                     ? `member = ${rep.index}`
-                    : t.viewId}
+                    : t.viewId} */}
+                    <div
+                      style={{
+                        padding: "6px 10px",
+                        borderBottom: "1px solid #eee",
+                        fontSize: 12,
+                        color: "#555",
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: "#222" }}>
+                        {getViewTitle(manifest, t.viewId)}
+                      </div>
+
+                      {getViewSubtitle(manifest, t.viewId) && (
+                        <div style={{ fontSize: 11, color: "#666" }}>
+                          {getViewSubtitle(manifest, t.viewId)}
+                        </div>
+                      )}
+                    </div>
                 </div>
 
                 {t.type === "map" ? (
@@ -469,15 +693,16 @@ export default function App() {
           })}
         </div>
       </div>
+      
       {visibleFloatingTiles.map((t, i) => {
-        const rep = t.type === "map" ? t.layers[0]?.repeat : null
-
-        const title =
-          rep?.type === "timestep"
-            ? `t = ${rep.index}`
-            : rep?.type === "member"
-              ? `member = ${rep.index}`
-              : t.viewId
+        // const rep = t.type === "map" ? t.layers[0]?.repeat : null
+        const title = getViewTitle(manifest, t.viewId)
+        // const title =
+        //   rep?.type === "timestep"
+        //     ? `t = ${rep.index}`
+        //     : rep?.type === "member"
+        //       ? `member = ${rep.index}`
+        //       : t.viewId
 
         const pos = floatingPositions[t.viewId] ?? {
           x: window.innerWidth - 460,

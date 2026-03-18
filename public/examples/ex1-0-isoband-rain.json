@@ -45,10 +45,33 @@
     "layout": {
       "columns": 2
     },
+    "context": {
+      "title": {
+        "text": "Accumulated Rainfall"
+      },
+      "legends": [
+        {
+          "title": "Accumulated rain (mm)",
+          "type": "color",
+          "source": [
+            {
+              "view": "view1",
+              "layers": ["lrain"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
     "views": [
       {
         "id": "view1",
         "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
         "layers": [
           {
             "id": "lrain",
