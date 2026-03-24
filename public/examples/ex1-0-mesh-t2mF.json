@@ -58,25 +58,48 @@
     "layout": {
       "columns": 2
     },
-
+    "context": {
+      "title": {
+        "text": "Temperature 2m (F)"
+      },
+      "legends": [
+        {
+          "title": "Temperature 2m (F)",
+          "type": "color",
+          "source": [
+            {
+              "view": "view1",
+              "layers": ["temp"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
     "views": [
       {
         "id": "view1",
         "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
         "layers": [
           {
             "id": "temp",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "r001temp2m", "var": "temp2mF", "dims": { "time": [0, 3, 4, 8]} },
+              "input": { "data": "r001temp2m", "var": "temp2mF", "dims": { "time": [40, 50, 60, 70]} },
               "encoding": {
                 "channels": {
                   "fill": {
                     "field": "temp2mF",
                     "scale": {
                       "type": "sequential",
-                      "scheme": "Inferno",
-                      "domain": [62, 70],
+                      "scheme": "interpolateRdYlBu",
+                      "domain": [60, 78],
+                      "reverse": true,
                       "clamp": false
                     }
                   },

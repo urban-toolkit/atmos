@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import maplibregl, { Map } from "maplibre-gl"
+// import { convertPaint } from "../../helpers/colors"
 import { convertPaint } from "../../helpers/colors"
 import earcut from "earcut"
 import { interpolateViridis } from "d3-scale-chromatic"
@@ -1619,7 +1620,7 @@ export default function AtmosMap({
       didAutoFitRef.current = false
     }
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
+    // map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
     mapRef.current = map
 
     const emit = () => {

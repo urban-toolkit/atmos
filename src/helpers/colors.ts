@@ -1,29 +1,36 @@
-import { interpolateRdYlBu, interpolateViridis, interpolatePlasma, interpolateMagma, interpolateInferno } from "d3-scale-chromatic"
-// import { rgb } from "d3-interpolate"
+import {
+  interpolateRdYlBu,
+  interpolateViridis,
+  interpolatePlasma,
+  interpolateMagma,
+  interpolateInferno,
+  interpolateBlues,
+  interpolateCividis,
+  interpolateTurbo,
+  interpolateWarm,
+  interpolateCool,
+  interpolateCubehelixDefault,
+} from "d3-scale-chromatic"
 import { rgb } from "d3-color"
 
-
-
-// --- add this type if you want ---
 type ColorSchemeSpec = {
   kind: "color-scheme"
   field: string
-  scheme: string          // "RdYlBu", "Viridis", ...
+  scheme: string
   type?: "sequential" | "diverging" | string
   domain?: [number, number]
   reverse?: boolean
   clamp?: boolean
   nodataColor?: string
-  steps?: number          // optional override
+  steps?: number
 }
 
 function clampExpr(x: any, d0: number, d1: number, lo: any, hi: any) {
-  // MapLibre interpolate extrapolates; this forces clamp behavior.
   return [
     "case",
     ["<=", x, d0], lo,
     [">=", x, d1], hi,
-    null, // placeholder filled by caller
+    null,
   ]
 }
 
@@ -38,8 +45,6 @@ function colorSchemeToExpr(spec: ColorSchemeSpec): any {
     : null
 
   if (!domain || !Number.isFinite(domain[0]) || !Number.isFinite(domain[1])) {
-    // If you want: you *could* compute extent from data here,
-    // but convertPaint() currently has no access to fc.
     return nodata
   }
 
@@ -47,12 +52,10 @@ function colorSchemeToExpr(spec: ColorSchemeSpec): any {
   const steps = typeof spec.steps === "number" && spec.steps >= 2 ? Math.floor(spec.steps) : 9
 
   let colors = schemeToColors(spec.scheme ?? "RdYlBu", steps)
-
   if (spec.reverse) colors = [...colors].reverse()
 
   const x = ["to-number", ["get", field]]
 
-  // Build interpolate stops across the domain
   const interp: any[] = ["interpolate", ["linear"], x]
   for (let i = 0; i < colors.length; i++) {
     const t = colors.length === 1 ? 0.5 : i / (colors.length - 1)
@@ -66,11 +69,10 @@ function colorSchemeToExpr(spec: ColorSchemeSpec): any {
     const lo = colors[0]
     const hi = colors[colors.length - 1]
     const clamped = clampExpr(x, d0, d1, lo, hi)
-    clamped[7] = interp // replace the null placeholder with interpolate
+    clamped[7] = interp
     expr = clamped
   }
 
-  // nodata handling (null / missing)
   return [
     "case",
     ["any", ["==", ["get", field], null], ["!", ["has", field]]],
@@ -126,6 +128,12 @@ export function schemeToInterpolator(name: string) {
     case "Plasma": return interpolatePlasma
     case "Magma": return interpolateMagma
     case "Inferno": return interpolateInferno
+    case "Blues": return interpolateBlues
+    case "Cividis": return interpolateCividis
+    case "Turbo": return interpolateTurbo
+    case "Warm": return interpolateWarm
+    case "Cool": return interpolateCool
+    case "Cubehelix": return interpolateCubehelixDefault
     default: return interpolateRdYlBu
   }
 }
@@ -139,113 +147,60 @@ export function schemeToColors(scheme: string, steps: number) {
   })
 }
 
-type ColorStops = {
-  kind: "color-stops"
-  field: string
-  type?: "linear" | string
-  stops: Array<{ value: number; color: string }>
-  clamp?: boolean
-  nodataColor?: string
+export function getGradientFromScheme(
+  scheme?: string,
+  options?: {
+    steps?: number
+    direction?: "to right" | "to left" | "to top" | "to bottom"
+    reverse?: boolean
+    fallback?: string
+  }
+) {
+  const {
+    steps = 7,
+    direction = "to right",
+    reverse = false,
+    fallback = "linear-gradient(to right, #ccc, #333)",
+  } = options ?? {}
+
+  if (!scheme) return fallback
+
+  let colors = schemeToColors(scheme, steps)
+  if (reverse) colors = [...colors].reverse()
+
+  return `linear-gradient(${direction}, ${colors.join(", ")})`
 }
 
-export function toMaplibreFillColor(x: any): any {
-  // already a constant color string
-  if (typeof x === "string") return x
-
-  if (!x || typeof x !== "object") return undefined
-  if (x.kind !== "color-stops") return undefined
-
-  const cs = x as ColorStops
-  const field = cs.field
-  const nodata = cs.nodataColor ?? "rgba(0,0,0,0)"
-
-  const interp: any[] = ["interpolate", ["linear"], ["get", field]]
-  for (const s of cs.stops ?? []) {
-    interp.push(s.value, s.color)
+export function getGradientFromPaintSpec(
+  paintSpec: any,
+  options?: {
+    steps?: number
+    direction?: "to right" | "to left" | "to top" | "to bottom"
+    fallback?: string
+  }
+) {
+  if (!paintSpec || typeof paintSpec !== "object") {
+    return options?.fallback ?? "linear-gradient(to right, #ccc, #333)"
   }
 
-  // If stops are missing/invalid, fall back to nodata color
-  if (interp.length <= 3) return nodata
+  if (paintSpec.kind === "color-scheme") {
+    return getGradientFromScheme(paintSpec.scheme, {
+      steps: paintSpec.steps ?? options?.steps ?? 7,
+      direction: options?.direction ?? "to right",
+      reverse: paintSpec.reverse === true,
+      fallback: options?.fallback,
+    })
+  }
 
-  return [
-    "case",
-    ["any", ["==", ["get", field], null], ["!", ["has", field]]],
-    nodata,
-    interp,
-  ]
-}
+  if (paintSpec.kind === "color-stops" && Array.isArray(paintSpec.stops) && paintSpec.stops.length > 0) {
+    const colors = paintSpec.stops
+      .filter((s: any) => typeof s?.color === "string")
+      .map((s: any) => s.color)
 
-export function toFillColorExpression(fillColor: any) {
-  if (typeof fillColor === "string") return fillColor
-  if (!fillColor || typeof fillColor !== "object") return fillColor
-
-  if (fillColor.kind === "color-stops") {
-    const field = fillColor.field
-    const nodata = fillColor.nodataColor ?? "rgba(0,0,0,0)"
-
-    const interp: any[] = ["interpolate", ["linear"], ["get", field]]
-    const stops = Array.isArray(fillColor.stops) ? fillColor.stops : []
-    for (const s of stops) {
-      if (s && typeof s.value === "number" && typeof s.color === "string") {
-        interp.push(s.value, s.color)
-      }
+    if (colors.length > 0) {
+      return `linear-gradient(${options?.direction ?? "to right"}, ${colors.join(", ")})`
     }
-
-    // If we don't have enough pieces to interpolate, fall back safely
-    if (interp.length <= 3) return nodata
-
-    return [
-      "case",
-      ["any", ["==", ["get", field], null], ["!", ["has", field]]],
-      nodata,
-      interp,
-    ]
   }
 
-  return fillColor
+  return options?.fallback ?? "linear-gradient(to right, #ccc, #333)"
 }
-
-// function toMapLibreColorExpr(spec: any): any {
-//   if (!spec || typeof spec !== "object") return spec
-
-//   if (spec.kind === "color-stops") {
-//     const field = spec.field
-//     const stops = Array.isArray(spec.stops) ? spec.stops : []
-//     if (!field || stops.length === 0) return spec
-
-//     const interp: any[] = ["interpolate", ["linear"], ["to-number", ["get", field]]]
-//     for (const s of stops) {
-//       if (typeof s?.value === "number" && typeof s?.color === "string") {
-//         interp.push(s.value, s.color)
-//       }
-//     }
-
-//     // nodata handling
-//     if (spec.nodataColor) {
-//       return [
-//         "case",
-//         ["any", ["==", ["get", field], null], ["!", ["has", field]]],
-//         spec.nodataColor,
-//         interp,
-//       ]
-//     }
-//     return interp
-//   }
-
-//   // (Optional) support your other kinds later:
-//   // - color-palette
-//   // - color-scheme
-//   return spec
-// }
-
-// export function convertPaint(paint: Record<string, any> | undefined) {
-//   if (!paint || typeof paint !== "object") return paint
-
-//   const out: Record<string, any> = {}
-//   for (const [k, v] of Object.entries(paint)) {
-//     // Convert color-stops objects for ANY paint property:
-//     // fill-color, line-color, circle-color, etc.
-//     out[k] = toMapLibreColorExpr(v)
-//   }
-//   return out
-// }

@@ -30,11 +30,33 @@
     "layout": {
       "columns": 2
     },
-
+    "context": {
+      "title": {
+        "text": "Temperature 2m (F)"
+      },
+      "legends": [
+        {
+          "title": "Temperature 2m (F)",
+          "type": "color",
+          "source": [
+            {
+              "view": "view1",
+              "layers": ["temp"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
     "views": [
       {
         "id": "view1",
         "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
         "layers": [
           {
             "id": "temp",

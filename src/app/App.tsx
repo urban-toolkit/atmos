@@ -10,18 +10,7 @@ import { interpretManifestToCharts } from "../interpreters/chartInterpreter"
 import type { ChartRuntime } from "../interpreters/chartInterpreter"
 import AtmosChart from "../components/chart/AtmosChart"
 import FloatingPanel from "../components/floatingPanel/FloatingPanel"
-
-// type Manifest = {
-//   kind: string
-//   schemaVersion: string
-//   artifacts: Array<{
-//     id: string
-//     format: string
-//     path: string
-//     producerStep: string
-//     metadata?: Record<string, any>
-//   }>
-// }
+import { getGradientFromPaintSpec } from "../helpers/colors"
 
 type Manifest = {
   kind: string
@@ -84,13 +73,13 @@ type Manifest = {
 }
 
 // const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
-const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
+// const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
 // const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
 // const firstExamplePath = "/examples/ex2-0-wind-arrows.json"
 // const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
 // const firstExamplePath = "/examples/ex3-0-stations.json"
-// const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
+const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
 // const firstExamplePath = "/examples/ex4-1-ens.json"
 // const firstExamplePath = "/examples/ex4-3-ens-rain.json"
 // const firstExamplePath = "/examples/ex4-4-ens-rain.json"
@@ -107,16 +96,6 @@ type FirstSnapshot = {
   baseUrl: string
 }
 
-function getGradientFromScheme(scheme?: string) {
-  if (scheme === "Viridis") {
-    return "linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725)"
-  }
-  if (scheme === "Blues") {
-    return "linear-gradient(to right, #f7fbff, #6baed6, #08306b)"
-  }
-  return "linear-gradient(to right, #ccc, #333)"
-}
-
 function getCompositionLegend(manifest: Manifest | null) {
   return manifest?.composition?.context?.legends?.[0] ?? null
 }
@@ -130,12 +109,6 @@ function findArtifactForLegendSource(
   const wantedView = source.view
   const wantedLayer = source.layers?.[0]
 
-  // return (
-  //   manifest.artifacts.find((a) => {
-  //     const md = a.metadata ?? {}
-  //     return md.viewId === wantedView && md.layerId === wantedLayer
-  //   }) ?? null
-  // )
   return (
     manifest.artifacts.find((a) => {
       const md = a.metadata ?? {}
@@ -253,6 +226,8 @@ export default function App() {
   const [timeValue, setTimeValue] = useState<number>(0)
   const [charts, setCharts] = useState<ChartRuntime[]>([])
 
+  const [showLegend, setShowLegend] = useState(true)
+
   const [floatingPositions, setFloatingPositions] = useState<
     Record<string, { x: number; y: number }>
   >({})
@@ -281,11 +256,18 @@ export default function App() {
 
     const title = legend.title ?? "Legend"
 
-    const isColorScheme =
+    // const isColorScheme =
+    //   paintSpec &&
+    //   typeof paintSpec === "object" &&
+    //   paintSpec.kind === "color-scheme" &&
+    //   Array.isArray(paintSpec.domain)
+    const hasGradientPreview =
       paintSpec &&
       typeof paintSpec === "object" &&
-      paintSpec.kind === "color-scheme" &&
-      Array.isArray(paintSpec.domain)
+      (
+        (paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)) ||
+        (paintSpec.kind === "color-stops" && Array.isArray(paintSpec.stops) && paintSpec.stops.length > 0)
+      )
 
     return (
       <div
@@ -305,13 +287,17 @@ export default function App() {
       >
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{title}</div>
 
-        {isColorScheme ? (
+        {hasGradientPreview ? (
           <>
             <div
               style={{
                 height: 12,
                 borderRadius: 6,
-                background: "linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725)",
+                // background: getGradientFromScheme(paintSpec.scheme),
+                background: getGradientFromPaintSpec(paintSpec, {
+                  steps: 7,
+                  direction: "to right",
+                }),
                 marginBottom: 6,
               }}
             />
@@ -323,8 +309,20 @@ export default function App() {
                 color: "#555",
               }}
             >
-              <span>{paintSpec.domain[0]}</span>
-              <span>{paintSpec.domain[1]}</span>
+              <span>
+                {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+                  ? paintSpec.domain[0]
+                  : paintSpec.kind === "color-stops" && paintSpec.stops?.[0]
+                    ? paintSpec.stops[0].value
+                    : ""}
+              </span>
+              <span>
+                {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+                  ? paintSpec.domain[1]
+                  : paintSpec.kind === "color-stops" && paintSpec.stops?.length
+                    ? paintSpec.stops[paintSpec.stops.length - 1].value
+                    : ""}
+              </span>
             </div>
           </>
         ) : (
@@ -568,7 +566,7 @@ export default function App() {
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
-      <SharedLegend manifest={manifest} />
+      {showLegend && <SharedLegend manifest={manifest} />}
       <div
         style={{
           height: "100%",
@@ -581,36 +579,68 @@ export default function App() {
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
             padding: "0 12px",
             borderBottom: "1px solid #eee",
+            position: "relative",
+            minHeight: 48,
           }}
         >
-          {/* <div style={{ fontWeight: 700 }}>Atmos Interface</div> */}
-          <div style={{ fontWeight: 700 }}>{compositionTitle}</div>
-
-          <div style={{ color: "#666" }}>
-            {manifest ? `${manifest.kind} • ${manifest.schemaVersion}` : "No run yet"}
+          {/* Centered title */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              fontWeight: 700,
+              pointerEvents: "none",
+            }}
+          >
+            {compositionTitle}
           </div>
 
-          {hasTimeSlider && (
-            <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 12, color: "#555" }}>t</div>
-              <input
-                type="range"
-                min={0}
-                max={timeMax}
-                step={1}
-                value={timeValue}
-                onChange={(e) => onTimeSliderChange(Number(e.target.value))}
-                style={{ width: 220 }}
-              />
-              <div style={{ fontSize: 12, color: "#555", width: 60, textAlign: "right" }}>
-                {timeValue} / {timeMax}
+          {/* Right side controls */}
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 30,
+            }}
+          >
+            {/* Slider FIRST (so it stays left of button) */}
+            {hasTimeSlider && (
+              <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                <div style={{ fontSize: 12, color: "#555" }}>t</div>
+                <input
+                  type="range"
+                  min={0}
+                  max={timeMax}
+                  step={1}
+                  value={timeValue}
+                  onChange={(e) => onTimeSliderChange(Number(e.target.value))}
+                  style={{ width: 180 }}
+                />
+                <div style={{ fontSize: 12, color: "#555", width: 30, textAlign: "right" }}>
+                  {timeValue}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Button LAST → far right */}
+            <button
+              onClick={() => setShowLegend((prev) => !prev)}
+              style={{
+                padding: "4px 10px",
+                fontSize: 12,
+                borderRadius: 6,
+                border: "1px solid #ddd",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {showLegend ? "Hide Legend" : "Show Legend"}
+            </button>
+          </div>
         </div>
 
         <div
@@ -622,7 +652,7 @@ export default function App() {
             gap,
             padding: pad,
             boxSizing: "border-box",
-            overflow: "auto",
+            overflow: "hidden",
           }}
         >
           {gridTiles.map((t) => {
@@ -695,14 +725,8 @@ export default function App() {
       </div>
       
       {visibleFloatingTiles.map((t, i) => {
-        // const rep = t.type === "map" ? t.layers[0]?.repeat : null
+
         const title = getViewTitle(manifest, t.viewId)
-        // const title =
-        //   rep?.type === "timestep"
-        //     ? `t = ${rep.index}`
-        //     : rep?.type === "member"
-        //       ? `member = ${rep.index}`
-        //       : t.viewId
 
         const pos = floatingPositions[t.viewId] ?? {
           x: window.innerWidth - 460,
