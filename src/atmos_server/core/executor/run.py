@@ -52,6 +52,22 @@ def _resolve_template_string(template: str, values: dict[str, Any]) -> str:
         return str(value) if value is not None else match.group(0)
     return _TEMPLATE_RE.sub(repl, template)
 
+# def _resolve_title_spec(title: dict[str, Any] | None, values: dict[str, Any]) -> dict[str, Any] | None:
+#     if not isinstance(title, dict):
+#         return None
+
+#     out = dict(title)
+
+#     template = title.get("template")
+#     if isinstance(template, str):
+#         out["text"] = _resolve_template_string(template, values)
+
+#     subtitle_template = title.get("subtitleTemplate")
+#     if isinstance(subtitle_template, str):
+#         out["subtitle"] = _resolve_template_string(subtitle_template, values)
+
+#     return out
+
 def _resolve_title_spec(title: dict[str, Any] | None, values: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(title, dict):
         return None
@@ -60,11 +76,17 @@ def _resolve_title_spec(title: dict[str, Any] | None, values: dict[str, Any]) ->
 
     template = title.get("template")
     if isinstance(template, str):
-        out["text"] = _resolve_template_string(template, values)
+        if values:
+            out["text"] = _resolve_template_string(template, values)
+        elif not isinstance(out.get("text"), str):
+            out["text"] = template
 
     subtitle_template = title.get("subtitleTemplate")
     if isinstance(subtitle_template, str):
-        out["subtitle"] = _resolve_template_string(subtitle_template, values)
+        if values:
+            out["subtitle"] = _resolve_template_string(subtitle_template, values)
+        elif not isinstance(out.get("subtitle"), str):
+            out["subtitle"] = subtitle_template
 
     return out
 
@@ -341,7 +363,8 @@ def run_plan(plan: Plan, out_dir: str | Path, *, repo_root: Path) -> dict[str, A
         template_vars = v.get("_templateVars") or {}
 
         vctx = v.get("context") or {}
-        title = _resolve_title_spec(vctx.get("title"), template_vars)
+        # title = _resolve_title_spec(vctx.get("title"), template_vars)
+        title = vctx.get("title")
 
         layers = []
         for layer in v.get("layers") or []:

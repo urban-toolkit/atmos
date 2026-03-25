@@ -5,6 +5,14 @@ from typing import Any
 
 from atmos_server.core.compiler.models import InputRef, Artifact, Step
 
+def resolve_template(template: str, values: dict[str, Any]) -> str:
+    out = template
+
+    for k, v in values.items():
+        out = out.replace(f"{{{k}}}", str(v))
+
+    return out
+
 @dataclass
 class CompileContext:
     spec: dict[str, Any]
