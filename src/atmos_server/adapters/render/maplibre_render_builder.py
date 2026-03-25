@@ -181,6 +181,28 @@ def build_render_from_encoding(
                     "scale": size.get("scale"),
                 }
 
+        # -----------------------------
+        # Stroke
+        # -----------------------------
+        stroke = channels.get("stroke")
+        stroke_const = _get_color_constant(stroke)
+
+        if stroke_const is not None:
+            paint["circle-stroke-color"] = stroke_const
+        else:
+            if _is_dict(stroke):
+                payload = _color_field_to_paint_payload(stroke, nodata_from_style_mesh=False)
+                if payload is not None:
+                    paint["circle-stroke-color"] = payload
+
+        # stroke width
+        stroke_width = _get_number_constant(channels.get("strokeWidth"))
+
+        if stroke_width is not None:
+            paint["circle-stroke-width"] = stroke_width
+        elif stroke_const is not None or _is_dict(stroke):
+            paint["circle-stroke-width"] = 1.5
+        
         if not paint:
             return None
         return render
