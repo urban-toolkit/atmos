@@ -56,7 +56,7 @@
   
   "composition": {
     "layout": {
-      "columns": 2
+      "columns": 1
     },
     "context": {
       "title": {
@@ -76,6 +76,19 @@
         }
       ]
     },
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              { "view": "view1", "layers": ["temp"] }
+            ]
+          }
+        }
+      }
+    ],
     "views": [
       {
         "id": "view1",
@@ -90,7 +103,7 @@
             "id": "temp",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "r001temp2m", "var": "temp2mF", "dims": { "time": [40, 50, 60, 70]} },
+              "input": { "data": "r001temp2m", "var": "temp2mF" },
               "encoding": {
                 "channels": {
                   "fill": {

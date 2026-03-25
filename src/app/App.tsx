@@ -73,13 +73,14 @@ type Manifest = {
 }
 
 // const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
+const firstExamplePath = "/examples/ex1-0-mesh-t2mF-slider.json"
 // const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
 // const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
 // const firstExamplePath = "/examples/ex2-0-wind-arrows.json"
 // const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
 // const firstExamplePath = "/examples/ex3-0-stations.json"
-const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
+// const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
 // const firstExamplePath = "/examples/ex4-1-ens.json"
 // const firstExamplePath = "/examples/ex4-3-ens-rain.json"
 // const firstExamplePath = "/examples/ex4-4-ens-rain.json"
@@ -226,7 +227,7 @@ export default function App() {
   const [timeValue, setTimeValue] = useState<number>(0)
   const [charts, setCharts] = useState<ChartRuntime[]>([])
 
-  const [showLegend, setShowLegend] = useState(true)
+  const [showLegend, setShowLegend] = useState(false)
 
   const [floatingPositions, setFloatingPositions] = useState<
     Record<string, { x: number; y: number }>
@@ -514,10 +515,17 @@ export default function App() {
         setSpec(data)
         setAppliedSpec(data)
 
+        // const binding = getTimeBinding(data)
+        // if (binding) setTimeValue(binding.value)
+
+        // handleApply(data)
         const binding = getTimeBinding(data)
         if (binding) setTimeValue(binding.value)
 
-        handleApply(data)
+        handleApply(
+          data,
+          binding ? { timeIndex: binding.value } : undefined
+        )
       })
       .catch((e) => {
         console.error("Failed to load example spec:", e)
