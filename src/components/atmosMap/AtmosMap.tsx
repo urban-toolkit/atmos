@@ -543,6 +543,10 @@ function buildBarbLayers(atmosLayer: AtmosMapLayer) {
   const data = buildBarbIconGeoJSON(atmosLayer.geojson)
   const id = lyrId(atmosLayer.layerId, "barb")
 
+  const resolvedPaint = resolvePaintWithData(getLegacyPaint(atmosLayer.render), atmosLayer.geojson) ?? {}
+  const iconColor =
+    typeof resolvedPaint["circle-color"] === "string" ? resolvedPaint["circle-color"] : "#2c7bb6"
+
   return {
     extraSources: [{ source, data }],
     layers: [
@@ -563,7 +567,7 @@ function buildBarbLayers(atmosLayer: AtmosMapLayer) {
           },
           paint: {
             "icon-opacity": 0.9,
-            "icon-color": "#2c7bb6",
+            "icon-color": iconColor,
           },
         },
       },
@@ -1070,7 +1074,8 @@ function buildArrowLayer(atmosLayer: AtmosMapLayer) {
           "icon-ignore-placement": true,
           "icon-anchor": "center",
           "icon-rotation-alignment": "map",
-          "icon-rotate": ["to-number", ["get", "wind10.direction"]],
+          // "icon-rotate": ["to-number", ["get", "wind10.direction"]],
+          "icon-rotate": ["%", ["+", ["to-number", ["get", "wind10.direction"]], 180], 360],
           "icon-size": iconSize,
         },
         paint: {
@@ -1080,45 +1085,6 @@ function buildArrowLayer(atmosLayer: AtmosMapLayer) {
       },
     },
   ]
-}
-
-function buildBarbStemGeoJSON(fc: GeoJSONFeatureCollection): GeoJSONFeatureCollection {
-  const features: GeoJSON.Feature[] = []
-
-  for (const f of fc.features ?? []) {
-    if (!f || f.geometry?.type !== "Point") continue
-
-    const props: any = f.properties ?? {}
-    const speed = getPropNumber(props, "wind10.speed")
-    const dir = getPropNumber(props, "wind10.direction")
-    if (speed == null || dir == null) continue
-
-    const coords = (f.geometry as GeoJSON.Point).coordinates
-    const [lon, lat] = coords
-    if (typeof lon !== "number" || typeof lat !== "number") continue
-
-    const len = 0.3
-    const rad = (dir * Math.PI) / 180
-    const dx = len * Math.sin(rad)
-    const dy = len * Math.cos(rad)
-
-    features.push({
-      type: "Feature",
-      properties: props,
-      geometry: {
-        type: "LineString",
-        coordinates: [
-          [lon, lat],
-          [lon + dx, lat + dy],
-        ],
-      },
-    })
-  }
-
-  return {
-    type: "FeatureCollection",
-    features,
-  }
 }
 
 function isBBoxMask(mask: any): mask is {

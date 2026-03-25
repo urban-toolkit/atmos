@@ -73,7 +73,7 @@ type Manifest = {
 }
 
 // const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
-const firstExamplePath = "/examples/ex1-0-mesh-t2mF-slider.json"
+// const firstExamplePath = "/examples/ex1-0-mesh-t2mF-slider.json"
 // const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
 // const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
 // const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
@@ -88,6 +88,11 @@ const firstExamplePath = "/examples/ex1-0-mesh-t2mF-slider.json"
 // const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
 // const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
 // const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
+
+// const firstExamplePath = "/examples/paper-sc1-ex1.json"
+// const firstExamplePath = "/examples/paper-sc2-ex1.json"
+// const firstExamplePath = "/examples/paper-sc2-ex3.json"
+const firstExamplePath = "/examples/paper-sc2-ex4.json"
 
 type FirstSnapshot = {
   spec: any
