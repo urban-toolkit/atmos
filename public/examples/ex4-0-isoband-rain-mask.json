@@ -80,7 +80,7 @@
               }
             }
           },
-                    {
+          {
             "id": "lrain",
             "geometry": {
               "type": "isoband",

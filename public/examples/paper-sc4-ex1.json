@@ -1,0 +1,194 @@
+{
+  "data": [
+    {
+      "id": "wrfEns",
+      "type": "collection",
+
+      "members": {
+        "count": 4,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
+      },
+
+      "vars": [
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" },
+        { "id": "t2", "key": "T2" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          { "data": "wrfEns", "var": "rainnc" },
+          { "data": "wrfEns", "var": "rainc" }
+        ]
+      },
+      "out": { "data": "wrfEnsRain", "var": "accRain" }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "prob",
+        "args": [
+          {
+            "op": "and",
+            "args": [
+              {
+                "op": "gt",
+                "args": [
+                  { "data": "wrfEnsRain", "var": "accRain" },
+                  { "const": 50 }
+                ]
+              },
+              {
+                "op": "lt",
+                "args": [
+                  { "data": "wrfEnsRain", "var": "accRain" },
+                  { "const": 70 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "out": {
+        "data": "wrfEnsRainProb",
+        "var": "probRain5070"
+      }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "prob",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              { "data": "wrfEns", "var": "t2" },
+              { "const": 14 }
+            ]
+          }
+        ]
+      },
+      "out": {
+        "data": "wrfEnsT2Prob",
+        "var": "probT214"
+      }
+    }
+  ],
+
+  "composition": {
+    "layout": {
+      "columns": 1
+    },
+    
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lrain",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "wrfEnsRainProb", "var": "probRain5070", "dims": { "time": 72 } },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "probRain5070",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Greens",
+                      "domain": [0, 1],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "lt2",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "wrfEnsT2Prob", "var": "probT214", "dims": { "time": 72 } },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "probT214",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Blues",
+                      "reverse": true,
+                      "domain": [0, 1],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            },
+             "mask": {
+              "type": "bbox",
+              "bounds": {
+                "west": -42.6565, "south": -22.35, "east": -42.44556, "north": -22.22
+              },
+              "interaction": {
+                "on": ["drag", "resize"]
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

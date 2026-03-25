@@ -66,6 +66,13 @@ type DragMode =
   | { type: "resize"; layerId: string; handle: "sw" | "se" | "ne" | "nw"; startLngLat: maplibregl.LngLat; startBounds: MaskBounds }
   | null
 
+function buildPaint(l, fc) {
+  return convertPaint(
+    resolvePaintWithData(l.paint, fc),
+    l.type
+  )
+}
+
 function buildMaskedMapLibreLayers(
   atmosLayer: AtmosMapLayer,
   maskedSource: string
@@ -82,7 +89,7 @@ function buildMaskedMapLibreLayers(
     const id = lyrId(atmosLayer.layerId, `masked:${l.id ?? String(i)}`)
     const def: any = { id, type: l.type, source: maskedSource }
 
-    if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
+    if (l.paint) def.paint = buildPaint(l, atmosLayer.geojson)
     if (l.layout) def.layout = l.layout
     if (l.filter) def.filter = l.filter
     if (typeof l.minzoom === "number") def.minzoom = l.minzoom
@@ -262,6 +269,7 @@ export type AtmosMapProps = {
   autoFitBounds?: boolean
   mapStyle?: string | any
   initialViewState?: ViewState
+  selectedStationId?: string | null
   onViewStateChange?: (vs: ViewState) => void
   onFeatureClick?: (info: {
     layerId: string
@@ -760,29 +768,6 @@ function removeSourceIfExists(map: Map, id: string) {
   if (map.getSource(id)) map.removeSource(id)
 }
 
-// function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
-//   const id = layerDef.id
-//   const existing = map.getLayer(id)
-
-//   if (!existing) {
-//     const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
-//     map.addLayer(layerDef, safeBeforeId)
-//     return
-//   }
-
-//   const existingType = (existing as any).type
-//   const existingSource = (existing as any).source
-
-//   if (existingType !== layerDef.type || existingSource !== layerDef.source) {
-//     map.removeLayer(id)
-//     const safeBeforeId = beforeId && map.getLayer(beforeId) ? beforeId : undefined
-//     map.addLayer(layerDef, safeBeforeId)
-//     return
-//   }
-
-//   patchLayer(map, id, layerDef)
-// }
-
 function upsertLayer(map: Map, layerDef: any, beforeId?: string) {
   const id = layerDef.id
   const existing = map.getLayer(id)
@@ -1188,10 +1173,6 @@ function maskOutlineSourceId(layerId: string) {
   return derivedSrcId(layerId, "mask-outline")
 }
 
-function maskFillLayerId(layerId: string) {
-  return lyrId(layerId, "mask-fill")
-}
-
 function maskOutlineLayerId(layerId: string) {
   return lyrId(layerId, "mask-outline")
 }
@@ -1243,30 +1224,6 @@ const renderers = {
         return ops
       }
 
-      
-      // const isMaskedIsoband =
-      // atmosLayer.geometryType === "isoband" && isBBoxMask(atmosLayer.mask)
-      
-      // if (isBBoxMask(atmosLayer.mask)) {
-      //   // const { west, south, east, north } = atmosLayer.mask.bounds
-
-      //   const runtimeBounds =
-      //     ctx.maskBoundsByLayer[boundsKey(atmosLayer.layerId)] ?? atmosLayer.mask.bounds
-
-      //   const { west, south, east, north } = runtimeBounds
-
-      //   ops.push({
-      //     kind: "custom-mask",
-      //     id: `mask:${atmosLayer.layerId}`,
-      //     targetSourceId: source,
-      //     bounds: { west, south, east, north },
-      //     atmosLayerId: atmosLayer.layerId,
-      //     interactive: atmosLayer.mask.interaction,
-      //   })
-
-      //   return ops
-      // }
-
       if (isBBoxMask(atmosLayer.mask)) {
         const runtimeBounds =
           ctx.maskBoundsByLayer[boundsKey(atmosLayer.layerId)] ?? atmosLayer.mask.bounds
@@ -1301,7 +1258,6 @@ const renderers = {
         return ops
       }
 
-
       const layers =
         "layers" in render
           ? render.layers
@@ -1311,7 +1267,7 @@ const renderers = {
         const id = lyrId(atmosLayer.layerId, l.id ?? String(i))
         const def: any = { id, type: l.type, source }
 
-        if (l.paint) def.paint = convertPaint(resolvePaintWithData(l.paint, atmosLayer.geojson))
+        if (l.paint) def.paint = buildPaint(l, atmosLayer.geojson)
         if (l.layout) def.layout = l.layout
         if (l.filter) def.filter = l.filter
         if (typeof l.minzoom === "number") def.minzoom = l.minzoom
@@ -1325,6 +1281,34 @@ const renderers = {
           beforeId: (l as any).beforeId,
           atmosLayerId: atmosLayer.layerId,
         })
+
+        // Highlight selected station (frontend-only)
+        if (
+          atmosLayer.layerId === "stations" &&
+          atmosLayer.selectedStationId &&
+          l.type === "circle"
+        ) {
+          const highlightId = lyrId(atmosLayer.layerId, "selected")
+
+          ops.push({
+            kind: "layer",
+            id: highlightId,
+            def: {
+              id: highlightId,
+              type: "circle",
+              source,
+              filter: ["==", ["get", "id"], atmosLayer.selectedStationId],
+              paint: {
+                "circle-radius": 8,
+                "circle-color": "rgba(0,0,0,0)",
+                "circle-stroke-color": "#ff0000",
+                "circle-stroke-width": 3,
+              },
+            },
+            beforeId: undefined,
+            atmosLayerId: atmosLayer.layerId,
+          })
+        }
       }
 
       return ops

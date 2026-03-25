@@ -91,8 +91,12 @@ type Manifest = {
 
 // const firstExamplePath = "/examples/paper-sc1-ex1.json"
 // const firstExamplePath = "/examples/paper-sc2-ex1.json"
+// const firstExamplePath = "/examples/paper-sc2-ex2.json"
 // const firstExamplePath = "/examples/paper-sc2-ex3.json"
-const firstExamplePath = "/examples/paper-sc2-ex4.json"
+// const firstExamplePath = "/examples/paper-sc2-ex4.json"
+// const firstExamplePath = "/examples/paper-sc3-ex1.json"
+// const firstExamplePath = "/examples/paper-sc4-ex1.json"
+const firstExamplePath = "/examples/paper-sc4-ex1-test.json"
 
 type FirstSnapshot = {
   spec: any
@@ -231,14 +235,13 @@ export default function App() {
   const [baseUrl, setBaseUrl] = useState<string>("/artifacts/")
   const [timeValue, setTimeValue] = useState<number>(0)
   const [charts, setCharts] = useState<ChartRuntime[]>([])
-
   const [showLegend, setShowLegend] = useState(false)
-
   const [floatingPositions, setFloatingPositions] = useState<
     Record<string, { x: number; y: number }>
   >({})
 
   const [closedFloatingViews, setClosedFloatingViews] = useState<Record<string, boolean>>({})
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
 
   const debounceRef = useRef<number | null>(null)
   const loadedRef = useRef(false)
@@ -254,6 +257,35 @@ export default function App() {
 
   const compositionTitle = manifest?.composition?.context?.title?.text ?? "Atmos Interface"
 
+  function handleMapFeatureClick(viewId: string, info: {
+    layerId: string
+    properties: Record<string, any>
+  }) {
+    if (viewId !== "view1") return
+    if (info.layerId !== "stations") return
+
+    const clickedId = info.properties?.id
+    if (clickedId == null) return
+
+    setSelectedStationId(String(clickedId))
+
+    setClosedFloatingViews((prev) => ({
+      ...prev,
+      view2: false,
+    }))
+
+    const runtimeState = {
+      selections: {
+        view2: {
+          id: clickedId,
+        },
+      },
+      timeIndex: timeValue,
+    }
+
+    handleApply(appliedSpec ?? spec, runtimeState)
+  }
+  
   function SharedLegend({ manifest }: { manifest: Manifest | null }) {
     const legend = getCompositionLegend(manifest)
     const paintSpec = getLegendPaintSpec(manifest)
@@ -262,11 +294,6 @@ export default function App() {
 
     const title = legend.title ?? "Legend"
 
-    // const isColorScheme =
-    //   paintSpec &&
-    //   typeof paintSpec === "object" &&
-    //   paintSpec.kind === "color-scheme" &&
-    //   Array.isArray(paintSpec.domain)
     const hasGradientPreview =
       paintSpec &&
       typeof paintSpec === "object" &&
@@ -336,34 +363,6 @@ export default function App() {
         )}
       </div>
     )
-  }
-  
-  function handleMapFeatureClick(viewId: string, info: {
-    layerId: string
-    properties: Record<string, any>
-  }) {
-    if (viewId !== "view1") return
-    if (info.layerId !== "stations") return
-
-    const clickedId = info.properties?.id
-    if (clickedId == null) return
-
-    // reopen floating chart
-    setClosedFloatingViews((prev) => ({
-      ...prev,
-      view2: false,
-    }))
-
-    const runtimeState = {
-      selections: {
-        view2: {
-          id: clickedId,
-        },
-      },
-      timeIndex: timeValue,
-    }
-
-    handleApply(appliedSpec ?? spec, runtimeState)
   }
 
   async function handleApply(nextSpec: any,  runtimeState?: {
@@ -508,6 +507,25 @@ export default function App() {
       cancelled = true
     }
   }, [mapLayers])
+
+  useEffect(() => {
+  const views = appliedSpec?.composition?.views
+  if (!Array.isArray(views)) return
+
+  const initialClosed: Record<string, boolean> = {}
+
+  for (const v of views) {
+    if (v?.floating === true && typeof v.id === "string") {
+      initialClosed[v.id] = true
+    }
+  }
+
+  setClosedFloatingViews((prev) => {
+    // preserve any view that the user already reopened/closed later
+    if (Object.keys(prev).length > 0) return prev
+    return initialClosed
+  })
+}, [appliedSpec])
 
   useEffect(() => {
     if (loadedRef.current) return
@@ -691,11 +709,6 @@ export default function App() {
                     color: "#555",
                   }}
                 >
-                  {/* {rep?.type === "timestep"
-                    ? `t = ${rep.index}`
-                    : rep?.type === "member"
-                    ? `member = ${rep.index}`
-                    : t.viewId} */}
                     <div
                       style={{
                         padding: "6px 10px",
@@ -726,7 +739,8 @@ export default function App() {
                         ...l,
                         geojson: geoByLayerKey[l.key],
                       }))}
-                      onFeatureClick={(info) => handleMapFeatureClick(t.viewId, info)}
+                    selectedStationId={selectedStationId}
+                    onFeatureClick={(info) => handleMapFeatureClick(t.viewId, info)}
                   />
                 ) : (
                   <AtmosChart url={t.url} />

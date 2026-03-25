@@ -5,6 +5,7 @@ import {
   interpolateMagma,
   interpolateInferno,
   interpolateBlues,
+  interpolateGreens,
   interpolateCividis,
   interpolateTurbo,
   interpolateWarm,
@@ -114,10 +115,41 @@ function toMapLibreColorExpr(spec: any): any {
   return spec
 }
 
-export function convertPaint(paint: Record<string, any> | undefined) {
+export function convertPaint(
+  paint: Record<string, any> | undefined,
+  layerType?: "circle" | "line" | "fill"
+) {
   if (!paint || typeof paint !== "object") return paint
+
   const out: Record<string, any> = {}
-  for (const [k, v] of Object.entries(paint)) out[k] = toMapLibreColorExpr(v)
+
+  for (const [k, v] of Object.entries(paint)) {
+    const val = toMapLibreColorExpr(v)
+
+    if (k === "stroke") {
+      if (layerType === "circle") {
+        out["circle-stroke-color"] = val
+        out["circle-stroke-width"] = 1.5
+      } else if (layerType === "line") {
+        out["line-color"] = val
+      } else if (layerType === "fill") {
+        out["fill-outline-color"] = val
+      }
+      continue
+    }
+
+    if (k === "strokeWidth") {
+      if (layerType === "circle") {
+        out["circle-stroke-width"] = val
+      } else if (layerType === "line") {
+        out["line-width"] = val
+      }
+      continue
+    }
+
+    out[k] = val
+  }
+
   return out
 }
 
@@ -129,6 +161,7 @@ export function schemeToInterpolator(name: string) {
     case "Magma": return interpolateMagma
     case "Inferno": return interpolateInferno
     case "Blues": return interpolateBlues
+    case "Greens": return interpolateGreens
     case "Cividis": return interpolateCividis
     case "Turbo": return interpolateTurbo
     case "Warm": return interpolateWarm
