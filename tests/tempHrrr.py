@@ -13,7 +13,7 @@ time_index = 0          # choose the time step
 # ----------------------------
 nc = Dataset(wrf_file)
 
-print(nc.variables)
+print(nc.variables["gh"])
 
 # # # WRF latitude and longitude
 # lats = nc.variables["latitude"]

@@ -161,6 +161,9 @@ def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
 
 #     return {"type": "FeatureCollection", "features": features}
 
+def _normalize_lon_180(x: float) -> float:
+    return ((float(x) + 180.0) % 360.0) - 180.0
+
 def _mesh_to_geojson(
     ds: xr.Dataset,
     *,
@@ -171,6 +174,7 @@ def _mesh_to_geojson(
     target_cells: int = 100000,
     footprint: float = 1.0,
 ) -> dict[str, Any]:
+
     lat = ds[lat_key].values
     lon = ds[lon_key].values
     val = ds[var_key].values
@@ -208,10 +212,14 @@ def _mesh_to_geojson(
             if np.isnan(v):
                 continue
 
-            p00 = [float(lon[j,  i ]), float(lat[j,  i ])]
-            p10 = [float(lon[j,  i2]), float(lat[j,  i2])]
-            p11 = [float(lon[j2, i2]), float(lat[j2, i2])]
-            p01 = [float(lon[j2, i ]), float(lat[j2, i ])]
+            # p00 = [float(lon[j,  i ]), float(lat[j,  i ])]
+            # p10 = [float(lon[j,  i2]), float(lat[j,  i2])]
+            # p11 = [float(lon[j2, i2]), float(lat[j2, i2])]
+            # p01 = [float(lon[j2, i ]), float(lat[j2, i ])]
+            p00 = [_normalize_lon_180(lon[j,  i ]),  float(lat[j,  i ])]
+            p10 = [_normalize_lon_180(lon[j,  i2]), float(lat[j,  i2])]
+            p11 = [_normalize_lon_180(lon[j2, i2]), float(lat[j2, i2])]
+            p01 = [_normalize_lon_180(lon[j2, i ]), float(lat[j2, i ])]
 
             cx = (p00[0] + p10[0] + p11[0] + p01[0]) / 4.0
             cy = (p00[1] + p10[1] + p11[1] + p01[1]) / 4.0

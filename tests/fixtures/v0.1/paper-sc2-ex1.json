@@ -1,54 +1,54 @@
 {
   "data": [
     {
-      "id": "wrfR001",
-      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "id": "hrrr",
+      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
       "dims": {
-        "lat": { "key": "XLAT" },
-        "lon": { "key": "XLONG" },
-        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": { "dim": "time", "key": "time", "type": "datetime", "timezone": "UTC", "format": "" }
       },
-      
+
       "grid": {
         "type": "curvilinear"
       },
-
+      
       "vars": [
-        { "id": "rainnc", "key": "RAINNC" },
-        { "id": "rainc", "key": "RAINC" }
+        { "id": "gh", "key": "gh" },
+        { "id": "t", "key": "t" }
       ]
     },
     {
-      "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "id": "us-states",
+      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
       "dims": {
         "id": { "key": "GEOID" }
       }
     }
   ],
-
+  
   "transform": [
     {
       "type": "derive",
       "expr": {
-        "op": "add",
+        "op": "sub",
         "args": [
-          { "data": "wrfR001", "var": "rainnc" },
-          { "data": "wrfR001", "var": "rainc" }
+          { "data": "hrrr", "var": "t" },
+          { "const": 273.15 }
         ]
       },
-      "out": { "data": "wrfR001Rain", "var": "accRain" }
+      "out": { "data": "hrrrTC", "var": "tC" }
     }
   ],
-  
+
   "composition": {
     "context": {
       "title": {
-        "text": "Accumulated Rain (mm)"
+        "text": "HRRR Air Temperature and Geopotential height ~1013 hPa (gpm)"
       },
-      "legends": [
+       "legends": [
         {
-          "title": "Accumulated Rain (mm)",
+          "title": "HRRR Air Temperature (C)",
           "type": "color",
           "source": [
             {
@@ -60,27 +60,14 @@
         }
       ]
     },
-    "interactions": [
-      {
-        "type": "slider",
-        "action": {
-          "select": {
-            "dim": "time",
-            "target": [
-              { "view": "v1", "layers": ["l1"] }
-            ]
-          }
-        }
-      }
-    ],
 
     "views": [
       {
         "id": "v1",
         "frame": { "type": "map" },
-         "context": {
+        "context": {
           "title": {
-            "template": "Time Step {time}"
+            "template": "Time step {time}"
           }
         },
         "layers": [
@@ -88,36 +75,55 @@
             "id": "l1",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "wrfR001Rain", "var": "accRain" },
+              "input": { "data": "hrrrTC", "var": "tC", "dims": { "time": 35 } },
               "build": [
                 {
-                  "levels": {
-                    "type": "explicit",
-                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
-                  }
+                  "levels": { "type": "step", "start": 0, "stop":40, "step": 2 }
                 }
               ],
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "accRain",
+                    "field": "tC",
                     "scale": {
                       "type": "sequential",
-                      "scheme": "Viridis",
-                      "domain": [0, 160],
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
                       "clamp": false
                     }
                   },
-                  "opacity": { "value": 0.9 }
+                  "opacity": { "value": 1.0 }
                 }
               }
             }
           },
           {
-            "id": "bound",
+            "id": "l2",
+            "geometry": {
+              "type": "isoline",
+              "input": { "data": "hrrr", "var": "gh", "dims": { "time": 35 } },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": -200, "stop": 120, "step": 20 }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "stroke": { "value": "#000000" }
+                },
+                "style": {
+                  "strokeWidth": 1,
+                  "label": { "enabled": true, "format": ".0f" }
+                }
+              }
+            }
+          },
+          {
+            "id": "us-states",
             "geometry": {
               "type": "polygon",
-              "input": { "data": "boundaries" },
+              "input": { "data": "us-states" },
               "encoding": {
                 "channels": {
                   "fill": { "value": "transparent"},
