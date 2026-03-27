@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import maplibregl, { Map } from "maplibre-gl"
-// import { convertPaint } from "../../helpers/colors"
-import { convertPaint } from "../../helpers/colors"
+import { convertPaint, evaluatePaintColor } from "../../helpers/colors"
 import earcut from "earcut"
-import { interpolateViridis } from "d3-scale-chromatic"
 import bboxClip from "@turf/bbox-clip"
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
 import bboxPolygon from "@turf/bbox-polygon"
@@ -303,22 +301,93 @@ function hexToRgba01(hex: string, alpha = 1): [number, number, number, number] {
   return [r, g, b, alpha]
 }
 
-function cssColorToRgba01(color: string, alpha = 1): [number, number, number, number] {
-  if (color.startsWith("#")) return hexToRgba01(color, alpha)
+// function cssColorToRgba01(color: string, alpha = 1): [number, number, number, number] {
+//   if (color.startsWith("#")) return hexToRgba01(color, alpha)
 
-  // very small fallback for now
+//   // very small fallback for now
+//   if (color === "transparent") return [0, 0, 0, 0]
+
+//   // fallback to red if parser is not implemented
+//   return [1, 0, 0, alpha]
+// }
+
+function cssColorToRgba01(color: string, alpha = 1): [number, number, number, number] {
   if (color === "transparent") return [0, 0, 0, 0]
 
-  // fallback to red if parser is not implemented
-  return [1, 0, 0, alpha]
+  if (color.startsWith("#")) {
+    return hexToRgba01(color, alpha)
+  }
+
+  const rgbaMatch = color.match(
+    /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i
+  )
+
+  if (rgbaMatch) {
+    const r = Number(rgbaMatch[1]) / 255
+    const g = Number(rgbaMatch[2]) / 255
+    const b = Number(rgbaMatch[3]) / 255
+    const a = rgbaMatch[4] != null ? Number(rgbaMatch[4]) * alpha : alpha
+    return [r, g, b, a]
+  }
+
+  return [0.5, 0.5, 0.5, alpha]
 }
+
+// function resolveMaskedFeatureColor(
+//   props: Record<string, any>,
+//   render?: RenderSpec
+// ): [number, number, number, number] {
+//   if (!render || render.renderer !== "maplibre") {
+//     return [1, 0, 0, 0.9]
+//   }
+
+//   const paint =
+//     "layers" in render
+//       ? (render.layers?.[0]?.paint ?? {})
+//       : (render.paint ?? {})
+
+//   const opacity =
+//     typeof paint["fill-opacity"] === "number" ? paint["fill-opacity"] : 0.9
+
+//   const fillColor = paint["fill-color"]
+
+//   if (typeof fillColor === "string") {
+//     return cssColorToRgba01(fillColor, opacity)
+//   }
+
+//   if (
+//     fillColor &&
+//     typeof fillColor === "object" &&
+//     fillColor.kind === "color-scheme" &&
+//     typeof fillColor.field === "string"
+//   ) {
+//     const field = fillColor.field
+//     const v = Number(props[field])
+//     const domain = Array.isArray(fillColor.domain) ? fillColor.domain : [0, 1]
+//     const d0 = Number(domain[0])
+//     const d1 = Number(domain[1])
+
+//     if (Number.isFinite(v) && Number.isFinite(d0) && Number.isFinite(d1) && d1 !== d0) {
+//       const t = clamp01((v - d0) / (d1 - d0))
+
+//       const interp = interpolators[fillColor.scheme]
+
+//       if (interp) {
+//         return cssColorToRgba01(interp(t), opacity)
+//       }
+      
+//     }
+//   }
+
+//   return [0.5, 0.5, 0.5, opacity]
+// }
 
 function resolveMaskedFeatureColor(
   props: Record<string, any>,
   render?: RenderSpec
 ): [number, number, number, number] {
   if (!render || render.renderer !== "maplibre") {
-    return [1, 0, 0, 0.9]
+    return [0.5, 0.5, 0.5, 0.9]
   }
 
   const paint =
@@ -329,34 +398,13 @@ function resolveMaskedFeatureColor(
   const opacity =
     typeof paint["fill-opacity"] === "number" ? paint["fill-opacity"] : 0.9
 
-  const fillColor = paint["fill-color"]
+  const color = evaluatePaintColor(paint["fill-color"], props)
 
-  if (typeof fillColor === "string") {
-    return cssColorToRgba01(fillColor, opacity)
+  if (typeof color === "string") {
+    return cssColorToRgba01(color, opacity)
   }
 
-  if (
-    fillColor &&
-    typeof fillColor === "object" &&
-    fillColor.kind === "color-scheme" &&
-    typeof fillColor.field === "string"
-  ) {
-    const field = fillColor.field
-    const v = Number(props[field])
-    const domain = Array.isArray(fillColor.domain) ? fillColor.domain : [0, 1]
-    const d0 = Number(domain[0])
-    const d1 = Number(domain[1])
-
-    if (Number.isFinite(v) && Number.isFinite(d0) && Number.isFinite(d1) && d1 !== d0) {
-      const t = clamp01((v - d0) / (d1 - d0))
-
-      if (fillColor.scheme === "Viridis") {
-        return cssColorToRgba01(interpolateViridis(t), opacity)
-      }
-    }
-  }
-
-  return [1, 0, 0, opacity]
+  return [0.5, 0.5, 0.5, opacity]
 }
 
 function triangulateIsobands(fc: GeoJSONFeatureCollection, render?: RenderSpec) {

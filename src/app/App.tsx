@@ -90,13 +90,17 @@ type Manifest = {
 // const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
 
 // const firstExamplePath = "/examples/paper-sc1-ex1.json"
+// const firstExamplePath = "/examples/paper-sc1-ex2.json"
 // const firstExamplePath = "/examples/paper-sc2-ex1.json"
-// const firstExamplePath = "/examples/paper-sc2-ex2.json"
+const firstExamplePath = "/examples/paper-sc2-ex2.json"
 // const firstExamplePath = "/examples/paper-sc2-ex3.json"
 // const firstExamplePath = "/examples/paper-sc2-ex4.json"
 // const firstExamplePath = "/examples/paper-sc3-ex1.json"
+
 // const firstExamplePath = "/examples/paper-sc4-ex1.json"
-const firstExamplePath = "/examples/paper-sc4-ex1-test.json"
+// const firstExamplePath = "/examples/paper-sc4-ex1-test.json"
+// const firstExamplePath = "/examples/paper-sc4-ex1-test-2.json"
+// const firstExamplePath = "/examples/paper-sc4-ex2.json"
 
 type FirstSnapshot = {
   spec: any
@@ -106,9 +110,9 @@ type FirstSnapshot = {
   baseUrl: string
 }
 
-function getCompositionLegend(manifest: Manifest | null) {
-  return manifest?.composition?.context?.legends?.[0] ?? null
-}
+// function getCompositionLegend(manifest: Manifest | null) {
+//   return manifest?.composition?.context?.legends?.[0] ?? null
+// }
 
 function findArtifactForLegendSource(
   manifest: Manifest | null,
@@ -134,9 +138,41 @@ function findArtifactForLegendSource(
   )
 }
 
-function getLegendPaintSpec(manifest: Manifest | null) {
-  const legend = getCompositionLegend(manifest)
-  const src = legend?.resolvedSource?.[0]
+// function getLegendPaintSpec(manifest: Manifest | null) {
+//   const legend = getCompositionLegend(manifest)
+//   const src = legend?.resolvedSource?.[0]
+//   const artifact = findArtifactForLegendSource(manifest, src)
+//   const md = artifact?.metadata ?? {}
+//   const render = md.render ?? {}
+//   const paint = render.paint ?? {}
+
+//   if (src?.channel === "fill") {
+//     return paint["fill-color"] ?? null
+//   }
+//   if (src?.channel === "stroke") {
+//     return paint["line-color"] ?? null
+//   }
+//   if (src?.channel === "opacity") {
+//     return paint["fill-opacity"] ?? paint["line-opacity"] ?? null
+//   }
+
+//   return null
+// }
+
+function getCompositionLegends(manifest: Manifest | null) {
+  return manifest?.composition?.context?.legends ?? []
+}
+
+function getLegendPaintSpec(
+  manifest: Manifest | null,
+  legend: {
+    title?: string
+    type?: string
+    source?: Array<{ view: string; layers?: string[]; channel?: string }>
+    resolvedSource?: Array<{ view: string; layers?: string[]; channel?: string }>
+  } | null
+) {
+  const src = legend?.resolvedSource?.[0] ?? legend?.source?.[0]
   const artifact = findArtifactForLegendSource(manifest, src)
   const md = artifact?.metadata ?? {}
   const render = md.render ?? {}
@@ -146,7 +182,7 @@ function getLegendPaintSpec(manifest: Manifest | null) {
     return paint["fill-color"] ?? null
   }
   if (src?.channel === "stroke") {
-    return paint["line-color"] ?? null
+    return paint["line-color"] ?? paint["fill-outline-color"] ?? null
   }
   if (src?.channel === "opacity") {
     return paint["fill-opacity"] ?? paint["line-opacity"] ?? null
@@ -154,6 +190,8 @@ function getLegendPaintSpec(manifest: Manifest | null) {
 
   return null
 }
+
+
 
 function getViewManifestEntry(manifest: Manifest | null, viewId: string) {
   return manifest?.views?.find((v) => v.id === viewId) ?? null
@@ -286,21 +324,89 @@ export default function App() {
     handleApply(appliedSpec ?? spec, runtimeState)
   }
   
+  // function SharedLegend({ manifest }: { manifest: Manifest | null }) {
+  //   const legend = getCompositionLegend(manifest)
+  //   const paintSpec = getLegendPaintSpec(manifest)
+
+  //   if (!legend) return null
+
+  //   const title = legend.title ?? "Legend"
+
+  //   const hasGradientPreview =
+  //     paintSpec &&
+  //     typeof paintSpec === "object" &&
+  //     (
+  //       (paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)) ||
+  //       (paintSpec.kind === "color-stops" && Array.isArray(paintSpec.stops) && paintSpec.stops.length > 0)
+  //     )
+
+  //   return (
+  //     <div
+  //       style={{
+  //         position: "absolute",
+  //         top: 60,
+  //         right: 12,
+  //         zIndex: 20,
+  //         // background: getGradientFromScheme(paintSpec.scheme),//"rgba(255,255,255,0.95)",
+  //         background: "rgba(255,255,255,0.95)",
+  //         border: "1px solid #ddd",
+  //         borderRadius: 8,
+  //         padding: 10,
+  //         minWidth: 180,
+  //         boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+  //       }}
+  //     >
+  //       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{title}</div>
+
+  //       {hasGradientPreview ? (
+  //         <>
+  //           <div
+  //             style={{
+  //               height: 12,
+  //               borderRadius: 6,
+  //               // background: getGradientFromScheme(paintSpec.scheme),
+  //               background: getGradientFromPaintSpec(paintSpec, {
+  //                 steps: 7,
+  //                 direction: "to right",
+  //               }),
+  //               marginBottom: 6,
+  //             }}
+  //           />
+  //           <div
+  //             style={{
+  //               display: "flex",
+  //               justifyContent: "space-between",
+  //               fontSize: 11,
+  //               color: "#555",
+  //             }}
+  //           >
+  //             <span>
+  //               {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+  //                 ? paintSpec.domain[0]
+  //                 : paintSpec.kind === "color-stops" && paintSpec.stops?.[0]
+  //                   ? paintSpec.stops[0].value
+  //                   : ""}
+  //             </span>
+  //             <span>
+  //               {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+  //                 ? paintSpec.domain[1]
+  //                 : paintSpec.kind === "color-stops" && paintSpec.stops?.length
+  //                   ? paintSpec.stops[paintSpec.stops.length - 1].value
+  //                   : ""}
+  //             </span>
+  //           </div>
+  //         </>
+  //       ) : (
+  //         <div style={{ fontSize: 11, color: "#666" }}>Legend preview not available yet.</div>
+  //       )}
+  //     </div>
+  //   )
+  // }
+
   function SharedLegend({ manifest }: { manifest: Manifest | null }) {
-    const legend = getCompositionLegend(manifest)
-    const paintSpec = getLegendPaintSpec(manifest)
+    const legends = getCompositionLegends(manifest)
 
-    if (!legend) return null
-
-    const title = legend.title ?? "Legend"
-
-    const hasGradientPreview =
-      paintSpec &&
-      typeof paintSpec === "object" &&
-      (
-        (paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)) ||
-        (paintSpec.kind === "color-stops" && Array.isArray(paintSpec.stops) && paintSpec.stops.length > 0)
-      )
+    if (!legends.length) return null
 
     return (
       <div
@@ -309,58 +415,85 @@ export default function App() {
           top: 60,
           right: 12,
           zIndex: 20,
-          // background: getGradientFromScheme(paintSpec.scheme),//"rgba(255,255,255,0.95)",
-          background: "rgba(255,255,255,0.95)",
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          padding: 10,
-          minWidth: 180,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{title}</div>
+        {legends.map((legend, i) => {
+          const paintSpec = getLegendPaintSpec(manifest, legend)
 
-        {hasGradientPreview ? (
-          <>
+          const hasGradientPreview =
+            paintSpec &&
+            typeof paintSpec === "object" &&
+            (
+              (paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)) ||
+              (paintSpec.kind === "color-stops" &&
+                Array.isArray(paintSpec.stops) &&
+                paintSpec.stops.length > 0)
+            )
+
+          return (
             <div
+              key={`${legend.title ?? "legend"}-${i}`}
               style={{
-                height: 12,
-                borderRadius: 6,
-                // background: getGradientFromScheme(paintSpec.scheme),
-                background: getGradientFromPaintSpec(paintSpec, {
-                  steps: 7,
-                  direction: "to right",
-                }),
-                marginBottom: 6,
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: 11,
-                color: "#555",
+                background: "rgba(255,255,255,0.95)",
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                padding: 10,
+                minWidth: 180,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               }}
             >
-              <span>
-                {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
-                  ? paintSpec.domain[0]
-                  : paintSpec.kind === "color-stops" && paintSpec.stops?.[0]
-                    ? paintSpec.stops[0].value
-                    : ""}
-              </span>
-              <span>
-                {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
-                  ? paintSpec.domain[1]
-                  : paintSpec.kind === "color-stops" && paintSpec.stops?.length
-                    ? paintSpec.stops[paintSpec.stops.length - 1].value
-                    : ""}
-              </span>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                {legend.title ?? "Legend"}
+              </div>
+
+              {hasGradientPreview ? (
+                <>
+                  <div
+                    style={{
+                      height: 12,
+                      borderRadius: 6,
+                      background: getGradientFromPaintSpec(paintSpec, {
+                        steps: 7,
+                        direction: "to right",
+                      }),
+                      marginBottom: 6,
+                    }}
+                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      color: "#555",
+                    }}
+                  >
+                    <span>
+                      {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+                        ? paintSpec.domain[0]
+                        : paintSpec.kind === "color-stops" && paintSpec.stops?.[0]
+                          ? paintSpec.stops[0].value
+                          : ""}
+                    </span>
+                    <span>
+                      {paintSpec.kind === "color-scheme" && Array.isArray(paintSpec.domain)
+                        ? paintSpec.domain[1]
+                        : paintSpec.kind === "color-stops" && paintSpec.stops?.length
+                          ? paintSpec.stops[paintSpec.stops.length - 1].value
+                          : ""}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11, color: "#666" }}>
+                  Legend preview not available yet.
+                </div>
+              )}
             </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 11, color: "#666" }}>Legend preview not available yet.</div>
-        )}
+          )
+        })}
       </div>
     )
   }
@@ -649,7 +782,7 @@ export default function App() {
                   step={1}
                   value={timeValue}
                   onChange={(e) => onTimeSliderChange(Number(e.target.value))}
-                  style={{ width: 180 }}
+                  style={{ width: 100 }}
                 />
                 <div style={{ fontSize: 12, color: "#555", width: 30, textAlign: "right" }}>
                   {timeValue}

@@ -109,7 +109,7 @@
             "id": "lt2m",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "t2WRFUS", "var": "t2m", "dims": { "time": 1 } },
+              "input": { "data": "t2WRFUS", "var": "t2m", "dims": { "time": 18 } },
               "build": [
                 {
                   "levels": {
@@ -130,7 +130,7 @@
                       "clamp": false
                     }
                   },
-                  "opacity": { "value": 0.9 }
+                  "opacity": { "value": 1.0 }
                 }
               }
             }
@@ -165,7 +165,7 @@
             "id": "stations",
             "geometry": {
               "type": "point",
-              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": 0 } },
+              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": 18 } },
               "encoding": {
                 "channels": {
                   "fill": {
@@ -179,7 +179,7 @@
                     }
                   },
                   "stroke": {"value": "#000000"},
-                  "opacity": { "value": 0.9 }
+                  "opacity": { "value": 1.0 }
                 }
               }
             }

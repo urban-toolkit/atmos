@@ -1,0 +1,300 @@
+{
+  "data": [
+    {
+      "id": "wrfEns",
+      "type": "collection",
+      "members": {
+        "count": 5,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
+      },
+      "vars": [
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" },
+        { "id": "t2", "key": "T2" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          { "data": "wrfEns", "var": "rainnc" },
+          { "data": "wrfEns", "var": "rainc" }
+        ]
+      },
+      "out": { "data": "wrfEnsRain", "var": "accRain" }
+    },
+
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "quantile",
+        "args": [
+          { "data": "wrfEnsRain", "var": "accRain" }
+        ],
+        "params": {
+          "q": 0.25
+        }
+      },
+      "out": {
+        "data": "wrfEnsRainQ25",
+        "var": "q25Rain"
+      }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "quantile",
+        "args": [
+          { "data": "wrfEnsRain", "var": "accRain" }
+        ],
+        "params": {
+          "q": 0.50
+        }
+      },
+      "out": {
+        "data": "wrfEnsRainQ50",
+        "var": "q50Rain"
+      }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "quantile",
+        "args": [
+          { "data": "wrfEnsRain", "var": "accRain" }
+        ],
+        "params": {
+          "q": 0.75
+        }
+      },
+      "out": {
+        "data": "wrfEnsRainQ75",
+        "var": "q75Rain"
+      }
+    }
+  ],
+
+  "composition": {
+    "layout": {
+      "columns": 3
+    },
+
+    "context": {
+      "title": {
+        "text": "Quantiles: Accumulated Rain (mm)"
+      },
+      "legends": [
+        {
+          "title": "Quantiles: Accumulated Rain (mm)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "v1",
+        "frame": { "type": "map" },
+         "context": {
+          "title": {
+            "template": "Quantile 25%"
+          }
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfEnsRainQ25", "var": "q25Rain", "dims": { "time": 72 } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q25Rain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bounds",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent" },
+                  "stroke": { "value": "#000000" }
+                }
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "view_q50",
+        "frame": { "type": "map" },
+         "context": {
+          "title": {
+            "template": "Quantile 50%"
+          }
+        },
+        "layers": [
+          {
+            "id": "lrain_q50",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfEnsRainQ50", "var": "q50Rain", "dims": { "time": 72 } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q50Rain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bounds",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent" },
+                  "stroke": { "value": "#000000" }
+                }
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "view_q75",
+        "frame": { "type": "map" },
+         "context": {
+          "title": {
+            "template": "Quantile 75%"
+          }
+        },
+        "layers": [
+          {
+            "id": "lrain_q75",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfEnsRainQ75", "var": "q75Rain", "dims": { "time": 72 } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q75Rain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bounds",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent" },
+                  "stroke": { "value": "#000000" }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

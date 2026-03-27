@@ -1,12 +1,12 @@
 {
   "data": [
     {
-      "id": "wrfR001",
-      "source": { "type": "netcdf", "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" },
+      "id": "hrrr",
+      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
       "dims": {
-        "lat": { "key": "XLAT" },
-        "lon": { "key": "XLONG" },
-        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": { "dim": "time", "key": "time", "type": "datetime", "timezone": "UTC", "format": "" }
       },
 
       "grid": {
@@ -14,90 +14,26 @@
       },
       
       "vars": [
-        { "id": "t2", "key": "T2" },
-        { "id": "psfc", "key": "PSFC"},
-        { "id": "t2m", "key": "T2" },
-        { "id": "q2m", "key": "Q2" },
-        { "id": "hgt", "key": "HGT" }
+        { "id": "r", "key": "r" }
       ]
     },
     {
-      "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "id": "us-states",
+      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
       "dims": {
         "id": { "key": "GEOID" }
       }
     }
   ],
 
-  "transform": [
-    {
-      "type": "derive",
-      "expr": {
-        "op": "add",
-        "args": [
-          {
-            "op": "mul",
-            "args": [
-              {
-                "op": "sub",
-                "args": [
-                  { "data": "wrfR001", "var": "t2" },
-                  { "const": 273.15 }
-                ]
-              },
-              { "const": 1.8 }
-            ]
-          },
-          { "const": 32 }
-        ]
-      },
-      "out": {
-        "data": "wrfR001t2F", "var": "t2F" 
-      }
-    },
-    {
-      "type": "derive",
-      "expr": {
-        "op": "diagnostic.slp",
-        "args": [
-          { "data": "wrfR001", "var": "psfc", "role": "sp" },
-          { "data": "wrfR001", "var":  "t2m", "role": "at2m"},
-          { "data": "wrfR001", "var":  "q2m", "role": "wvmr2m"},
-          { "data": "wrfR001", "var": "hgt", "role": "hgt" }
-        ] 
-      },
-      "out": { 
-        "data": "wrfR001SlpPa", 
-        "var": "slpPa"
-      }
-    },
-    {
-      "type": "derive",
-      "expr": {
-        "op": "div",
-        "args": [
-          { "data": "wrfR001SlpPa", "var": "slpPa" },
-          { "const": 100 }
-        ]
-      },
-      "out": {
-        "data": "wrfR001SlpHpa", "var": "slpHPa" 
-      }
-    }
-  ],
-  
   "composition": {
-    "layout": {
-      "columns": 1
-    },
     "context": {
       "title": {
-        "text": "Temperature 2m (F) and Sea Level Pressure (hPa)"
+        "text": "HRRR Relative Humidity"
       },
-      "legends": [
+       "legends": [
         {
-          "title": "Temperature 2m (F)",
+          "title": "Relative Humidity (%)",
           "type": "color",
           "source": [
             {
@@ -109,6 +45,7 @@
         }
       ]
     },
+
     "interactions": [
       {
         "type": "slider",
@@ -122,13 +59,14 @@
         }
       }
     ],
+
     "views": [
       {
         "id": "v1",
         "frame": { "type": "map" },
         "context": {
           "title": {
-            "template": "Time Step {time}"
+            "template": "Time step {time}"
           }
         },
         "layers": [
@@ -136,52 +74,28 @@
             "id": "l1",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "wrfR001t2F", "var": "t2F" },
+              "input": { "data": "hrrr", "var": "r" },
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "t2F",
+                    "field": "r",
                     "scale": {
                       "type": "sequential",
-                      "scheme": "RdYlBu",
-                      "domain": [60, 80],
-                      "reverse": true,
+                      "scheme": "Blues",
+                      "domain": [0, 100],
                       "clamp": false
                     }
                   },
-                  "opacity": { "value": 0.9 }
+                  "opacity": { "value": 1.0 }
                 }
               }
             }
           },
           {
-            "id": "l2",
-            "geometry": {
-              "type": "isoline",
-              "input": { "data": "wrfR001SlpHpa", "var": "slpHPa" },
-              "build": [
-                {
-                  "levels": { "type": "step", "start": 992, "stop": 1040, "step": 4 }
-                }
-              ],
-              "encoding": {
-                "channels": { 
-                  "stroke": { 
-                    "value": "#000000"
-                  } 
-                },
-                "style": { 
-                  "strokeWidth": 1,
-                  "label": { "enabled": true, "format": ".0f" }
-                }
-              }
-            }
-          },
-          {
-            "id": "bound",
+            "id": "us-states",
             "geometry": {
               "type": "polygon",
-              "input": { "data": "boundaries" },
+              "input": { "data": "us-states" },
               "encoding": {
                 "channels": {
                   "fill": { "value": "transparent"},
