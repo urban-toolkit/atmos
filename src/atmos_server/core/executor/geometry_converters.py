@@ -267,7 +267,8 @@ def _isoband_to_geojson(
         mid = (lo + hi) / 2.0
 
         for seg in segs:
-            poly = [[float(x), float(y)] for x, y in seg]
+            # poly = [[float(x), float(y)] for x, y in seg]
+            poly = [[_normalize_lon_180(x), float(y)] for x, y in seg]
             poly_geom = Polygon(poly)
             if poly_geom.area == 0:
                 continue
@@ -309,7 +310,8 @@ def _isoline_to_geojson(
     for level, segs in zip(cs.levels, cs.allsegs):
         lvl = float(level)
         for seg in segs:
-            coords = [[float(x), float(y)] for x, y in seg]
+            # coords = [[float(x), float(y)] for x, y in seg]
+            coords = [[_normalize_lon_180(x), float(y)] for x, y in seg]
             if len(coords) < 2:
                 continue
 
@@ -351,7 +353,8 @@ def _vector_to_geojson(
     feats: list[dict[str, Any]] = []
     for j in range(0, ny, step):
         for i in range(0, nx, step):
-            x = float(lon[j, i])
+            # x = float(lon[j, i])
+            x = _normalize_lon_180(lon[j, i])
             y = float(lat[j, i])
 
             s = spd[j, i]
@@ -395,7 +398,8 @@ def _points_to_geojson_table(
     for _, row in rows.iterrows():
         try:
             lat = float(row[lat_key])
-            lon = float(row[lon_key])
+            # lon = float(row[lon_key])
+            lon = _normalize_lon_180(row[lon_key])
         except Exception:
             continue
 

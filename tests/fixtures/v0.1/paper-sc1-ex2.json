@@ -44,7 +44,7 @@
   "composition": {
     "context": {
       "title": {
-        "text": "HRRR Relative Humidity and Air Temperature"
+        "text": "HRRR Rel. Humidity and Air Temp. (lens)"
       },
        "legends": [
         {
@@ -141,7 +141,7 @@
             "mask": {
               "type": "bbox",
               "bounds": {
-                "west": -94.38638, "south": 35.44055, "east": -80.07183, "north": 41.00771
+                "west": -94.58524, "south": 28.28046, "east": -76.16991, "north": 42.05382
               },
               "interaction": {
                 "on": ["drag", "resize"]

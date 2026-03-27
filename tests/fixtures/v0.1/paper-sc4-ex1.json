@@ -5,7 +5,7 @@
       "type": "collection",
 
       "members": {
-        "count": 4,
+        "count": 5,
         "indexStart": 0,
         "idPattern": "m{index}"
       },
@@ -63,31 +63,19 @@
       "across": "member",
       "expr": {
         "op": "prob",
-        "args": [
-          {
-            "op": "and",
-            "args": [
-              {
-                "op": "gt",
-                "args": [
-                  { "data": "wrfEnsRain", "var": "accRain" },
-                  { "const": 50 }
-                ]
-              },
-              {
-                "op": "lt",
-                "args": [
-                  { "data": "wrfEnsRain", "var": "accRain" },
-                  { "const": 70 }
-                ]
-              }
-            ]
-          }
-        ]
+          "args": [
+            {
+              "op": "gt",
+              "args": [
+                { "data": "wrfEnsRain", "var": "accRain" },
+                { "const": 50 }
+              ]
+            }
+          ]
       },
       "out": {
         "data": "wrfEnsRainProb",
-        "var": "probRain5070"
+        "var": "probRain50"
       }
     },
     {
@@ -122,7 +110,7 @@
       },
       "legends": [
         {
-          "title": "Probability (0 - 1)",
+          "title": "Probability",
           "type": "color",
           "source": [
             {
@@ -148,12 +136,17 @@
           {
             "id": "l1",
             "geometry": {
-              "type": "mesh",
-              "input": { "data": "wrfEnsRainProb", "var": "probRain5070", "dims": { "time": 72 } },
+              "type": "isoband",
+              "input": { "data": "wrfEnsRainProb", "var": "probRain50", "dims": { "time": 72 } },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": 0, "stop":1, "step": 0.01 }
+                }
+              ],
               "encoding": {
                 "channels": {
                   "fill": {
-                    "field": "probRain5070",
+                    "field": "probRain50",
                     "scale": {
                       "type": "sequential",
                       "scheme": "Greens",

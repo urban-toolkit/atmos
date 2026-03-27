@@ -5,7 +5,7 @@
       "type": "collection",
 
       "members": {
-        "count": 4,
+        "count": 5,
         "indexStart": 0,
         "idPattern": "m{index}"
       },
@@ -113,7 +113,7 @@
             "id": "v1l1",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "ensT2Mean", "var": "t2Mean", "dims": { "time": 60 } },
+              "input": { "data": "ensT2Mean", "var": "t2Mean", "dims": { "time": 72 } },
               "encoding": {
                 "channels": {
                   "fill": {
@@ -134,7 +134,7 @@
             "id": "v1l2",
             "geometry": {
               "type": "mesh",
-              "input": { "data": "ensRainMean", "var": "accRainMean", "dims": { "time": 60 } },
+              "input": { "data": "wrfEnsRain", "var": "accRainMean", "dims": { "time": 72 } },
               "encoding": {
                 "channels": {
                   "fill": {
@@ -183,7 +183,7 @@
             "id": "v2l1",
             "geometry": {
               "type": "isoband",
-              "input": { "data": "wrfEnsRain", "var": "accRain", "dims": { "time": 60 } },
+              "input": { "data": "wrfEnsRain", "var": "accRain", "dims": { "time": 72 } },
               "build": [
                 {
                   "levels": {
