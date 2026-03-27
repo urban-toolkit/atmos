@@ -116,14 +116,37 @@
     "layout": {
       "columns": 1
     },
+    "context": {
+      "title": {
+        "text": "Probability Accumulated Rain > 50mm at Time Step 72"
+      },
+      "legends": [
+        {
+          "title": "Probability (0 - 1)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
     
     "views": [
       {
-        "id": "view1",
+        "id": "v1",
         "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": ""
+          }
+        },
         "layers": [
           {
-            "id": "lrain",
+            "id": "l1",
             "geometry": {
               "type": "mesh",
               "input": { "data": "wrfEnsRainProb", "var": "probRain5070", "dims": { "time": 72 } },
@@ -138,39 +161,8 @@
                       "clamp": false
                     }
                   },
-                  "opacity": { "value": 0.9 }
+                  "opacity": { "value": 1.0 }
                 }
-              }
-            }
-          },
-          {
-            "id": "lt2",
-            "geometry": {
-              "type": "mesh",
-              "input": { "data": "wrfEnsT2Prob", "var": "probT214", "dims": { "time": 72 } },
-              "encoding": {
-                "channels": {
-                  "fill": {
-                    "field": "probT214",
-                    "scale": {
-                      "type": "sequential",
-                      "scheme": "Blues",
-                      "reverse": true,
-                      "domain": [0, 1],
-                      "clamp": false
-                    }
-                  },
-                  "opacity": { "value": 0.9 }
-                }
-              }
-            },
-             "mask": {
-              "type": "bbox",
-              "bounds": {
-                "west": -42.6565, "south": -22.35, "east": -42.44556, "north": -22.22
-              },
-              "interaction": {
-                "on": ["drag", "resize"]
               }
             }
           },

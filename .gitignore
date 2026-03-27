@@ -77,6 +77,7 @@ Desktop.ini
 /cache/
 /data/
 /tests/data/ens/
+/tests/data/hrrr_20240923_20240927/
 /tests/data/R121
 /tests/data/chicago_match
 /tests/data/chicago/station-HourlyDryBulbTemperature.csv

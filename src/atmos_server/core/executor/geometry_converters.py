@@ -98,6 +98,69 @@ def _midpoint_of_linestring(coords: list[Any]) -> list[float] | None:
     x0, y0 = coords[-1]
     return [float(x0), float(y0)]
 
+# def _mesh_to_geojson(
+#     ds: xr.Dataset,
+#     *,
+#     var_key: str,
+#     lat_key: str,
+#     lon_key: str,
+#     out_field: str,
+#     target_cells: int = 100000,
+#     footprint: float = 1.0,
+# ) -> dict[str, Any]:
+#     lat = ds[lat_key].values
+#     lon = ds[lon_key].values
+#     val = ds[var_key].values
+
+#     while getattr(lat, "ndim", 0) > 2:
+#         lat = lat[0]
+
+#     while getattr(lon, "ndim", 0) > 2:
+#         lon = lon[0]
+
+#     while getattr(val, "ndim", 0) > 2:
+#         val = val[0]
+
+#     ny, nx = lat.shape[-2], lat.shape[-1]
+#     n_cells = max((ny - 1) * (nx - 1), 1)
+
+#     step = max(1, int(math.sqrt(n_cells / max(target_cells, 1))))
+#     fp = max(0.0, min(1.0, float(footprint)))
+
+#     features: list[dict[str, Any]] = []
+
+#     for j in range(0, ny - 1, step):
+#         for i in range(0, nx - 1, step):
+#             v = val[j, i]
+#             try:
+#                 v = float(v)
+#             except Exception:
+#                 continue
+
+#             p00 = [float(lon[j, i]), float(lat[j, i])]
+#             p10 = [float(lon[j, i + 1]), float(lat[j, i + 1])]
+#             p11 = [float(lon[j + 1, i + 1]), float(lat[j + 1, i + 1])]
+#             p01 = [float(lon[j + 1, i]), float(lat[j + 1, i])]
+
+#             cx = (p00[0] + p10[0] + p11[0] + p01[0]) / 4.0
+#             cy = (p00[1] + p10[1] + p11[1] + p01[1]) / 4.0
+
+#             def shrink(p: list[float]) -> list[float]:
+#                 return [cx + fp * (p[0] - cx), cy + fp * (p[1] - cy)]
+
+#             coords = [shrink(p00), shrink(p10), shrink(p11), shrink(p01)]
+#             coords.append(coords[0])
+
+#             features.append(
+#                 {
+#                     "type": "Feature",
+#                     "properties": {out_field: v},
+#                     "geometry": {"type": "Polygon", "coordinates": [coords]},
+#                 }
+#             )
+
+#     return {"type": "FeatureCollection", "features": features}
+
 def _mesh_to_geojson(
     ds: xr.Dataset,
     *,
@@ -131,16 +194,24 @@ def _mesh_to_geojson(
 
     for j in range(0, ny - 1, step):
         for i in range(0, nx - 1, step):
-            v = val[j, i]
+            # span the whole sampled block, not just one native cell
+            j2 = min(j + step, ny - 1)
+            i2 = min(i + step, nx - 1)
+
+            # use a representative value for the block
+            block = val[j:j2, i:i2]
             try:
-                v = float(v)
+                v = float(np.nanmean(block))
             except Exception:
                 continue
 
-            p00 = [float(lon[j, i]), float(lat[j, i])]
-            p10 = [float(lon[j, i + 1]), float(lat[j, i + 1])]
-            p11 = [float(lon[j + 1, i + 1]), float(lat[j + 1, i + 1])]
-            p01 = [float(lon[j + 1, i]), float(lat[j + 1, i])]
+            if np.isnan(v):
+                continue
+
+            p00 = [float(lon[j,  i ]), float(lat[j,  i ])]
+            p10 = [float(lon[j,  i2]), float(lat[j,  i2])]
+            p11 = [float(lon[j2, i2]), float(lat[j2, i2])]
+            p01 = [float(lon[j2, i ]), float(lat[j2, i ])]
 
             cx = (p00[0] + p10[0] + p11[0] + p01[0]) / 4.0
             cy = (p00[1] + p10[1] + p11[1] + p01[1]) / 4.0
@@ -160,7 +231,6 @@ def _mesh_to_geojson(
             )
 
     return {"type": "FeatureCollection", "features": features}
-
 
 def _isoband_to_geojson(
     ds: xr.Dataset,

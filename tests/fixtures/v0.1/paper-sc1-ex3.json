@@ -1,0 +1,135 @@
+{
+  "data": [
+    {
+      "id": "wrfUS",
+      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
+      "dims": {
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": { "dim": "time", "key": "time", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "t", "key": "t" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "sub",
+        "args": [
+          { "data": "wrfUS", "var": "t" },
+          { "const": 273.15 }
+        ]
+      },
+      "out": { "data": "wrfUST2C", "var": "tC" }
+    }
+  ],
+
+  "composition": {
+
+    "context": {
+      "title": {
+        "text": "HRRR Air Temperature (C)"
+      },
+       "legends": [
+        {
+          "title": "Air Temperature (C)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              { "view": "v1", "layers": ["l1"] }
+            ]
+          }
+        }
+      }
+    ],
+
+    "views": [
+      {
+        "id": "v1",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Sep 26, 2024 at 04:00 UTC"
+          }
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfUST2C", "var": "tC" },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "tC",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 50],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
