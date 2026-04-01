@@ -92,15 +92,16 @@ type Manifest = {
 // const firstExamplePath = "/examples/paper-sc1-ex1.json"
 // const firstExamplePath = "/examples/paper-sc1-ex2.json"
 // const firstExamplePath = "/examples/paper-sc2-ex1.json"
-const firstExamplePath = "/examples/paper-sc2-ex2.json"
+// const firstExamplePath = "/examples/paper-sc2-ex2.json"
 // const firstExamplePath = "/examples/paper-sc2-ex3.json"
 // const firstExamplePath = "/examples/paper-sc2-ex4.json"
 // const firstExamplePath = "/examples/paper-sc3-ex1.json"
+// const firstExamplePath = "/examples/paper-sc3-ex1-1.json"
 
 // const firstExamplePath = "/examples/paper-sc4-ex1.json"
 // const firstExamplePath = "/examples/paper-sc4-ex1-test.json"
 // const firstExamplePath = "/examples/paper-sc4-ex1-test-2.json"
-// const firstExamplePath = "/examples/paper-sc4-ex2.json"
+const firstExamplePath = "/examples/paper-sc4-ex2.json"
 
 type FirstSnapshot = {
   spec: any

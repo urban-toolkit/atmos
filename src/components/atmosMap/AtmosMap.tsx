@@ -1367,7 +1367,8 @@ const renderers = {
 export default function AtmosMap({
   layers,
   autoFitBounds = true,
-  mapStyle = "https://demotiles.maplibre.org/style.json",
+  // mapStyle = "https://demotiles.maplibre.org/style.json",
+  mapStyle = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
   initialViewState,
   onViewStateChange,
   onFeatureClick
@@ -1669,6 +1670,13 @@ export default function AtmosMap({
         }
 
         try {
+          const style = map.getStyle()
+
+          for (const layer of style.layers) {
+            if (layer.type === "symbol") {
+              map.setLayoutProperty(layer.id, "visibility", "none")
+            }
+          }
           for (const bucket of [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]) {
             ensureBarbIcon(map, bucket)
           }

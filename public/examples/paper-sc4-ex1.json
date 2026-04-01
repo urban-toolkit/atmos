@@ -129,20 +129,15 @@
         "frame": { "type": "map" },
         "context": {
           "title": {
-            "template": ""
+            "template": "Probability Acc Rain > 50 mm at Time Step 72"
           }
         },
         "layers": [
           {
             "id": "l1",
             "geometry": {
-              "type": "isoband",
+              "type": "mesh",
               "input": { "data": "wrfEnsRainProb", "var": "probRain50", "dims": { "time": 72 } },
-              "build": [
-                {
-                  "levels": { "type": "step", "start": 0, "stop":1, "step": 0.01 }
-                }
-              ],
               "encoding": {
                 "channels": {
                   "fill": {
