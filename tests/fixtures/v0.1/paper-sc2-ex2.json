@@ -42,6 +42,9 @@
   ],
   
   "composition": {
+    "layout": {
+      "columns": 2
+    },
     "context": {
       "title": {
         "text": "Accumulated Rain (mm)"

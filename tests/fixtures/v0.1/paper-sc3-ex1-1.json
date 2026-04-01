@@ -1,0 +1,366 @@
+{
+  "data": [
+    {
+      "id": "hrrr",
+      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
+      "dims": {
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": { "dim": "time", "key": "time", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "gh", "key": "gh" },
+        { "id": "r", "key": "r" },
+        { "id": "t", "key": "t" }
+      ]
+    },
+    {
+      "id": "t2WRFUS",
+      "source": { "type": "netcdf", "path": "tests/data/chicago/t2_reconstructed.nc" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "t2m", "key": "T2" }
+      ]
+    },
+    {
+      "id": "stationsMatch",
+      "type": "dataset",
+      "source": {
+        "type": "csv",
+        "path": "tests/data/chicago/matched_station_wrf.csv"
+      },
+
+      "grid": {
+        "type": "scattered"
+      },
+
+      "dims": {
+        "id": { "key": "id" },
+        "lat": { "key": "latitude" },
+        "lon": { "key": "longitude" },
+        "time": {
+          "key": "datetime",
+          "type": "datetime",
+          "timezone": "UTC"
+        }
+      },
+      
+      "vars": [
+        { "id": "obs", "key": "station_value" },
+        { "id": "frcst", "key": "wrf_value" }
+      ]  
+     },
+     {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/geo/cb_2018_us_county_20m.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    },
+    {
+      "id": "us-states",
+      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "sub",
+        "args": [
+          { "data": "hrrr", "var": "t" },
+          { "const": 273.15 }
+        ]
+      },
+      "out": { "data": "hrrrTC", "var": "tC" }
+    }
+  ],
+
+  "composition": {
+    "layout": {
+      "columns": 3
+    },
+    "context": {
+       "legends": [
+        {
+          "title": "Relative Humidity (%)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["v1l1"],
+              "channel": "fill"
+            }
+          ]
+        },
+        {
+          "title": "Temperature (C)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v2",
+              "layers": ["v2l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "v1",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "HRRR Relative Humidity (%) and Air Temperature (C) - Time step 18"
+          }
+        },
+        "layers": [
+          {
+            "id": "v1l1",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "hrrr", "var": "r", "dims": { "time": 18 } },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "r",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Blues",
+                      "domain": [0, 100],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          },
+          {
+            "id": "v1l2",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "hrrrTC", "var": "tC", "dims": { "time": 18 }},
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "tC",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            },
+            "mask": {
+              "type": "bbox",
+              "bounds": {
+                "west": -94.58524, "south": 28.28046, "east": -76.16991, "north": 42.05382
+              },
+              "interaction": {
+                "on": ["drag", "resize"]
+              }
+            }
+          },
+          {
+            "id": "us-states",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "us-states" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "v2",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "HRRR Air Temperature and Geopotential height - Time step: 35"
+          }
+        },
+        "layers": [
+          {
+            "id": "v2l1",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "hrrrTC", "var": "tC", "dims": { "time": 35 } },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": 0, "stop":40, "step": 2 }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "tC",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          },
+          {
+            "id": "v2l2",
+            "geometry": {
+              "type": "isoline",
+              "input": { "data": "hrrr", "var": "gh", "dims": { "time": 35 } },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": -200, "stop": 120, "step": 20 }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "stroke": { "value": "#000000" }
+                },
+                "style": {
+                  "strokeWidth": 1,
+                  "label": { "enabled": false, "format": ".0f" }
+                }
+              }
+            }
+          },
+          {
+            "id": "us-states",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "us-states" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "v3",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Temperature (C): Forecast (isobands) and Observations (points) - Time step: 42"
+          }
+        },
+        "layers": [
+          {
+            "id": "v3l1",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "t2WRFUS", "var": "t2m", "dims": { "time": 42 } },
+              "build": [
+                {
+                  "levels": { "type": "step", "start": 0, "stop":40, "step": 2 }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "t2m",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          },
+          {
+            "id": "us-states",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "us-states" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          },
+          {
+            "id": "v3l2",
+            "geometry": {
+              "type": "point",
+              "input": { "data": "stationsMatch", "var": "obs", "dims": { "time": 42 } },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "obs",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
+                      "clamp": false
+                    }
+                  },
+                  "stroke": {"value": "#000000"},
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
