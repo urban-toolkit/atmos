@@ -1,17 +1,12 @@
-#!/usr/bin/env python3
 """
 Translator from AtmosLite grammar to full Atmos grammar.
 
-Usage:
-    python translate_lite_to_full.py <input.json> [output.json]
-
-If output.json is omitted the result is printed to stdout.
+Exports a single public function ``translate(lite) -> full`` intended
+to be called by app.py.
 """
 
-import json
 import os
 import re
-import sys
 from typing import Any, Optional
 
 
@@ -42,6 +37,12 @@ _MARK_TYPE_MAP = {
 
 _AGG_OP_MAP = {
     "avg": "mean",
+}
+
+_QUANTILE_OPS = {
+    "q25": 0.25,
+    "q50": 0.50,
+    "q75": 0.75,
 }
 
 _COMPARISON_OPS = frozenset({"gt", "lt", "gte", "lte", "eq", "ne"})
@@ -133,7 +134,7 @@ class _Ctx:
 def translate(lite: dict) -> dict:
     """Translate an *AtmosLite* spec dict into a full *Atmos* spec dict."""
     ctx = _Ctx(lite)
-    full: dict[str, Any] = {}
+    full: dict[str, Any] = {"format": "atmos"}
 
     full["data"] = [_data(ctx, d) for d in lite["data"]]
 
@@ -351,6 +352,15 @@ def _aggregate(ctx: _Ctx, t: dict) -> dict:
     ref = ctx.ref(a["data"])
 
     if across == "member":
+        raw_op = a["op"]
+        q = _QUANTILE_OPS.get(raw_op)
+        if q is not None:
+            return {
+                "type": "reduce",
+                "across": "member",
+                "expr": {"op": "quantile", "args": [ref], "params": {"q": q}},
+                "out": {"data": oid, "var": oid},
+            }
         return {
             "type": "reduce",
             "across": "member",
@@ -438,11 +448,13 @@ def _map_view(ctx: _Ctx, v: dict) -> dict:
 
 def _chart_view(_ctx: _Ctx, v: dict) -> dict:
     refs = v.get("data", [])
+    spec = v.get("spec", {})
+    vega_lite = spec if isinstance(spec, dict) else {}
     out: dict[str, Any] = {
         "id": v["id"],
         "frame": {"type": "chart"},
         "input": {"data": refs[0] if refs else ""},
-        "vegaLite": v.get("spec", {}),
+        "vegaLite": vega_lite,
     }
     if v.get("floating"):
         out["floating"] = True
@@ -641,31 +653,3 @@ def _int_click(inter: dict) -> dict:
         "source": sources,
         "action": {"select": {"dim": dim, "target": [{"view": tgt["view"]}]}},
     }
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  CLI
-# ══════════════════════════════════════════════════════════════════════════════
-
-def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python translate_lite_to_full.py <input.json> [output.json]",
-              file=sys.stderr)
-        sys.exit(1)
-
-    with open(sys.argv[1]) as f:
-        lite = json.load(f)
-
-    full = translate(lite)
-    text = json.dumps(full, indent=2) + "\n"
-
-    if len(sys.argv) > 2:
-        with open(sys.argv[2], "w") as f:
-            f.write(text)
-        print(f"Written to {sys.argv[2]}", file=sys.stderr)
-    else:
-        print(text, end="")
-
-
-if __name__ == "__main__":
-    main()

@@ -5,8 +5,10 @@ Exports a single public function ``translate(lite) -> full`` intended
 to be called by app.py.
 """
 
+import json
 import os
 import re
+import sys
 from typing import Any, Optional
 
 
@@ -39,6 +41,12 @@ _AGG_OP_MAP = {
     "avg": "mean",
 }
 
+_QUANTILE_OPS = {
+    "q25": 0.25,
+    "q50": 0.50,
+    "q75": 0.75,
+}
+
 _COMPARISON_OPS = frozenset({"gt", "lt", "gte", "lte", "eq", "ne"})
 
 
@@ -49,8 +57,6 @@ def _infer_source_type(path: str) -> str:
 def _infer_grid_type(source_type: str) -> str:
     return _GRID_TYPE_BY_SOURCE.get(source_type, "curvilinear")
 
-
-# ── context object (tracks known ids for reference resolution) ───────────────
 
 class _Ctx:
     """Holds registries of data-source ids, variable names, and transform
@@ -71,63 +77,63 @@ class _Ctx:
             for oid in t.get("id_out", []):
                 self.transform_outputs.add(oid)
 
-    # ── reference parser ─────────────────────────────────────────────────
-
     def ref(self, s: str) -> dict:
-        """Parse a lite data-reference string.
+      """Parse a lite data-reference string.
 
-        Formats handled::
+      Formats handled:
 
-            "dataId.var"              → {data: dataId, var: var}
-            "derivedId"              → {data: derivedId, var: derivedId}
-            "derivedId.sub"          → {data: derivedId, var: derivedId.sub}
-            "varName"  (in a dataset) → {data: <owner>, var: varName}
-            any of the above + "[time:N,member:M]"  → adds dims dict
-        """
-        dims: dict[str, int] = {}
-        m = re.search(r"\[(.+)]$", s)
-        if m:
-            s = s[: m.start()]
-            for part in m.group(1).split(","):
-                k, v = part.split(":")
-                dims[k.strip()] = int(v.strip())
+          "dataId.var"               -> {data: dataId, var: var}
+          "derivedId"                -> {data: derivedId, var: derivedId}
+          "derivedId.sub"            -> {data: derivedId, var: derivedId.sub}
+          "varName"                  -> {data: <owner>, var: varName}
+          any of the above + "[time:70,member:2]" -> adds dims selections
+      """
+      dims: dict[str, Any] = {}
+      m = re.search(r"\[(.+)]$", s)
+      if m:
+          s = s[: m.start()]
+          for part in m.group(1).split(","):
+              k, v = part.split(":")
+              key = k.strip()
+              value = int(v.strip())
 
-        parts = s.split(".")
-        if len(parts) >= 2:
-            first = parts[0]
-            rest = ".".join(parts[1:])
-            if first in self.transform_outputs:
-                # derived id – keep full dotted path as var
-                result = {"data": first, "var": s}
-            else:
-                result = {"data": first, "var": rest}
-        else:
-            name = parts[0]
-            if name in self.transform_outputs:
-                result = {"data": name, "var": name}
-            else:
-                owner = next(
-                    (did for did, vs in self.data_vars.items() if name in vs),
-                    None,
-                )
-                result = (
-                    {"data": owner, "var": name}
-                    if owner
-                    else {"data": name, "var": name}
-                )
+              # Atmos full spec selection form: selected indices as lists
+              dims[key] = [value]
 
-        if dims:
-            result["dims"] = dims
-        return result
+      parts = s.split(".")
+      if len(parts) >= 2:
+          first = parts[0]
+          rest = ".".join(parts[1:])
+          if first in self.transform_outputs:
+              # derived id – keep full dotted path as var
+              result = {"data": first, "var": s}
+          else:
+              result = {"data": first, "var": rest}
+      else:
+          name = parts[0]
+          if name in self.transform_outputs:
+              result = {"data": name, "var": name}
+          else:
+              owner = next(
+                  (did for did, vs in self.data_vars.items() if name in vs),
+                  None,
+              )
+              result = (
+                  {"data": owner, "var": name}
+                  if owner
+                  else {"data": name, "var": name}
+              )
 
+      if dims:
+          result["dims"] = dims
+      return result
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  Top-level entry point
-# ══════════════════════════════════════════════════════════════════════════════
 
 def translate(lite: dict) -> dict:
     """Translate an *AtmosLite* spec dict into a full *Atmos* spec dict."""
     ctx = _Ctx(lite)
+
+    # ✅ THIS is the critical line
     full: dict[str, Any] = {"format": "atmos"}
 
     full["data"] = [_data(ctx, d) for d in lite["data"]]
@@ -139,9 +145,10 @@ def translate(lite: dict) -> dict:
     return full
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  DATA
-# ══════════════════════════════════════════════════════════════════════════════
+def translate_lite_to_full_correct(lite: dict) -> dict:
+    """Backward-compatible alias if any caller uses the newer function name."""
+    return translate(lite)
+
 
 def _data(ctx: _Ctx, d: dict) -> dict:
     files = d.get("file", [])
@@ -180,26 +187,34 @@ def _data_collection(_ctx: _Ctx, d: dict) -> dict:
 
 
 def _detect_path_pattern(paths: list[str]) -> tuple[str, int]:
-    """Find the varying numeric substring across *paths* and return
-    ``(template_with_{index}, start_value)``."""
     if len(paths) <= 1:
-        return (paths[0] if paths else "{index}", 0)
+        return (paths[0] if paths else "{id}", 0)
 
-    num_re = re.compile(r"\d+")
-    nums_per = [num_re.findall(p) for p in paths]
-    if not nums_per[0]:
-        return (paths[0], 0)
+    first = paths[0]
 
-    for pos in range(max(len(ns) for ns in nums_per)):
-        vals = [int(ns[pos]) for ns in nums_per if pos < len(ns)]
+    # Match tokens like m0, m1, ens03, member_2, etc.
+    token_re = re.compile(r"[A-Za-z_-]*\d+")
+
+    tokens_per = [token_re.findall(p) for p in paths]
+    if not tokens_per[0]:
+        return (first, 0)
+
+    for pos in range(max(len(ts) for ts in tokens_per)):
+        vals = [ts[pos] for ts in tokens_per if pos < len(ts)]
         if len(set(vals)) > 1:
-            matches = list(num_re.finditer(paths[0]))
+            matches = list(token_re.finditer(first))
             if pos < len(matches):
                 m = matches[pos]
-                tpl = paths[0][: m.start()] + "{index}" + paths[0][m.end() :]
-                return tpl, min(vals)
+                token = m.group(0)
 
-    return paths[0], 0
+                # Extract numeric part for indexStart
+                num_match = re.search(r"(\d+)$", token)
+                idx0 = int(num_match.group(1)) if num_match else 0
+
+                tpl = first[:m.start()] + "{id}" + first[m.end():]
+                return tpl, idx0
+
+    return first, 0
 
 
 def _dims(d: dict) -> dict:
@@ -215,13 +230,7 @@ def _dims(d: dict) -> dict:
     return out
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  TRANSFORMS
-# ══════════════════════════════════════════════════════════════════════════════
-
 def _all_transforms(ctx: _Ctx, transforms: list[dict]) -> list[dict]:
-    """Translate all transforms, merging comparison-derive + aggregate-across-
-    member pairs into a single ``reduce/prob`` when detected."""
     result: list[dict] = []
     skip: set[int] = set()
 
@@ -229,7 +238,6 @@ def _all_transforms(ctx: _Ctx, transforms: list[dict]) -> list[dict]:
         if i in skip:
             continue
 
-        # Pattern: derive(comparison) followed by aggregate(member, avg)
         if "derive" in t and t["derive"].get("op") in _COMPARISON_OPS:
             merged, partner = _try_merge_cmp_agg(ctx, t, transforms, i)
             result.append(merged)
@@ -271,7 +279,6 @@ def _try_merge_cmp_agg(
             "out": {"data": out_id, "var": out_id},
         }, j
 
-    # No aggregate partner found – emit as plain derive
     return _derive(ctx, cmp_t), None
 
 
@@ -284,8 +291,6 @@ def _transform(ctx: _Ctx, t: dict) -> list[dict]:
         return [_join(ctx, t)]
     return []
 
-
-# ── derive ───────────────────────────────────────────────────────────────────
 
 def _derive(ctx: _Ctx, t: dict) -> dict:
     d = t["derive"]
@@ -336,8 +341,6 @@ def _derive_slp(ctx: _Ctx, d: dict, oid: str) -> dict:
     }
 
 
-# ── aggregate / reduce ───────────────────────────────────────────────────────
-
 def _aggregate(ctx: _Ctx, t: dict) -> dict:
     a = t["aggregate"]
     oid = t["id_out"][0]
@@ -346,6 +349,15 @@ def _aggregate(ctx: _Ctx, t: dict) -> dict:
     ref = ctx.ref(a["data"])
 
     if across == "member":
+        raw_op = a["op"]
+        q = _QUANTILE_OPS.get(raw_op)
+        if q is not None:
+            return {
+                "type": "reduce",
+                "across": "member",
+                "expr": {"op": "quantile", "args": [ref], "params": {"q": q}},
+                "out": {"data": oid, "var": oid},
+            }
         return {
             "type": "reduce",
             "across": "member",
@@ -353,7 +365,6 @@ def _aggregate(ctx: _Ctx, t: dict) -> dict:
             "out": {"data": oid, "var": oid},
         }
 
-    # time / space  →  full-schema aggregate
     expr: dict[str, Any] = {"op": op, "args": [ref]}
 
     if across == "time":
@@ -375,8 +386,6 @@ def _aggregate(ctx: _Ctx, t: dict) -> dict:
     }
 
 
-# ── join → relate ────────────────────────────────────────────────────────────
-
 def _join(ctx: _Ctx, t: dict) -> dict:
     j = t["join"]
     oid = t["id_out"][0]
@@ -396,10 +405,6 @@ def _join(ctx: _Ctx, t: dict) -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  COMPOSITION
-# ══════════════════════════════════════════════════════════════════════════════
-
 def _composition(ctx: _Ctx, comp: dict) -> dict:
     out: dict[str, Any] = {}
 
@@ -414,8 +419,6 @@ def _composition(ctx: _Ctx, comp: dict) -> dict:
 
     return out
 
-
-# ── views ────────────────────────────────────────────────────────────────────
 
 def _view(ctx: _Ctx, v: dict) -> dict:
     if v.get("type") == "chart":
@@ -433,18 +436,18 @@ def _map_view(ctx: _Ctx, v: dict) -> dict:
 
 def _chart_view(_ctx: _Ctx, v: dict) -> dict:
     refs = v.get("data", [])
+    spec = v.get("spec", {})
+    vega_lite = spec if isinstance(spec, dict) else {}
     out: dict[str, Any] = {
         "id": v["id"],
         "frame": {"type": "chart"},
         "input": {"data": refs[0] if refs else ""},
-        "vegaLite": v.get("spec", {}),
+        "vegaLite": vega_lite,
     }
     if v.get("floating"):
         out["floating"] = True
     return out
 
-
-# ── layers ───────────────────────────────────────────────────────────────────
 
 def _layer(ctx: _Ctx, l: dict) -> dict:
     out: dict[str, Any] = {
@@ -455,8 +458,6 @@ def _layer(ctx: _Ctx, l: dict) -> dict:
         out["mask"] = _mask(l["mask"])
     return out
 
-
-# ── geometry dispatch ────────────────────────────────────────────────────────
 
 def _geometry(ctx: _Ctx, g: dict) -> dict:
     mark = g.get("mark", {})
@@ -472,10 +473,11 @@ def _geometry(ctx: _Ctx, g: dict) -> dict:
     if ftype in ("isoband", "isoline"):
         return _geom_contour(ctx, ftype, mark, dr, enc)
     if ftype == "vector":
-        return _geom_vector(ctx, mark, dr, enc)
+        geom = _geom_vector(ctx, mark, dr, enc)
+        geom["sampling"] = g.get("sampling", {"skip": 2})
+        return geom
     if ftype == "polygon":
         return _geom_polygon(ctx, dr, enc)
-    # fallback
     return {"type": ftype, "input": dr, "encoding": _encoding(enc, dr.get("var", ""))}
 
 
@@ -502,13 +504,12 @@ def _geom_polygon(_ctx: _Ctx, dr: dict, enc: dict) -> dict:
     }
 
 
-def _geom_vector(_ctx: _Ctx, mark: dict, dr: dict, enc: dict) -> dict:
+def _geom_vector(_ctx: _Ctx, mark: dict, dr: dict, enc: dict, sampling: dict | None = None) -> dict:
     glyph_type = mark.get("type", "arrow")
     glyph_scale = mark.get("scale")
 
     channels: dict[str, Any] = {}
 
-    # encoding.fill (var reference string) → size channel
     fill_ref = enc.get("fill")
     if isinstance(fill_ref, str) and not fill_ref.startswith("#"):
         size_ch: dict[str, Any] = {
@@ -520,12 +521,10 @@ def _geom_vector(_ctx: _Ctx, mark: dict, dr: dict, enc: dict) -> dict:
             size_ch["scale"]["range"] = {"values": list(domain)}
         channels["size"] = size_ch
 
-    # encoding.color → stroke channel
     color = enc.get("color")
     if color:
         channels["stroke"] = {"value": color}
 
-    # encoding.color_scale → fill channel (rare for vectors, but supported)
     if "color_scale" in enc:
         cs = enc["color_scale"]
         fc: dict[str, Any] = {
@@ -543,13 +542,17 @@ def _geom_vector(_ctx: _Ctx, mark: dict, dr: dict, enc: dict) -> dict:
     if glyph_scale is not None:
         result_enc["style"]["glyph"]["scale"] = glyph_scale
 
-    return {"type": "vector", "input": dr, "encoding": result_enc}
+    out = {"type": "vector", "input": dr, "encoding": result_enc}
 
+    # Default vector sampling
+    if sampling and isinstance(sampling, dict):
+        out["sampling"] = sampling
+    else:
+        out["sampling"] = {"skip": 2}
 
-# ── encoding ─────────────────────────────────────────────────────────────────
+    return out
 
 def _encoding(enc: dict, var_name: str) -> dict:
-    """Build a full-schema encoding from a lite encoding dict."""
     channels: dict[str, Any] = {}
 
     if "color_scale" in enc:
@@ -584,8 +587,6 @@ def _encoding(enc: dict, var_name: str) -> dict:
     return out
 
 
-# ── mask ─────────────────────────────────────────────────────────────────────
-
 def _mask(m: dict) -> dict:
     out: dict[str, Any] = {"type": m["type"]}
 
@@ -600,8 +601,6 @@ def _mask(m: dict) -> dict:
 
     return out
 
-
-# ── interactions ─────────────────────────────────────────────────────────────
 
 def _interaction(_ctx: _Ctx, inter: dict, views: list[dict]) -> dict:
     if inter["type"] == "slider":
@@ -636,3 +635,27 @@ def _int_click(inter: dict) -> dict:
         "source": sources,
         "action": {"select": {"dim": dim, "target": [{"view": tgt["view"]}]}},
     }
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: python translate_lite_to_full.py <input.json> [output.json]",
+              file=sys.stderr)
+        sys.exit(1)
+
+    with open(sys.argv[1]) as f:
+        lite = json.load(f)
+
+    full = translate(lite)
+    text = json.dumps(full, indent=2) + "\n"
+
+    if len(sys.argv) > 2:
+        with open(sys.argv[2], "w") as f:
+            f.write(text)
+        print(f"Written to {sys.argv[2]}", file=sys.stderr)
+    else:
+        print(text, end="")
+
+
+if __name__ == "__main__":
+    main()

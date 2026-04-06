@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://atmos.tools/schema/v0.1/spec/atmos.schema.json",
+  "$id": "https://atmos.tools/schema/v0.1/spec/atmoslite.schema.json",
   "title": "Atmos-Lite",
   "description": "A grammar for specifying geospatial and chart visualizations with data, transforms, and compositions.",
   "type": "object",
