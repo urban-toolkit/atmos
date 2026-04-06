@@ -72,36 +72,44 @@ type Manifest = {
   }
 }
 
-// const firstExamplePath = "/examples/ex1-0-mesh-t2mF.json"
-// const firstExamplePath = "/examples/ex1-0-mesh-t2mF-slider.json"
-// const firstExamplePath = "/examples/ex1-0-isoband-rain.json"
-// const firstExamplePath = "/examples/ex1-0-mesh-t2m-range.json"
-// const firstExamplePath = "/examples/ex2-0-isoline-slp.json"
-// const firstExamplePath = "/examples/ex2-0-wind-arrows.json"
-// const firstExamplePath = "/examples/ex2-0-wind-barbs.json"
-// const firstExamplePath = "/examples/ex3-0-stations.json"
-// const firstExamplePath = "/examples/ex1-0-isoband-rain-slider.json"
-// const firstExamplePath = "/examples/ex4-1-ens.json"
-// const firstExamplePath = "/examples/ex4-3-ens-rain.json"
-// const firstExamplePath = "/examples/ex4-4-ens-rain.json"
-// const firstExamplePath = "/examples/ex4-5-ens-prob.json"
-// const firstExamplePath = "/examples/ex4-6-ens-qtl.json"
-// const firstExamplePath = "/examples/ex3-1-obs-frcst.json"
-// const firstExamplePath = "/examples/ex4-0-isoband-rain-mask.json"
+// const firstExamplePath = "/examples/atmos/ex1-0-mesh-t2mF.json"
+// const firstExamplePath = "/examples/atmos/ex1-0-mesh-t2mF-slider.json"
+// const firstExamplePath = "/examples/atmos/ex1-0-isoband-rain.json"
+// const firstExamplePath = "/examples/atmos/ex1-0-mesh-t2m-range.json"
+// const firstExamplePath = "/examples/atmos/ex2-0-isoline-slp.json"
+// const firstExamplePath = "/examples/atmos/ex2-0-wind-arrows.json"
+// const firstExamplePath = "/examples/atmos/ex2-0-wind-barbs.json"
+// const firstExamplePath = "/examples/atmos/ex3-0-stations.json"
+// const firstExamplePath = "/examples/atmos/ex1-0-isoband-rain-slider.json"
+// const firstExamplePath = "/examples/atmos/ex4-1-ens.json"
+// const firstExamplePath = "/examples/atmos/ex4-3-ens-rain.json"
+// const firstExamplePath = "/examples/atmos/ex4-4-ens-rain.json"
+// const firstExamplePath = "/examples/atmos/ex4-5-ens-prob.json"
+// const firstExamplePath = "/examples/atmos/ex4-6-ens-qtl.json"
+// const firstExamplePath = "/examples/atmos/ex3-1-obs-frcst.json"
+// const firstExamplePath = "/examples/atmos/ex4-0-isoband-rain-mask.json"
 
-// const firstExamplePath = "/examples/paper-sc1-ex1.json"
-// const firstExamplePath = "/examples/paper-sc1-ex2.json"
-// const firstExamplePath = "/examples/paper-sc2-ex1.json"
-// const firstExamplePath = "/examples/paper-sc2-ex2.json"
-// const firstExamplePath = "/examples/paper-sc2-ex3.json"
-// const firstExamplePath = "/examples/paper-sc2-ex4.json"
-// const firstExamplePath = "/examples/paper-sc3-ex1.json"
-// const firstExamplePath = "/examples/paper-sc3-ex1-1.json"
+// const firstExamplePath = "/examples/atmos/paper-sc1-ex1.json"
+// const firstExamplePath = "/examples/atmos/paper-sc1-ex2.json"
+// const firstExamplePath = "/examples/atmos/paper-sc2-ex1.json"
+// const firstExamplePath = "/examples/atmos/paper-sc2-ex2.json"
+// const firstExamplePath = "/examples/atmos/paper-sc2-ex3.json"
+// const firstExamplePath = "/examples/atmos/paper-sc2-ex4.json"
+// const firstExamplePath = "/examples/atmos/paper-sc3-ex1.json"
+// const firstExamplePath = "/examples/atmos/paper-sc3-ex1-1.json"
 
-// const firstExamplePath = "/examples/paper-sc4-ex1.json"
-// const firstExamplePath = "/examples/paper-sc4-ex1-test.json"
-// const firstExamplePath = "/examples/paper-sc4-ex1-test-2.json"
-const firstExamplePath = "/examples/paper-sc4-ex2.json"
+// const firstExamplePath = "/examples/atmos/paper-sc4-ex1.json"
+// const firstExamplePath = "/examples/atmos/paper-sc4-ex1-test.json"
+// const firstExamplePath = "/examples/atmos/paper-sc4-ex1-test-2.json"
+// const firstExamplePath = "/examples/atmos/paper-sc4-ex2.json"
+
+// const firstExamplePath = "/examples/atmos-lite/sc1-ex1.json"
+// const firstExamplePath = "/examples/atmos-lite/sc1-ex2.json"
+// const firstExamplePath = "/examples/atmos-lite/sc2-ex1.json"
+// const firstExamplePath = "/examples/atmos-lite/sc2-ex2.json"
+const firstExamplePath = "/examples/atmos-lite/sc4-ex1.json"
+
+// const firstExamplePath = "/examples/atmos/spec.json"
 
 type FirstSnapshot = {
   spec: any
@@ -218,11 +226,14 @@ function isViewFloating(specObj: any, viewId: string): boolean {
 
 function hasTimeInteraction(specObj: any): boolean {
   const interactions = specObj?.composition?.interactions
+  console.log(!Array.isArray(interactions), "expect true")
   if (!Array.isArray(interactions)) return false
 
   for (const intr of interactions) {
+    console.log(intr?.action?.select?.dim === "time", "expect true")
     if (intr?.action?.select?.dim === "time") return true
   }
+  console.log("after loop:", false)
   return false
 }
 
@@ -728,7 +739,7 @@ export default function App() {
 
   const gridH = `calc(100vh - ${headerH}px)`
   const tileH = `calc((100vh - ${headerH}px - ${pad * 2}px - ${(rows - 1) * gap}px) / ${rows})`
-
+  console.log("hasTimeSlider", hasTimeSlider, timeMax)
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       {showLegend && <SharedLegend manifest={manifest} />}

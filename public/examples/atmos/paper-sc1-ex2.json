@@ -1,4 +1,5 @@
 {
+  "format": "atmos",
   "data": [
     {
       "id": "hrrr",
@@ -14,7 +15,8 @@
       },
       
       "vars": [
-        { "id": "r", "key": "r" }
+        { "id": "r", "key": "r" },
+        { "id": "t", "key": "t" }
       ]
     },
     {
@@ -26,10 +28,24 @@
     }
   ],
 
+    "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "sub",
+        "args": [
+          { "data": "hrrr", "var": "t" },
+          { "const": 273.15 }
+        ]
+      },
+      "out": { "data": "hrrrTC", "var": "tC" }
+    }
+  ],
+
   "composition": {
     "context": {
       "title": {
-        "text": "HRRR Relative Humidity"
+        "text": "HRRR Rel. Humidity and Air Temp. (lens)"
       },
        "legends": [
         {
@@ -39,6 +55,17 @@
             {
               "view": "v1",
               "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        },
+        {
+          "title": "Air Temperature (C)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l2"],
               "channel": "fill"
             }
           ]
@@ -53,7 +80,7 @@
           "select": {
             "dim": "time",
             "target": [
-              { "view": "v1", "layers": ["l1"] }
+              { "view": "v1", "layers": ["l1, l2"] }
             ]
           }
         }
@@ -88,6 +115,37 @@
                   },
                   "opacity": { "value": 1.0 }
                 }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "hrrrTC", "var": "tC"},
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "tC",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "reverse": true,
+                      "domain": [0, 40],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            },
+            "mask": {
+              "type": "bbox",
+              "bounds": {
+                "west": -94.58524, "south": 28.28046, "east": -76.16991, "north": 42.05382
+              },
+              "interaction": {
+                "on": ["drag", "resize"]
               }
             }
           },
