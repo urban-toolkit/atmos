@@ -1,0 +1,37 @@
+{
+  "data": [
+    {
+      "id": "hrrr",
+      "dims": { "lat": "lat", "lng": "lng", "time": "time" },
+      "variables": ["r"],
+      "file": [{ "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" }]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": { "type": "heatmap" },
+              "data": "hrrr.r",
+              "encoding": {
+                "color_scale": { "palette": "Blues", "domain": [0, 100] }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interaction": [
+      {
+        "type": "slider",
+        "targets": [{ "view": "v1" }],
+        "select": "time"
+      }
+    ]
+  }
+}

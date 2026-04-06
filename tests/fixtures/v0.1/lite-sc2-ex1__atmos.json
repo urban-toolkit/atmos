@@ -1,0 +1,159 @@
+{
+  "data": [
+    {
+      "id": "hrrr",
+      "source": {
+        "type": "netcdf",
+        "path": "tests/data/hrrr_20240923_20240927/hrrr.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "dim": "time",
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": ""
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "t",
+          "key": "t"
+        },
+        {
+          "id": "gh",
+          "key": "gh"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "sub",
+        "args": [
+          {
+            "data": "hrrr",
+            "var": "t"
+          },
+          {
+            "const": 273.15
+          }
+        ]
+      },
+      "out": {
+        "data": "t_c"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "t_c",
+                "var": "t_c"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "t_c",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "RdYlBu",
+                      "domain": [
+                        0,
+                        40
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 40,
+                    "step": 2
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "isoline",
+              "input": {
+                "data": "hrrr",
+                "var": "gh"
+              },
+              "encoding": {
+                "channels": {
+                  "stroke": {
+                    "field": "#000000"
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": -200,
+                    "stop": 120,
+                    "step": 20
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              {
+                "view": "v1",
+                "layers": [
+                  "l1",
+                  "l2"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

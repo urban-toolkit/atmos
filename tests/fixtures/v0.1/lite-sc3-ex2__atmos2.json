@@ -1,0 +1,194 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "source": {
+        "type": "netcdf",
+        "path": "wrfout.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "T2",
+          "key": "T2"
+        }
+      ]
+    },
+    {
+      "id": "stations",
+      "source": {
+        "type": "csv",
+        "path": "stations.csv"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "scattered"
+      },
+      "vars": [
+        {
+          "id": "temp",
+          "key": "temp"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "aggregate",
+      "across": "time",
+      "by": "temp",
+      "expr": {
+        "op": "mean",
+        "args": [
+          {
+            "data": "stations",
+            "var": "temp"
+          }
+        ],
+        "freq": "H"
+      },
+      "out": {
+        "data": "obs_h",
+        "var": "obs_h"
+      }
+    },
+    {
+      "type": "relate",
+      "by": "space",
+      "expr": {
+        "op": "match",
+        "args": [
+          {
+            "data": "obs_h",
+            "var": "obs_h"
+          },
+          {
+            "data": "wrf",
+            "var": "T2"
+          }
+        ],
+        "params": {
+          "space": {
+            "method": "nearest"
+          }
+        }
+      },
+      "out": {
+        "data": "dataobs",
+        "var": "dataobs"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "point",
+              "input": {
+                "data": "dataobs",
+                "var": "dataobs"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "dataobs",
+                    "scale": {
+                      "scheme": "RdYlBu",
+                      "domain": [
+                        0,
+                        40
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "dataforecast",
+                "var": "dataforecast"
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 40,
+                    "step": 2
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "dataforecast",
+                    "scale": {
+                      "scheme": "RdYlBu",
+                      "domain": [
+                        0,
+                        40
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              {
+                "view": "v1",
+                "layers": [
+                  "l1",
+                  "l2"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

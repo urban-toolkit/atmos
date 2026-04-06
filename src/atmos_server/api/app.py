@@ -13,6 +13,8 @@ from atmos_server.core.compiler import compile_spec
 from atmos_server.core.executor import run_plan
 from atmos_server.bootstrap.wiring import make_default_ports
 
+from atmos_server.core.translator import normalize_spec
+
 
 app = FastAPI(title="atmos-server", version="0.1.0")
 
@@ -55,6 +57,7 @@ def api_run(
         raise HTTPException(status_code=400, detail=f"Unknown schema version '{version}': {e}")
 
     try:
+        spec = normalize_spec(spec)
         validate_spec(spec, schema)
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e))

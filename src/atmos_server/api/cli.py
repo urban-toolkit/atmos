@@ -12,6 +12,8 @@ import json
 from atmos_server.core.compiler import compile_spec
 from atmos_server.core.executor import run_plan
 
+from atmos_server.core.translator import normalize_spec
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -54,6 +56,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         chosen = f"registry:{version}"
 
     try:
+        spec = normalize_spec(spec)
         validate_spec(spec, schema)
     except SpecValidationError as e:
         print(f"❌ Instance is NOT valid under {chosen}. Errors:", file=sys.stderr)
@@ -87,6 +90,7 @@ def cmd_compile(args: argparse.Namespace) -> int:
         chosen_version = args.version or _default_version(registry)
         schema = registry.load(chosen_version)
 
+    spec = normalize_spec(spec)
     validate_spec(spec, schema)
     ports = make_default_ports()
     plan = compile_spec(spec, schema_version=chosen_version, ports=ports, runtime_state={})
@@ -101,7 +105,6 @@ def cmd_compile(args: argparse.Namespace) -> int:
     print(f"✅ Wrote plan: {out_path}")
     return 0
 
-
 def cmd_run(args: argparse.Namespace) -> int:
     spec = load_json_file(args.spec)
 
@@ -113,6 +116,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         chosen_version = args.version or _default_version(registry)
         schema = registry.load(chosen_version)
 
+    spec = normalize_spec(spec)
     validate_spec(spec, schema)
     ports = make_default_ports()
     plan = compile_spec(spec, schema_version=chosen_version, ports=ports, runtime_state={})
