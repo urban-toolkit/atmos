@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from uuid import uuid4
 from typing import Any
@@ -65,6 +66,7 @@ def api_run(
     run_id = uuid4().hex[:10]
     out_dir = RUNS_DIR / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "spec.json").write_text(json.dumps(spec, indent=2))
 
     try:
         ports = make_default_ports()

@@ -9,7 +9,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--save-json",
         action="store_true",
-        default=False,
+        default=True,
         help="Write each translated spec to a JSON file next to the test.",
     )
     parser.addoption(
