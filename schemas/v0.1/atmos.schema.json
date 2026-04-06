@@ -5,6 +5,10 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "format": {
+      "type": "string",
+      "const": "atmos"
+    },
     "constants": {
       "type": "array",
       "items": {
@@ -206,29 +210,7 @@
                   },
                   "source": {
                     "description": "How to access the dataset bytes (path/url/etc).",
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "netcdf",
-                          "zarr",
-                          "csv",
-                          "json",
-                          "url",
-                          "geojson"
-                        ]
-                      },
-                      "path": {
-                        "type": "string",
-                        "description": "Path to a local file/folder (for file-based sources)."
-                      }
-                    },
-                    "required": [
-                      "type",
-                      "path"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/properties/data/items/oneOf/2/allOf/1/properties/source/items"
                   }
                 },
                 "required": [
@@ -320,7 +302,15 @@
                     "type": "object",
                     "properties": {
                       "type": {
-                        "$ref": "#/properties/data/items/oneOf/0/allOf/1/properties/source/properties/type"
+                        "type": "string",
+                        "enum": [
+                          "netcdf",
+                          "zarr",
+                          "csv",
+                          "json",
+                          "url",
+                          "geojson"
+                        ]
                       },
                       "pathTemplate": {
                         "type": "string",
@@ -339,6 +329,70 @@
                   "members",
                   "sourceTemplate"
                 ]
+              }
+            ]
+          },
+          {
+            "unevaluatedProperties": false,
+            "allOf": [
+              {
+                "$ref": "#/properties/data/items/oneOf/0/allOf/0"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "description": "How to access a single concrete source asset (transport/location).",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "netcdf",
+                            "zarr",
+                            "csv",
+                            "json",
+                            "url",
+                            "geojson"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Path to a local file/folder (for file-based sources)."
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "source"
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "members"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sourceTemplate"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "memberDimension"
+                      ]
+                    }
+                  ]
+                }
               }
             ]
           }

@@ -64,3 +64,13 @@ class SchemaProvider:
     def load(self, version: str) -> dict:
         ref = self.resolve(version)
         return load_schema(ref.path)
+
+    def load_lite(self, version: str) -> dict:
+        lite_path = self.root_dir / version / "atmoslite.schema.json"
+        if not lite_path.exists():
+            available = ", ".join(self.list_versions()) or "(none)"
+            raise SchemaLoadError(
+                f"No lite schema for version '{version}'. Available: {available}. "
+                f"Expected file at: {lite_path}"
+            )
+        return load_schema(lite_path)

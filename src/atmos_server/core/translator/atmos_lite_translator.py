@@ -128,7 +128,7 @@ class _Ctx:
 def translate(lite: dict) -> dict:
     """Translate an *AtmosLite* spec dict into a full *Atmos* spec dict."""
     ctx = _Ctx(lite)
-    full: dict[str, Any] = {}
+    full: dict[str, Any] = {"format": "atmos"}
 
     full["data"] = [_data(ctx, d) for d in lite["data"]]
 
