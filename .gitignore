@@ -95,3 +95,6 @@ temp/
 # Heavy data
 # =========================
 /tests/data/wrfout*
+
+input/**
+!input/.gitkeep
