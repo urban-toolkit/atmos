@@ -1,0 +1,154 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "source": {
+        "type": "netcdf",
+        "path": "wrfout.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "dim": "time",
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": ""
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "U10",
+          "key": "U10"
+        },
+        {
+          "id": "V10",
+          "key": "V10"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "diagnostic.wind.polar",
+        "args": [
+          {
+            "data": "wrf",
+            "var": "U10",
+            "role": "u"
+          },
+          {
+            "data": "wrf",
+            "var": "V10",
+            "role": "v"
+          }
+        ]
+      },
+      "out": {
+        "data": "wind"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "mesh",
+              "input": {
+                "data": "wind",
+                "var": "speed",
+                "dims": {
+                  "time": [
+                    70
+                  ]
+                }
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "speed",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        10
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "vector",
+              "input": {
+                "data": "wind",
+                "dims": {
+                  "time": [
+                    70
+                  ]
+                },
+                "var": "wind"
+              },
+              "encoding": {
+                "channels": {
+                  "size": {
+                    "field": "wind.speed",
+                    "scale": {
+                      "type": "linear",
+                      "domain": {
+                        "type": "extent"
+                      },
+                      "range": {
+                        "values": [
+                          5,
+                          10
+                        ]
+                      }
+                    }
+                  },
+                  "stroke": {
+                    "value": "#FFFFFF"
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                },
+                "style": {
+                  "glyph": {
+                    "type": "arrow",
+                    "scale": 1.0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

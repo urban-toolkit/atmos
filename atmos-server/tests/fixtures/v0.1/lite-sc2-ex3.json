@@ -1,0 +1,48 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "dims": { "lat": "lat", "lng": "lng", "time": "time" },
+      "variables": ["U10", "V10"],
+      "file": [{ "path": "wrfout.nc" }]
+    }
+  ],
+  "transform": [
+    {
+      "derive": { "data_u": "wrf.U10", "data_v": "wrf.V10" },
+      "id_out": ["wind"]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": { "type": "heatmap" },
+              "data": "wind.speed[time:70]",
+              "encoding": {
+                "color_scale": { "palette": "Viridis", "domain": [0, 10] }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "mark": { "type": "arrow", "scale": 1, "domain": [5, 10] },
+              "data": "wind[time:70]",
+              "encoding": {
+                "fill": "wind.speed",
+                "domain": [5, 10],
+                "color": "#FFFFFF"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

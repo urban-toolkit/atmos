@@ -1,0 +1,1069 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atmos.tools/schema/v0.1/spec/atmoslite.schema.json",
+  "title": "Atmos-Lite",
+  "description": "A grammar for specifying geospatial and chart visualizations with data, transforms, and compositions.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/data"
+      },
+      "minItems": 1
+    },
+    "transform": {
+      "$ref": "#/$defs/transform"
+    },
+    "composition": {
+      "$ref": "#/$defs/composition"
+    }
+  },
+  "required": [
+    "data",
+    "composition"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "spec": {
+      "title": "spec",
+      "description": "Top-level specification: one or more data blocks, optional transform, and a composition.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/data"
+          },
+          "minItems": 1
+        },
+        "transform": {
+          "$ref": "#/$defs/transform"
+        },
+        "composition": {
+          "$ref": "#/$defs/composition"
+        }
+      },
+      "required": [
+        "data",
+        "composition"
+      ],
+      "additionalProperties": false
+    },
+    "data": {
+      "title": "data",
+      "description": "A single data source with an id, dimension names, variables, and file references.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "dims": {
+          "$ref": "#/$defs/dims"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "file": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "dims",
+        "variables",
+        "file"
+      ],
+      "additionalProperties": false
+    },
+    "dims": {
+      "title": "dims",
+      "description": "Dimension names for latitude, longitude, time, and optional vertical level.",
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "string"
+        },
+        "lng": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "lat",
+        "lng",
+        "time"
+      ],
+      "additionalProperties": false
+    },
+    "file": {
+      "title": "file",
+      "description": "A local file path or remote URL.",
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "transform": {
+      "title": "transform",
+      "description": "A data transformation: derive, aggregate, or join, producing a named output dataset.",
+      "type": "object",
+      "properties": {
+        "id_out": {
+          "type": "string",
+          "description": "Output dataset id."
+        },
+        "operation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/derive"
+            },
+            {
+              "$ref": "#/$defs/aggregate"
+            },
+            {
+              "$ref": "#/$defs/join"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id_out",
+        "operation"
+      ],
+      "additionalProperties": false
+    },
+    "derive": {
+      "title": "derive",
+      "description": "Derive a new variable via an arithmetic op, sea-level pressure formula, or wind speed.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/derive_op"
+        },
+        {
+          "$ref": "#/$defs/derive_slp"
+        },
+        {
+          "$ref": "#/$defs/derive_wind"
+        }
+      ]
+    },
+    "derive_op": {
+      "title": "derive_op",
+      "description": "Element-wise binary operation between two data references or a data reference and a constant.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "derive_op"
+        },
+        "op": {
+          "$ref": "#/$defs/op"
+        },
+        "lhs": {
+          "$ref": "#/$defs/dataOrConst"
+        },
+        "rhs": {
+          "$ref": "#/$defs/dataOrConst"
+        }
+      },
+      "required": [
+        "type",
+        "op",
+        "lhs",
+        "rhs"
+      ],
+      "additionalProperties": false
+    },
+    "op": {
+      "title": "op",
+      "description": "Supported arithmetic / reduction operators.",
+      "type": "string",
+      "enum": [
+        "add",
+        "sub",
+        "mul",
+        "div",
+        "min",
+        "max",
+        "avg",
+        "abs",
+        "pow",
+        "mod"
+      ]
+    },
+    "dataOrConst": {
+      "title": "dataOrConst",
+      "description": "Either a reference to a named data variable or a numeric constant.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "dataRef": {
+              "type": "string",
+              "description": "Reference to a data id."
+            }
+          },
+          "required": [
+            "dataRef"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "const": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "const"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "derive_slp": {
+      "title": "derive_slp",
+      "description": "Derive sea-level pressure from surface pressure, 2-m air temperature, water-vapour mixing ratio, and geopotential height.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "derive_slp"
+        },
+        "data_sp": {
+          "type": "string",
+          "description": "Surface pressure data id."
+        },
+        "data_at2m": {
+          "type": "string",
+          "description": "2-m air temperature data id."
+        },
+        "data_wvmr2m": {
+          "type": "string",
+          "description": "2-m water-vapour mixing ratio data id."
+        },
+        "data_hgt": {
+          "type": "string",
+          "description": "Geopotential height data id."
+        }
+      },
+      "required": [
+        "type",
+        "data_sp",
+        "data_at2m",
+        "data_wvmr2m",
+        "data_hgt"
+      ],
+      "additionalProperties": false
+    },
+    "derive_wind": {
+      "title": "derive_wind",
+      "description": "Derive wind speed / direction from u and v component data ids.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "derive_wind"
+        },
+        "data_u": {
+          "type": "string",
+          "description": "U-component data id."
+        },
+        "data_v": {
+          "type": "string",
+          "description": "V-component data id."
+        }
+      },
+      "required": [
+        "type",
+        "data_u",
+        "data_v"
+      ],
+      "additionalProperties": false
+    },
+    "aggregate": {
+      "title": "aggregate",
+      "description": "Aggregate a dataset across space, time, or ensemble members.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "aggregate"
+        },
+        "data": {
+          "type": "string",
+          "description": "Input data id."
+        },
+        "across": {
+          "$ref": "#/$defs/across"
+        },
+        "op": {
+          "$ref": "#/$defs/op"
+        },
+        "geom": {
+          "$ref": "#/$defs/geomType"
+        },
+        "frequency": {
+          "$ref": "#/$defs/frequency"
+        },
+        "interval": {
+          "$ref": "#/$defs/interval"
+        }
+      },
+      "required": [
+        "type",
+        "data",
+        "across",
+        "op"
+      ],
+      "additionalProperties": false
+    },
+    "across": {
+      "title": "across",
+      "type": "string",
+      "enum": [
+        "space",
+        "time",
+        "member"
+      ]
+    },
+    "geomType": {
+      "title": "geom",
+      "type": "string",
+      "enum": [
+        "grid",
+        "hex",
+        "polygon"
+      ]
+    },
+    "frequency": {
+      "title": "frequency",
+      "description": "Temporal frequency: optional count n and a time unit.",
+      "type": "object",
+      "properties": {
+        "n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      },
+      "required": [
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "unit": {
+      "title": "unit",
+      "description": "Time unit abbreviations (H=hourly, D=daily, M=monthly, Y=yearly, etc.).",
+      "type": "string",
+      "enum": [
+        "H",
+        "D",
+        "W",
+        "M",
+        "Q",
+        "Y",
+        "min",
+        "s"
+      ]
+    },
+    "interval": {
+      "title": "interval",
+      "description": "A closed interval [x1, x2] over the aggregation dimension.",
+      "type": "object",
+      "properties": {
+        "x1": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "x2": {
+          "type": [
+            "number",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "x1",
+        "x2"
+      ],
+      "additionalProperties": false
+    },
+    "join": {
+      "title": "join",
+      "description": "Spatial or temporal join of two datasets by a relationship predicate.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "join"
+        },
+        "data1": {
+          "type": "string",
+          "description": "First input data id."
+        },
+        "data2": {
+          "type": "string",
+          "description": "Second input data id."
+        },
+        "relationship": {
+          "$ref": "#/$defs/relationship"
+        }
+      },
+      "required": [
+        "type",
+        "data1",
+        "data2",
+        "relationship"
+      ],
+      "additionalProperties": false
+    },
+    "relationship": {
+      "title": "relationship",
+      "type": "string",
+      "enum": [
+        "nearest",
+        "within"
+      ]
+    },
+    "composition": {
+      "title": "composition",
+      "description": "One or more views, optional context layer, and optional interaction specification.",
+      "type": "object",
+      "properties": {
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          },
+          "minItems": 1
+        },
+        "context": {
+          "type": "object",
+          "description": "Freeform context/basemap configuration."
+        },
+        "interaction": {
+          "$ref": "#/$defs/interaction"
+        }
+      },
+      "required": [
+        "views"
+      ],
+      "additionalProperties": false
+    },
+    "view": {
+      "title": "view",
+      "description": "Either a map view or a chart view.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/mapView"
+        },
+        {
+          "$ref": "#/$defs/chartView"
+        }
+      ]
+    },
+    "mapView": {
+      "title": "mapView",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "mapView"
+        },
+        "id": {
+          "type": "string"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "minItems": 1
+        },
+        "projection": {
+          "type": "string",
+          "description": "Map projection identifier (e.g. mercator, equalEarth)."
+        },
+        "bounds": {
+          "type": "array",
+          "description": "[west, south, east, north] bounding box.",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "chartView": {
+      "title": "chartView",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "chartView"
+        },
+        "id": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "spec": {
+          "type": "object",
+          "description": "Chart specification (e.g. Vega-Lite spec)."
+        },
+        "floating": {
+          "type": "boolean",
+          "description": "Whether the chart is rendered as an overlay."
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "data",
+        "spec"
+      ],
+      "additionalProperties": false
+    },
+    "layer": {
+      "title": "layer",
+      "description": "A named rendering layer with a geometry and an optional mask.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "geometry": {
+          "$ref": "#/$defs/geometry"
+        },
+        "mask": {
+          "$ref": "#/$defs/mask"
+        }
+      },
+      "required": [
+        "id",
+        "geometry"
+      ],
+      "additionalProperties": false
+    },
+    "mask": {
+      "title": "mask",
+      "description": "Either a circular mask or an axis-aligned bounding-box mask.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/circleMask"
+        },
+        {
+          "$ref": "#/$defs/bboxMask"
+        }
+      ]
+    },
+    "circleMask": {
+      "title": "circleMask",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "circleMask"
+        },
+        "center": {
+          "type": "array",
+          "description": "[longitude, latitude] of the circle centre.",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "radius": {
+          "type": "number",
+          "description": "Radius in degrees or metres depending on projection."
+        },
+        "lens": {
+          "type": "boolean",
+          "description": "Render as a magnifying-lens overlay."
+        }
+      },
+      "required": [
+        "type",
+        "center",
+        "radius"
+      ],
+      "additionalProperties": false
+    },
+    "bboxMask": {
+      "title": "bboxMask",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "bboxMask"
+        },
+        "bounds": {
+          "type": "array",
+          "description": "[west, south, east, north] bounding box.",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "lens": {
+          "type": "boolean",
+          "description": "Render as a magnifying-lens overlay."
+        }
+      },
+      "required": [
+        "type",
+        "bounds"
+      ],
+      "additionalProperties": false
+    },
+    "geometry": {
+      "title": "geometry",
+      "description": "A mark type, the data it draws from, and its visual encoding.",
+      "type": "object",
+      "properties": {
+        "mark": {
+          "$ref": "#/$defs/mark"
+        },
+        "data": {
+          "type": "string",
+          "description": "Data id to visualize."
+        },
+        "encoding": {
+          "$ref": "#/$defs/encoding"
+        }
+      },
+      "required": [
+        "mark",
+        "data",
+        "encoding"
+      ],
+      "additionalProperties": false
+    },
+    "mark": {
+      "title": "mark",
+      "description": "The graphical primitive used to represent data.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalar_field"
+        },
+        {
+          "$ref": "#/$defs/point"
+        },
+        {
+          "$ref": "#/$defs/vector_field"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "poly"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "scalar_field": {
+      "title": "scalar_field",
+      "description": "Scalar-field marks: isoline, isoband, or heatmap.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/isoline"
+        },
+        {
+          "$ref": "#/$defs/isoband"
+        },
+        {
+          "$ref": "#/$defs/heatmap"
+        }
+      ]
+    },
+    "isoline": {
+      "title": "isoline",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "isoline"
+        },
+        "steps": {
+          "description": "Contour levels: either an explicit list or a step count.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 1
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "isoband": {
+      "title": "isoband",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "isoband"
+        },
+        "steps": {
+          "description": "Band boundaries: either an explicit list or a step count.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 1
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "heatmap": {
+      "title": "heatmap",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "heatmap"
+        },
+        "resolution": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Pixel resolution of the raster grid."
+        },
+        "kernel": {
+          "type": "string",
+          "description": "Smoothing kernel name (e.g. gaussian, bilinear)."
+        }
+      },
+      "required": [
+        "type",
+        "resolution"
+      ],
+      "additionalProperties": false
+    },
+    "point": {
+      "title": "point",
+      "description": "Point mark rendered as a symbol.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "point"
+        },
+        "symbol": {
+          "type": "string",
+          "description": "Symbol shape name (e.g. circle, square, cross)."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "vector_field": {
+      "title": "vector_field",
+      "description": "Vector-field marks: arrow or meteorological barb.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/arrow"
+        },
+        {
+          "$ref": "#/$defs/barb"
+        }
+      ]
+    },
+    "arrow": {
+      "title": "arrow",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "arrow"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Arrow length scale factor."
+        },
+        "domain": {
+          "type": "array",
+          "description": "[min, max] magnitude domain for normalisation.",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "type",
+        "scale"
+      ],
+      "additionalProperties": false
+    },
+    "barb": {
+      "title": "barb",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "barb"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Barb length scale factor."
+        }
+      },
+      "required": [
+        "type",
+        "scale"
+      ],
+      "additionalProperties": false
+    },
+    "encoding": {
+      "title": "encoding",
+      "description": "Visual encoding channels for a geometry.",
+      "type": "object",
+      "properties": {
+        "fill": {
+          "type": "string",
+          "description": "Data field or CSS colour for fill."
+        },
+        "stroke": {
+          "type": "string",
+          "description": "Data field or CSS colour for stroke."
+        },
+        "opacity": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Constant opacity [0,1] or data field."
+        },
+        "width": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Constant width (px) or data field."
+        },
+        "size": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Constant size or data field."
+        },
+        "dash": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ],
+          "description": "Stroke dash array or pattern name."
+        },
+        "color_scale": {
+          "$ref": "#/$defs/color_scale"
+        }
+      },
+      "additionalProperties": false
+    },
+    "color_scale": {
+      "title": "color_scale",
+      "description": "Colour scale mapping from data domain to a palette.",
+      "type": "object",
+      "properties": {
+        "palette": {
+          "type": "string",
+          "description": "Named palette or array of colour stops."
+        },
+        "domain": {
+          "type": "array",
+          "description": "[min, max] data values mapped to the palette extents.",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "clamp": {
+          "type": "boolean",
+          "description": "Clamp out-of-domain values to palette ends."
+        },
+        "gamma": {
+          "type": "number",
+          "description": "Gamma correction exponent for the colour interpolation."
+        }
+      },
+      "required": [
+        "palette",
+        "domain"
+      ],
+      "additionalProperties": false
+    },
+    "interaction": {
+      "title": "interaction",
+      "description": "Interactive controls: a time/member slider or a click-to-filter interaction.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/slider"
+        },
+        {
+          "$ref": "#/$defs/click"
+        }
+      ]
+    },
+    "slider": {
+      "title": "slider",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "slider"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/target"
+          },
+          "minItems": 1
+        },
+        "select": {
+          "$ref": "#/$defs/select"
+        }
+      },
+      "required": [
+        "type",
+        "targets",
+        "select"
+      ],
+      "additionalProperties": false
+    },
+    "click": {
+      "title": "click",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "click"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "minItems": 1
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "select": {
+          "$ref": "#/$defs/select"
+        }
+      },
+      "required": [
+        "type",
+        "sources",
+        "target",
+        "select"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "title": "source",
+      "description": "A view plus one or more layer ids that act as the click source.",
+      "type": "object",
+      "properties": {
+        "view": {
+          "type": "string",
+          "description": "View id."
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "view",
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "target": {
+      "title": "target",
+      "description": "The view that receives the interaction output.",
+      "type": "object",
+      "properties": {
+        "view": {
+          "type": "string",
+          "description": "View id."
+        }
+      },
+      "required": [
+        "view"
+      ],
+      "additionalProperties": false
+    },
+    "select": {
+      "title": "select",
+      "description": "The attribute name used as the selection predicate.",
+      "type": "string"
+    }
+  }
+}

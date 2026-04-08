@@ -1,0 +1,129 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "source": {
+        "type": "netcdf",
+        "path": "wrfout.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "dim": "time",
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": ""
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "RAINC",
+          "key": "RAINC"
+        },
+        {
+          "id": "RAINNC",
+          "key": "RAINNC"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          {
+            "data": "wrf",
+            "var": "RAINC"
+          },
+          {
+            "data": "wrf",
+            "var": "RAINNC"
+          }
+        ]
+      },
+      "out": {
+        "data": "rain"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "rain",
+                "var": "rain"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "rain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 2
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              {
+                "view": "v1",
+                "layers": [
+                  "l1"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

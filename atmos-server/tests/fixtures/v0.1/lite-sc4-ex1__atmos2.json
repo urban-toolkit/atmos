@@ -1,0 +1,178 @@
+{
+  "data": [
+    {
+      "id": "data",
+      "source": {
+        "type": "netcdf",
+        "path": "data.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "q25",
+          "key": "q25"
+        },
+        {
+          "id": "q50",
+          "key": "q50"
+        },
+        {
+          "id": "q75",
+          "key": "q75"
+        }
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "data",
+                "var": "q25",
+                "dims": {
+                  "time": 72
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q25",
+                    "scale": {
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "v2",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "data",
+                "var": "q50",
+                "dims": {
+                  "time": 72
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q50",
+                    "scale": {
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "v3",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l3",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "data",
+                "var": "q75",
+                "dims": {
+                  "time": 72
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q75",
+                    "scale": {
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

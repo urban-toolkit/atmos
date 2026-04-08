@@ -1,0 +1,3829 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atmos.tools/schema/v0.1/atmos.schema.json",
+  "title": "Atmos Spec",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "atmos"
+    },
+    "constants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "Named constants.",
+        "patternProperties": {
+          "^[A-Z][A-Z0-9_]*$": {
+            "description": "Allowed literal types for constants.",
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "description": "Defines a concrete dataset (single asset) or a dataset collection (e.g., ensemble members as multiple assets).",
+        "oneOf": [
+          {
+            "unevaluatedProperties": false,
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Unique identifier for this data item."
+                  },
+                  "dims": {
+                    "description": "How to read dataset dimensions.",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "lat",
+                          "lon",
+                          "time"
+                        ],
+                        "properties": {
+                          "lat": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "lon": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "time": {
+                            "type": "object",
+                            "required": [
+                              "key"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "dim": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "format": {
+                                "type": "string"
+                              },
+                              "timezone": {
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "level": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "member": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          },
+                          "id": {
+                            "type": "object",
+                            "required": [
+                              "key"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "dim": {
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "id"
+                        ],
+                        "properties": {
+                          "id": {
+                            "$ref": "#/properties/data/items/oneOf/0/allOf/0/properties/dims/oneOf/0/properties/id"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "grid": {
+                    "type": "object",
+                    "description": "Topology information for datasets organized over atmospheric coordinates. Omit for generic/reference datasets such as boundaries.",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "rectilinear",
+                          "curvilinear",
+                          "scattered"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "vars": {
+                    "type": "array",
+                    "description": "Variables/attributes available in the dataset.",
+                    "items": {
+                      "type": "object",
+                      "description": "Definition of a variable available in the data source.",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique variable identifier (used for referencing in expressions)."
+                        },
+                        "key": {
+                          "type": "string",
+                          "description": "Key to access the variable in the data source."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "dims"
+                ],
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "dims": {
+                          "type": "object",
+                          "required": [
+                            "lat",
+                            "lon"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dims"
+                      ]
+                    },
+                    "then": {
+                      "required": [
+                        "grid",
+                        "vars"
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "dataset"
+                    ],
+                    "description": "Defaults to 'dataset' if omitted."
+                  },
+                  "source": {
+                    "description": "How to access the dataset bytes (path/url/etc).",
+                    "$ref": "#/properties/data/items/oneOf/2/allOf/1/properties/source/items"
+                  }
+                },
+                "required": [
+                  "source"
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "members"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sourceTemplate"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "memberDimension"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "description": "A collection of similar datasets (e.g., ensemble members stored as multiple files).",
+            "unevaluatedProperties": false,
+            "allOf": [
+              {
+                "$ref": "#/properties/data/items/oneOf/0/allOf/0"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "collection"
+                  },
+                  "members": {
+                    "description": "Defines the set of members in the collection.",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "indexStart": {
+                            "type": "integer",
+                            "default": 0
+                          },
+                          "idPattern": {
+                            "type": "string",
+                            "default": "m{index}",
+                            "description": "Template for member ids, e.g., 'm{index}'."
+                          }
+                        },
+                        "required": [
+                          "count",
+                          "idPattern"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          }
+                        },
+                        "required": [
+                          "ids"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "sourceTemplate": {
+                    "description": "How to access each member asset, using templates like {index} or {id}.",
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "netcdf",
+                          "zarr",
+                          "csv",
+                          "json",
+                          "url",
+                          "geojson"
+                        ]
+                      },
+                      "pathTemplate": {
+                        "type": "string",
+                        "description": "Template for local paths, e.g., '/ens/member_{index}/wrfout.nc' or '/ens/{id}/wrfout.nc'."
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "pathTemplate"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "members",
+                  "sourceTemplate"
+                ]
+              }
+            ]
+          },
+          {
+            "unevaluatedProperties": false,
+            "allOf": [
+              {
+                "$ref": "#/properties/data/items/oneOf/0/allOf/0"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "description": "How to access a single concrete source asset (transport/location).",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "netcdf",
+                            "zarr",
+                            "csv",
+                            "json",
+                            "url",
+                            "geojson"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Path to a local file/folder (for file-based sources)."
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "source"
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "members"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sourceTemplate"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "memberDimension"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "minItems": 1
+    },
+    "transform": {
+      "type": "array",
+      "items": {
+        "description": "A transformation step. Execution order is determined by variable dependencies and then list order for ties.",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "derive"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "description": "Regular derive operations.",
+                    "properties": {
+                      "type": {
+                        "const": "derive"
+                      },
+                      "expr": {
+                        "description": "Expression AST node. Either an operator, a variable reference, or a constant.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "op": {
+                                "type": "string",
+                                "enum": [
+                                  "add",
+                                  "sub",
+                                  "mul",
+                                  "div",
+                                  "pow",
+                                  "min",
+                                  "max",
+                                  "abs",
+                                  "sqrt",
+                                  "log",
+                                  "exp",
+                                  "atan2",
+                                  "mod"
+                                ]
+                              },
+                              "args": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "$ref": "#/properties/transform/items/oneOf/0/allOf/0/oneOf/0/properties/expr"
+                                }
+                              }
+                            },
+                            "required": [
+                              "op",
+                              "args"
+                            ],
+                            "additionalProperties": false,
+                            "allOf": [
+                              {
+                                "if": {
+                                  "properties": {
+                                    "op": {
+                                      "enum": [
+                                        "abs",
+                                        "sqrt",
+                                        "log",
+                                        "exp"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "then": {
+                                  "properties": {
+                                    "args": {
+                                      "minItems": 1,
+                                      "maxItems": 1
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "if": {
+                                  "properties": {
+                                    "op": {
+                                      "enum": [
+                                        "atan2",
+                                        "mod",
+                                        "pow",
+                                        "sub",
+                                        "div"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "then": {
+                                  "properties": {
+                                    "args": {
+                                      "minItems": 2,
+                                      "maxItems": 2
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "if": {
+                                  "properties": {
+                                    "op": {
+                                      "enum": [
+                                        "add",
+                                        "mul",
+                                        "min",
+                                        "max"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "then": {
+                                  "properties": {
+                                    "args": {
+                                      "minItems": 2
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "description": "Reference to a variable id, optionally scoped to a dataset.",
+                            "properties": {
+                              "data": {
+                                "type": "string",
+                                "description": "Optional dataset id (root.data[i].id) used to disambiguate variable references."
+                              },
+                              "var": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Reference to a variable id"
+                              }
+                            },
+                            "required": [
+                              "var"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "const": {
+                                "description": "Constant literal",
+                                "oneOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "const"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "expr",
+                      "out"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Diagnose sea-level pressure (SLP) from near-surface fields.",
+                    "properties": {
+                      "type": {
+                        "const": "derive"
+                      },
+                      "expr": {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "diagnostic.slp"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "sp",
+                                    "at2m",
+                                    "wvmr2m",
+                                    "hgt"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var",
+                                "role"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "allOf": [
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "sp"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "at2m"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "wvmr2m"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "hgt"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "expr",
+                      "out"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Diagnose wind from near-surface fields.",
+                    "properties": {
+                      "type": {
+                        "const": "derive"
+                      },
+                      "expr": {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "enum": [
+                              "diagnostic.wind.cartesian",
+                              "diagnostic.wind.polar"
+                            ]
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "u",
+                                    "v"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var",
+                                "role"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "allOf": [
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "u"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              },
+                              {
+                                "contains": {
+                                  "type": "object",
+                                  "properties": {
+                                    "role": {
+                                      "const": "v"
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
+                                },
+                                "minContains": 1,
+                                "maxContains": 1
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "out": {
+                        "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "expr",
+                      "out"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "aggregate"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "aggregate"
+                  },
+                  "across": {
+                    "type": "string",
+                    "enum": [
+                      "time",
+                      "space"
+                    ]
+                  },
+                  "by": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  },
+                  "expr": {},
+                  "out": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Id of the derived dataset produced by this transform."
+                      },
+                      "var": {
+                        "type": "string",
+                        "description": "Id of the derived variable produced by this transform."
+                      }
+                    },
+                    "required": [
+                      "data"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "across",
+                  "by",
+                  "expr",
+                  "out"
+                ],
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "aggregate"
+                        },
+                        "across": {
+                          "const": "time"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "across"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "expr": {
+                          "type": "object",
+                          "description": "Aggregate over time: resample/bin in time then reduce (mean/sum/...). Works for table or grid inputs.",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": [
+                                "mean",
+                                "sum",
+                                "min",
+                                "max",
+                                "median",
+                                "std",
+                                "var",
+                                "count",
+                                "first",
+                                "last"
+                              ]
+                            },
+                            "freq": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "args": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "data": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "var": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "select": {
+                                    "type": "object",
+                                    "description": "Optional selector for where/how to aggregate values. Supports either grid field selection or table XY/value selection.",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "x": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "y": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false,
+                                    "oneOf": [
+                                      {
+                                        "required": [
+                                          "field"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "value"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "x",
+                                          "y",
+                                          "value"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "data",
+                                  "var"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "params": {
+                              "type": "object",
+                              "properties": {
+                                "closed": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "right"
+                                  ]
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "right"
+                                  ]
+                                },
+                                "origin": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "offset": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "freq",
+                            "args"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "aggregate"
+                        },
+                        "across": {
+                          "const": "space"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "across"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "expr": {
+                          "type": "object",
+                          "description": "Aggregate over space: spatial binning (optional) then reduce (mean/sum/...). Works for table or grid inputs.",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": [
+                                "mean",
+                                "sum",
+                                "min",
+                                "max",
+                                "median",
+                                "std",
+                                "var",
+                                "count",
+                                "first",
+                                "last"
+                              ]
+                            },
+                            "bin": {
+                              "type": "object",
+                              "description": "Defines how space is binned/grouped before reduction. Optional if `by` already defines spatial groups (e.g., region_id).",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "grid",
+                                    "hex",
+                                    "polygon"
+                                  ]
+                                },
+                                "size": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                },
+                                "crs": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "polygonData": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "polygonId": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "if": {
+                                    "properties": {
+                                      "type": {
+                                        "enum": [
+                                          "grid",
+                                          "hex"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type"
+                                    ]
+                                  },
+                                  "then": {
+                                    "required": [
+                                      "size"
+                                    ]
+                                  }
+                                },
+                                {
+                                  "if": {
+                                    "properties": {
+                                      "type": {
+                                        "const": "polygon"
+                                      }
+                                    },
+                                    "required": [
+                                      "type"
+                                    ]
+                                  },
+                                  "then": {
+                                    "required": [
+                                      "polygonData",
+                                      "polygonId"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "args": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "data": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "var": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "select": {
+                                    "type": "object",
+                                    "description": "Optional selector for where/how to aggregate values. Supports either grid field selection or table XY/value selection.",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "x": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "y": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "additionalProperties": false,
+                                    "oneOf": [
+                                      {
+                                        "required": [
+                                          "field"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "value"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "x",
+                                          "y",
+                                          "value"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "data",
+                                  "var"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "args"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "relate"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "relate"
+                  },
+                  "by": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  },
+                  "expr": {
+                    "description": "Relational expression over multiple inputs (match/join/lookup/regrid).",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "match"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "properties": {
+                              "space": {
+                                "type": "object",
+                                "properties": {
+                                  "method": {
+                                    "type": "string",
+                                    "enum": [
+                                      "nearest",
+                                      "bilinear",
+                                      "idw",
+                                      "within",
+                                      "exact"
+                                    ]
+                                  },
+                                  "maxDistance": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "k": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "power": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "crs": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "method"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "time": {
+                                "type": "object",
+                                "properties": {
+                                  "method": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exact",
+                                      "nearest"
+                                    ]
+                                  },
+                                  "tolerance": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "method"
+                                ],
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "if": {
+                                      "properties": {
+                                        "method": {
+                                          "const": "nearest"
+                                        }
+                                      },
+                                      "required": [
+                                        "method"
+                                      ]
+                                    },
+                                    "then": {
+                                      "required": [
+                                        "tolerance"
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              "rename": {
+                                "type": "object",
+                                "description": "Rename outputs by arg index: '0', '1', ...",
+                                "patternProperties": {
+                                  "^[0-9]+$": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "minProperties": 1
+                              },
+                              "suffix": {
+                                "type": "object",
+                                "properties": {
+                                  "left": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "right": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "left",
+                                  "right"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "keep": {
+                                "type": "object",
+                                "properties": {
+                                  "unmatched": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drop",
+                                      "keep_left",
+                                      "keep_right",
+                                      "keep_both"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "unmatched"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "join"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/args/items"
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "properties": {
+                              "how": {
+                                "type": "string",
+                                "enum": [
+                                  "inner",
+                                  "left",
+                                  "right",
+                                  "outer"
+                                ]
+                              },
+                              "rename": {
+                                "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/params/properties/rename"
+                              },
+                              "suffix": {
+                                "$ref": "#/properties/transform/items/oneOf/2/allOf/0/properties/expr/oneOf/0/properties/params/properties/suffix"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "out": {
+                    "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                  }
+                },
+                "required": [
+                  "type",
+                  "by",
+                  "expr",
+                  "out"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "reduce"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "reduce"
+                  },
+                  "across": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "time",
+                      "space",
+                      "level"
+                    ],
+                    "description": "Semantic axis. The compiler maps it to dataset-specific dims/columns (e.g., WRF bottom_top -> level)."
+                  },
+                  "expr": {
+                    "description": "Reduce expression AST node (numeric reducers and probability reducers).",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "type": "string",
+                            "enum": [
+                              "mean",
+                              "sum",
+                              "min",
+                              "max",
+                              "median",
+                              "std",
+                              "var",
+                              "count",
+                              "first",
+                              "last",
+                              "quantile"
+                            ]
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "data": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "var": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "data",
+                                "var"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "description": "Optional reducer parameters (future-proof).",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "const": "prob"
+                          },
+                          "args": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "description": "Boolean predicate expression (used by prob).",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "gt",
+                                        "gte",
+                                        "lt",
+                                        "lte",
+                                        "eq",
+                                        "neq"
+                                      ]
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "maxItems": 2,
+                                      "items": {
+                                        "description": "Scalar numeric value in expressions: either a value ref or a constant.",
+                                        "oneOf": [
+                                          {
+                                            "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/0/properties/args/items"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "const": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "required": [
+                                              "const"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "type": "string",
+                                      "enum": [
+                                        "and",
+                                        "or"
+                                      ]
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "items": {
+                                        "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/1/properties/args/items"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "op": {
+                                      "const": "not"
+                                    },
+                                    "args": {
+                                      "type": "array",
+                                      "minItems": 1,
+                                      "maxItems": 1,
+                                      "items": {
+                                        "$ref": "#/properties/transform/items/oneOf/3/allOf/0/properties/expr/oneOf/1/properties/args/items"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "op",
+                                    "args"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "tsType": "unknown"
+                            }
+                          },
+                          "params": {
+                            "type": "object",
+                            "description": "Optional probability params (e.g., missing policy).",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "args"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "out": {
+                    "$ref": "#/properties/transform/items/oneOf/1/allOf/0/properties/out"
+                  }
+                },
+                "required": [
+                  "type",
+                  "across",
+                  "expr",
+                  "out"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "composition": {
+      "type": "object",
+      "description": "A composition arranges multiple views and optionally defines shared time control and cross-view actions.",
+      "additionalProperties": false,
+      "required": [
+        "views"
+      ],
+      "properties": {
+        "layout": {
+          "description": "Optional layout. If omitted and multiple views are provided, the renderer defaults to a single row with one column per view (side-by-side).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flow",
+                "grid"
+              ],
+              "default": "flow"
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "row",
+                "column"
+              ],
+              "default": "row",
+              "description": "For flow layout: row = side-by-side, column = stacked."
+            },
+            "columns": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "For grid layout: number of columns."
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "For grid layout: number of rows."
+            },
+            "gap": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Optional spacing between views (px)."
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "flow"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "then": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "rows"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "columns"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "views": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "A view is a frame plus its content. Discriminated by frame.type.",
+            "oneOf": [
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "floating": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "context": {
+                        "description": "Optional view-local context (titles, legends, controls).",
+                        "$ref": "#/properties/composition/properties/context"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "frame": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "map"
+                          },
+                          "projection": {
+                            "type": "string",
+                            "default": "webMercator",
+                            "description": "Map projection identifier (kept explicit for future non-Mapbox projections)."
+                          },
+                          "domain": {
+                            "description": "Optional spatial domain (if omitted, treat as auto).",
+                            "type": "object",
+                            "properties": {
+                              "bounds": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "west",
+                                  "south",
+                                  "east",
+                                  "north"
+                                ],
+                                "properties": {
+                                  "west": {
+                                    "type": "number",
+                                    "minimum": -180,
+                                    "maximum": 180
+                                  },
+                                  "south": {
+                                    "type": "number",
+                                    "minimum": -90,
+                                    "maximum": 90
+                                  },
+                                  "east": {
+                                    "type": "number",
+                                    "minimum": -180,
+                                    "maximum": 180
+                                  },
+                                  "north": {
+                                    "type": "number",
+                                    "minimum": -90,
+                                    "maximum": 90
+                                  }
+                                }
+                              }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                              "bounds"
+                            ]
+                          },
+                          "state": {
+                            "description": "Optional map camera/navigation state (if omitted, derive from domain or use a default).",
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "longitude",
+                              "latitude",
+                              "zoom"
+                            ],
+                            "properties": {
+                              "longitude": {
+                                "type": "number"
+                              },
+                              "latitude": {
+                                "type": "number"
+                              },
+                              "zoom": {
+                                "type": "number"
+                              },
+                              "bearing": {
+                                "type": "number",
+                                "default": 0
+                              },
+                              "pitch": {
+                                "type": "number",
+                                "default": 0
+                              }
+                            }
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "type"
+                        ]
+                      },
+                      "layers": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "object",
+                          "description": "A layer instance within a view, pairing geometry. Each may be a reference id or a full inline spec (fully validated).",
+                          "additionalProperties": false,
+                          "required": [
+                            "geometry",
+                            "id"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "geometry": {
+                              "description": "Geometry layer id (string) or a full GeometrySpec object.",
+                              "required": [
+                                "type"
+                              ],
+                              "oneOf": [
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "build": {
+                                          "type": "array",
+                                          "description": "Optional geometry build pipeline. Its allowed items depend on the layer type.",
+                                          "minItems": 1
+                                        },
+                                        "encoding": {
+                                          "description": "Visual encoding for this geometry.",
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "encoding"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "isoline"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "type": "object",
+                                          "required": [
+                                            "data",
+                                            "var"
+                                          ],
+                                          "properties": {
+                                            "data": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "var": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "dims": {
+                                              "type": "object",
+                                              "description": "Optional dimension selection. If omitted, all indices are used.",
+                                              "properties": {
+                                                "time": {
+                                                  "description": "Select one or more indices of a dimension.",
+                                                  "oneOf": [
+                                                    {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                      },
+                                                      "minItems": 1
+                                                    }
+                                                  ]
+                                                },
+                                                "member": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                },
+                                                "level": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "build": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "description": "Parameters for generating contour lines from a gridded scalar field.",
+                                            "properties": {
+                                              "levels": {
+                                                "description": "How to choose contour levels.",
+                                                "oneOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "explicit"
+                                                      },
+                                                      "values": {
+                                                        "type": "array",
+                                                        "minItems": 1,
+                                                        "items": {
+                                                          "type": "number"
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "values"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "step"
+                                                      },
+                                                      "start": {
+                                                        "type": "number"
+                                                      },
+                                                      "stop": {
+                                                        "type": "number"
+                                                      },
+                                                      "step": {
+                                                        "type": "number",
+                                                        "exclusiveMinimum": 0
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "start",
+                                                      "stop",
+                                                      "step"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "levels"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "type": "object",
+                                              "description": "Visual encoding for a geometry layer (channels + optional geometry-scoped style).",
+                                              "properties": {
+                                                "channels": {
+                                                  "description": "Channel mappings (e.g., fill, stroke, opacity).",
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "fill": {
+                                                      "description": "A channel whose visual output is a color (e.g., fill/stroke).",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "string",
+                                                              "description": "Constant color string (e.g., '#ff0000', 'rgba(0,0,0,0.5)')."
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "field": {
+                                                              "type": "string"
+                                                            },
+                                                            "scale": {
+                                                              "description": "Color scale definition. Supports either scheme-based scales (recommended) or explicit domain/range stops.",
+                                                              "oneOf": [
+                                                                {
+                                                                  "type": "object",
+                                                                  "additionalProperties": false,
+                                                                  "required": [
+                                                                    "scheme"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "scheme": {
+                                                                      "type": "string",
+                                                                      "minLength": 1,
+                                                                      "description": "Named color scheme/palette (e.g., 'RdYlBu', 'Viridis')."
+                                                                    },
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "sequential",
+                                                                        "diverging",
+                                                                        "categorical"
+                                                                      ],
+                                                                      "description": "Optional hint for the scheme family. Renderer may ignore."
+                                                                    },
+                                                                    "reverse": {
+                                                                      "type": "boolean",
+                                                                      "default": false,
+                                                                      "description": "If true, reverse the scheme order."
+                                                                    },
+                                                                    "domain": {
+                                                                      "type": "array",
+                                                                      "items": {
+                                                                        "type": "number"
+                                                                      },
+                                                                      "minItems": 2,
+                                                                      "description": "Optional numeric domain override (e.g., [min, max]). If omitted, renderer infers from data."
+                                                                    },
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false,
+                                                                      "description": "Clamp values outside the domain."
+                                                                    }
+                                                                  }
+                                                                },
+                                                                {
+                                                                  "type": "object",
+                                                                  "additionalProperties": false,
+                                                                  "required": [
+                                                                    "type",
+                                                                    "range"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "linear",
+                                                                        "log",
+                                                                        "sqrt",
+                                                                        "pow",
+                                                                        "quantile",
+                                                                        "quantize",
+                                                                        "threshold",
+                                                                        "ordinal"
+                                                                      ]
+                                                                    },
+                                                                    "domain": {
+                                                                      "oneOf": [
+                                                                        {
+                                                                          "type": "object",
+                                                                          "properties": {
+                                                                            "type": {
+                                                                              "type": "string",
+                                                                              "const": "explicit"
+                                                                            },
+                                                                            "values": {
+                                                                              "type": "array",
+                                                                              "items": {
+                                                                                "type": "number"
+                                                                              },
+                                                                              "minItems": 2
+                                                                            }
+                                                                          },
+                                                                          "required": [
+                                                                            "type",
+                                                                            "values"
+                                                                          ],
+                                                                          "additionalProperties": false
+                                                                        },
+                                                                        {
+                                                                          "type": "object",
+                                                                          "properties": {
+                                                                            "type": {
+                                                                              "type": "string",
+                                                                              "const": "extent"
+                                                                            }
+                                                                          },
+                                                                          "required": [
+                                                                            "type"
+                                                                          ],
+                                                                          "additionalProperties": false
+                                                                        }
+                                                                      ]
+                                                                    },
+                                                                    "range": {},
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false
+                                                                    }
+                                                                  },
+                                                                  "allOf": [
+                                                                    {
+                                                                      "if": {
+                                                                        "required": [
+                                                                          "domain"
+                                                                        ]
+                                                                      },
+                                                                      "then": {
+                                                                        "allOf": [
+                                                                          {
+                                                                            "if": {
+                                                                              "properties": {
+                                                                                "domain": {
+                                                                                  "type": "object",
+                                                                                  "properties": {
+                                                                                    "type": {
+                                                                                      "const": "explicit"
+                                                                                    }
+                                                                                  },
+                                                                                  "required": [
+                                                                                    "type"
+                                                                                  ]
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                            "then": {
+                                                                              "properties": {
+                                                                                "range": {
+                                                                                  "oneOf": [
+                                                                                    {
+                                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/0"
+                                                                                    },
+                                                                                    {
+                                                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                            "else": {
+                                                                              "properties": {
+                                                                                "range": {
+                                                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/allOf/0/else/properties/range/oneOf/1"
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        ]
+                                                                      },
+                                                                      "else": {
+                                                                        "properties": {
+                                                                          "range": {
+                                                                            "oneOf": [
+                                                                              {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "required": [
+                                                                                  "stops"
+                                                                                ],
+                                                                                "properties": {
+                                                                                  "stops": {
+                                                                                    "type": "array",
+                                                                                    "minItems": 2,
+                                                                                    "items": {
+                                                                                      "type": "string",
+                                                                                      "minLength": 1
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              },
+                                                                              {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "required": [
+                                                                                  "stops"
+                                                                                ],
+                                                                                "properties": {
+                                                                                  "stops": {
+                                                                                    "type": "array",
+                                                                                    "minItems": 2,
+                                                                                    "items": {
+                                                                                      "type": "object",
+                                                                                      "additionalProperties": false,
+                                                                                      "required": [
+                                                                                        "value",
+                                                                                        "color"
+                                                                                      ],
+                                                                                      "properties": {
+                                                                                        "value": {
+                                                                                          "type": "number"
+                                                                                        },
+                                                                                        "color": {
+                                                                                          "type": "string",
+                                                                                          "minLength": 1
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "field"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    },
+                                                    "stroke": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill"
+                                                    },
+                                                    "opacity": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/size"
+                                                    },
+                                                    "width": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/size"
+                                                    },
+                                                    "size": {
+                                                      "description": "A channel whose visual output is numeric (e.g., size/opacity/width/rotation).",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "number"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "field": {
+                                                              "type": "string"
+                                                            },
+                                                            "scale": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "object",
+                                                                  "description": "Maps data values (domain) to visual values (range).",
+                                                                  "properties": {
+                                                                    "type": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "linear",
+                                                                        "log",
+                                                                        "symlog",
+                                                                        "sqrt",
+                                                                        "pow",
+                                                                        "quantize",
+                                                                        "quantile",
+                                                                        "threshold",
+                                                                        "ordinal"
+                                                                      ]
+                                                                    },
+                                                                    "domain": {
+                                                                      "oneOf": [
+                                                                        {
+                                                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/0"
+                                                                        },
+                                                                        {
+                                                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0/properties/channels/properties/fill/oneOf/1/properties/scale/oneOf/1/properties/domain/oneOf/1"
+                                                                        }
+                                                                      ]
+                                                                    },
+                                                                    "clamp": {
+                                                                      "type": "boolean",
+                                                                      "default": false
+                                                                    }
+                                                                  },
+                                                                  "required": [
+                                                                    "type",
+                                                                    "domain"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "object",
+                                                                  "properties": {
+                                                                    "range": {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "values": {
+                                                                          "type": "array",
+                                                                          "items": {
+                                                                            "type": "number"
+                                                                          },
+                                                                          "minItems": 2
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "values"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    }
+                                                                  },
+                                                                  "required": [
+                                                                    "range"
+                                                                  ]
+                                                                }
+                                                              ],
+                                                              "unevaluatedProperties": false
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "field"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    },
+                                                    "dash": {
+                                                      "description": "Dash pattern for strokes. Kept constant-only for simplicity and broad renderer compatibility.",
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "value": {
+                                                              "type": "array",
+                                                              "description": "Dash pattern array, e.g., [4,2].",
+                                                              "minItems": 2,
+                                                              "items": {
+                                                                "type": "number",
+                                                                "minimum": 0
+                                                              }
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "value"
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "additionalProperties": false,
+                                                  "minProperties": 1
+                                                },
+                                                "style": {
+                                                  "type": "object",
+                                                  "description": "Geometry-scoped style. The geometry layer schema constrains its shape."
+                                                }
+                                              },
+                                              "required": [
+                                                "channels"
+                                              ],
+                                              "unevaluatedProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "smooth": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "dash": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "number",
+                                                        "minimum": 0
+                                                      },
+                                                      "minItems": 2
+                                                    },
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "label": {
+                                                      "type": "object",
+                                                      "additionalProperties": false,
+                                                      "properties": {
+                                                        "enabled": {
+                                                          "type": "boolean"
+                                                        },
+                                                        "format": {
+                                                          "type": "string"
+                                                        }
+                                                      }
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input",
+                                        "build"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "isoband"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
+                                        },
+                                        "build": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "description": "Parameters for generating filled contour bands from a gridded scalar field.",
+                                            "properties": {
+                                              "levels": {
+                                                "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/build/items/properties/levels"
+                                              }
+                                            },
+                                            "required": [
+                                              "levels"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "bandOpacity": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "maximum": 1
+                                                    },
+                                                    "edgeStroke": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input",
+                                        "build"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "point"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "description": "Outline width for point glyphs (px)."
+                                                    },
+                                                    "shape": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "circle",
+                                                        "square",
+                                                        "triangle",
+                                                        "diamond",
+                                                        "cross",
+                                                        "x"
+                                                      ],
+                                                      "default": "circle"
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "mesh"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
+                                        },
+                                        "build": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "description": "Parameters for generating a mesh from a gridded scalar field.",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                              "interpolate": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "nearest",
+                                                  "bilinear",
+                                                  "bicubic"
+                                                ],
+                                                "default": "bilinear"
+                                              },
+                                              "cellFootprint": {
+                                                "type": "number",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "default": 1,
+                                                "description": "Fraction of each grid cell area to fill. 1 = full cell (no gaps)."
+                                              },
+                                              "targetCells": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "default": 5000,
+                                                "description": "Soft cap on number of generated cells (used for auto stride)."
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "vector"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "type": "object",
+                                          "description": "Vector field inputs. Either a vector variable reference, components (u/v[/w]), or polar (speed/direction[/w]).",
+                                          "oneOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "var": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "time": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    },
+                                                    "member": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    },
+                                                    "level": {
+                                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input/properties/dims/properties/time"
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              },
+                                              "required": [
+                                                "data",
+                                                "var"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "u": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "v": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "w": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/4/allOf/2/properties/input/oneOf/0/properties/dims"
+                                                }
+                                              },
+                                              "required": [
+                                                "data",
+                                                "u",
+                                                "v"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "speed": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "direction": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "directionUnits": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "deg",
+                                                    "rad"
+                                                  ],
+                                                  "default": "deg"
+                                                },
+                                                "directionConvention": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "from",
+                                                    "to"
+                                                  ],
+                                                  "default": "from"
+                                                },
+                                                "directionReference": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "north_clockwise",
+                                                    "east_counterclockwise"
+                                                  ],
+                                                  "default": "north_clockwise"
+                                                },
+                                                "w": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "dims": {
+                                                  "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/4/allOf/2/properties/input/oneOf/0/properties/dims"
+                                                }
+                                              },
+                                              "required": [
+                                                "data",
+                                                "speed",
+                                                "direction"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "sampling": {
+                                          "type": "object",
+                                          "properties": {
+                                            "skip": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "glyph": {
+                                                      "type": "object",
+                                                      "properties": {
+                                                        "type": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "arrow",
+                                                            "barb"
+                                                          ]
+                                                        },
+                                                        "scale": {
+                                                          "type": "number",
+                                                          "minimum": 0,
+                                                          "description": "Global multiplier for glyph size (not data-driven)."
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "type"
+                                                      ],
+                                                      "additionalProperties": false
+                                                    },
+                                                    "pivot": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "tail",
+                                                        "middle",
+                                                        "tip"
+                                                      ]
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input",
+                                        "encoding"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "trajectory"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "description": "Input reference for particles/trajectories. Either a single scalar field or multiple named fields, scoped to a dataset.",
+                                          "oneOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/input"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": [
+                                                "data",
+                                                "vars"
+                                              ],
+                                              "properties": {
+                                                "data": {
+                                                  "type": "string",
+                                                  "minLength": 1
+                                                },
+                                                "vars": {
+                                                  "type": "object",
+                                                  "minProperties": 1,
+                                                  "additionalProperties": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                  },
+                                                  "description": "Map of named variable ids (e.g., u/v/w, speed/direction)."
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "tailLength": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "headMarker": {
+                                                      "type": "boolean"
+                                                    },
+                                                    "stepSize": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "maxSteps": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "polygon"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": [
+                                            "data"
+                                          ],
+                                          "properties": {
+                                            "data": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          }
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "strokeWidth": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "simplify": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "description": "Optional simplification tolerance (implementation-defined units)."
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                },
+                                {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "const": "particle"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/0"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/5/allOf/2/properties/input"
+                                        },
+                                        "encoding": {
+                                          "allOf": [
+                                            {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/geometry/oneOf/0/allOf/2/properties/encoding/allOf/0"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "style": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "count": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    "lifetime": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "speedFactor": {
+                                                      "type": "number",
+                                                      "minimum": 0
+                                                    },
+                                                    "fade": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "maximum": 1
+                                                    },
+                                                    "blendMode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "normal",
+                                                        "add",
+                                                        "multiply",
+                                                        "screen",
+                                                        "overlay"
+                                                      ]
+                                                    },
+                                                    "nodataColor": {
+                                                      "type": "string",
+                                                      "description": "CSS color or hex."
+                                                    }
+                                                  },
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input"
+                                      ]
+                                    }
+                                  ],
+                                  "unevaluatedProperties": false
+                                }
+                              ]
+                            },
+                            "mask": {
+                              "description": "Optional rendering mask/clip (static shape or interactive selection-driven).",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "type",
+                                    "center",
+                                    "radius"
+                                  ],
+                                  "properties": {
+                                    "type": {
+                                      "const": "circle"
+                                    },
+                                    "center": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": [
+                                        "lon",
+                                        "lat"
+                                      ],
+                                      "properties": {
+                                        "lon": {
+                                          "type": "number",
+                                          "minimum": -180,
+                                          "maximum": 180
+                                        },
+                                        "lat": {
+                                          "type": "number",
+                                          "minimum": -90,
+                                          "maximum": 90
+                                        }
+                                      }
+                                    },
+                                    "radius": {
+                                      "type": "number",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "radiusUnits": {
+                                      "type": "string",
+                                      "enum": [
+                                        "px",
+                                        "m",
+                                        "km"
+                                      ],
+                                      "default": "px"
+                                    },
+                                    "interaction": {
+                                      "allOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": [
+                                            "on"
+                                          ],
+                                          "properties": {
+                                            "on": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "move",
+                                                  "drag",
+                                                  "resize"
+                                                ]
+                                              },
+                                              "minItems": 1
+                                            },
+                                            "radiusLimits": {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": [
+                                                "min",
+                                                "max"
+                                              ],
+                                              "properties": {
+                                                "min": {
+                                                  "type": "number",
+                                                  "exclusiveMinimum": 0
+                                                },
+                                                "max": {
+                                                  "type": "number",
+                                                  "exclusiveMinimum": 0
+                                                }
+                                              },
+                                              "description": "Optional radius limits (for circle masks)."
+                                            },
+                                            "boundsLimits": {
+                                              "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/mask/oneOf/1/properties/bounds",
+                                              "description": "Optional spatial limits within which the bbox mask may move or resize."
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "not": {
+                                            "required": [
+                                              "boundsLimits"
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "type",
+                                    "bounds"
+                                  ],
+                                  "properties": {
+                                    "type": {
+                                      "const": "bbox"
+                                    },
+                                    "bounds": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": [
+                                        "west",
+                                        "south",
+                                        "east",
+                                        "north"
+                                      ],
+                                      "properties": {
+                                        "west": {
+                                          "type": "number",
+                                          "minimum": -180,
+                                          "maximum": 180
+                                        },
+                                        "south": {
+                                          "type": "number",
+                                          "minimum": -90,
+                                          "maximum": 90
+                                        },
+                                        "east": {
+                                          "type": "number",
+                                          "minimum": -180,
+                                          "maximum": 180
+                                        },
+                                        "north": {
+                                          "type": "number",
+                                          "minimum": -90,
+                                          "maximum": 90
+                                        }
+                                      }
+                                    },
+                                    "interaction": {
+                                      "allOf": [
+                                        {
+                                          "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/1/properties/layers/items/properties/mask/oneOf/0/properties/interaction/allOf/0"
+                                        },
+                                        {
+                                          "not": {
+                                            "required": [
+                                              "radiusLimits"
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "interactions": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "type",
+                                      "as",
+                                      "mode"
+                                    ],
+                                    "properties": {
+                                      "type": {
+                                        "const": "brush"
+                                      },
+                                      "as": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "description": "Selection id produced by this brush (local to the view unless routed by composition)."
+                                      },
+                                      "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                          "rect",
+                                          "x",
+                                          "y",
+                                          "lasso"
+                                        ],
+                                        "default": "rect"
+                                      },
+                                      "on": {
+                                        "type": "string",
+                                        "enum": [
+                                          "drag"
+                                        ],
+                                        "default": "drag"
+                                      },
+                                      "empty": {
+                                        "type": "string",
+                                        "enum": [
+                                          "none",
+                                          "all"
+                                        ],
+                                        "default": "none"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "type",
+                                      "as",
+                                      "on"
+                                    ],
+                                    "properties": {
+                                      "type": {
+                                        "const": "pick"
+                                      },
+                                      "on": {
+                                        "type": "string",
+                                        "enum": [
+                                          "click",
+                                          "hover"
+                                        ]
+                                      },
+                                      "as": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    }
+                                  }
+                                ]
+                              },
+                              "description": "Layer-local interactions (e.g., brush/pick). Mask manipulation lives in mask.interaction."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "frame",
+                      "layers"
+                    ]
+                  }
+                ],
+                "unevaluatedProperties": false
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/properties/composition/properties/views/items/oneOf/0/allOf/0"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "frame": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "chart"
+                          }
+                        }
+                      },
+                      "input": {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "description": "Dataset id used as the default data source for the Vega-Lite spec."
+                      },
+                      "vegaLite": {
+                        "type": "object",
+                        "description": "Raw Vega-Lite specification object, except for the data."
+                      }
+                    },
+                    "required": [
+                      "frame",
+                      "input",
+                      "vegaLite"
+                    ]
+                  }
+                ],
+                "unevaluatedProperties": false
+              }
+            ]
+          },
+          "description": "Views in display order. Repeat a view by including multiple ViewSpec objects with different ids (and optionally different time.value)."
+        },
+        "context": {
+          "description": "Composition-level context: global titles, legends, and controls (e.g., a shared time slider).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "type": "string"
+                },
+                "subtitleTemplate": {
+                  "type": "string"
+                }
+              },
+              "oneOf": [
+                {
+                  "required": [
+                    "text"
+                  ]
+                },
+                {
+                  "required": [
+                    "template"
+                  ]
+                }
+              ]
+            },
+            "controls": {
+              "type": "array",
+              "description": "Interactive UI controls bound to view parameters (e.g., time).",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "description": "A slider control bound to a view parameter (v0: time).",
+                    "additionalProperties": false,
+                    "required": [
+                      "type",
+                      "bind"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "slider"
+                      },
+                      "bind": {
+                        "type": "string",
+                        "enum": [
+                          "time"
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "description": "UI label."
+                      },
+                      "showValue": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether to display the current value."
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "description": "Buttons for stepping/playing a view parameter (v0: time).",
+                    "additionalProperties": false,
+                    "required": [
+                      "type",
+                      "bind",
+                      "buttons"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "buttons"
+                      },
+                      "bind": {
+                        "type": "string",
+                        "enum": [
+                          "time"
+                        ]
+                      },
+                      "buttons": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "prev",
+                            "next",
+                            "play",
+                            "pause"
+                          ]
+                        },
+                        "description": "Which buttons to show."
+                      },
+                      "step": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1,
+                        "description": "Step size (in timesteps) for prev/next."
+                      },
+                      "intervalMs": {
+                        "type": "integer",
+                        "minimum": 50,
+                        "default": 500,
+                        "description": "Playback interval in milliseconds (for play/pause)."
+                      }
+                    }
+                  }
+                ]
+              },
+              "minItems": 1
+            },
+            "legends": {
+              "type": "array",
+              "description": "Legend specifications for encodings used in this view.",
+              "items": {
+                "type": "object",
+                "description": "A legend for one or more encodings across views/layers.",
+                "additionalProperties": false,
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Optional legend title override."
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "color",
+                      "size",
+                      "opacity"
+                    ],
+                    "default": "auto"
+                  },
+                  "source": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "view": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "layers": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "fill",
+                            "stroke",
+                            "size",
+                            "opacity"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "view",
+                        "layers",
+                        "channel"
+                      ]
+                    }
+                  }
+                }
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "interactions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "slider",
+                          "buttons",
+                          "click"
+                        ]
+                      },
+                      "source": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "view": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "layers": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            }
+                          },
+                          "required": [
+                            "view"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Optional explicit interaction source. Usually needed for event-based interactions like click."
+                      },
+                      "action": {
+                        "type": "object",
+                        "properties": {
+                          "select": {
+                            "type": "object",
+                            "properties": {
+                              "dim": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Dimension selected by the interaction, e.g. time, member, id."
+                              },
+                              "target": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0/properties/source/items"
+                                }
+                              }
+                            },
+                            "required": [
+                              "dim",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "select"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "slider"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "buttons"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/properties/composition/properties/interactions/items/oneOf/0/allOf/0"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "click"
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "data",
+    "composition"
+  ]
+}

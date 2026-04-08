@@ -1,0 +1,43 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "dims": { "lat": "lat", "lng": "lng", "time": "time" },
+      "variables": ["RAINC", "RAINNC"],
+      "file": [{ "path": "wrfout.nc" }]
+    }
+  ],
+  "transform": [
+    {
+      "derive": { "op": "add", "left": "wrf.RAINC", "right": "wrf.RAINNC" },
+      "id_out": ["rain"]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": { "type": "isoband", "steps": [0, 160, 2] },
+              "data": "rain",
+              "encoding": {
+                "color_scale": { "palette": "Viridis", "domain": [0, 160] }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interaction": [
+      {
+        "type": "slider",
+        "targets": [{ "view": "v1" }],
+        "select": "time"
+      }
+    ]
+  }
+}

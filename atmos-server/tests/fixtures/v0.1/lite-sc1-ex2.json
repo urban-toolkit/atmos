@@ -1,0 +1,52 @@
+{
+  "data": [
+    {
+      "id": "hrrr",
+      "dims": { "lat": "lat", "lng": "lng", "time": "time" },
+      "variables": ["r", "t"],
+      "file": [{ "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" }]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": { "type": "heatmap" },
+              "data": "hrrr.r",
+              "encoding": {
+                "color_scale": { "palette": "Blues", "domain": [0, 100] }
+              }
+            },
+            "mask": {
+              "type": "bbox",
+              "bounds": { "south": 28.28046, "west": -94.58524, "north": 42.05382, "east": -76.16991 },
+              "lens": true
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "mark": { "type": "heatmap" },
+              "data": "hrrr.t",
+              "encoding": {
+                "color_scale": { "palette": "RdYlBu", "domain": [0, 40] }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interaction": [
+      {
+        "type": "slider",
+        "targets": [{ "view": "v1" }],
+        "select": "time"
+      }
+    ]
+  }
+}

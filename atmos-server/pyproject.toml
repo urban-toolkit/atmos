@@ -1,0 +1,35 @@
+[project]
+name = "atmos-server"
+version = "0.1.0"
+description = "Reference runtime for the Atmos specification"
+requires-python = ">=3.10"
+dependencies = [
+  "jsonschema>=4.22",
+  "xarray>=2024.0",
+  "netcdf4>=1.6",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-multipart>=0.0.9",
+  "scipy>=1.11"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+atmos-server = "atmos_server.api.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

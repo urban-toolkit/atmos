@@ -1,0 +1,100 @@
+# =========================
+# Python bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# Virtual environments
+# (works for Windows, Linux, macOS)
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Editable install artifacts
+# =========================
+pip-wheel-metadata/
+
+# =========================
+# Test / coverage
+# =========================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# =========================
+# Type checkers / linters (future-proof)
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# =========================
+# IDE / editors
+# =========================
+
+## VS Code
+.vscode/
+
+## PyCharm / IntelliJ
+.idea/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Local environment files
+# =========================
+.env
+.env.*
+
+# =========================
+# Runtime artifacts
+# =========================
+/artifacts/
+/cache/
+/data/
+/tests/data/ens/
+/tests/data/hrrr_20240923_20240927/
+/tests/data/R121
+/tests/data/chicago_match
+/tests/data/chicago/station-HourlyDryBulbTemperature.csv
+/tests/data/chicago/t2_wrf_t0_t71.csv
+/tests/data/chicago/t2_reconstructed.nc
+
+# =========================
+# Temporary files
+# =========================
+tmp/
+temp/
+*.tmp
+
+# =========================
+# Heavy data
+# =========================
+/tests/data/wrfout*
+
+input/**
+!input/.gitkeep

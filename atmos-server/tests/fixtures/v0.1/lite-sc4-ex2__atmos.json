@@ -1,0 +1,148 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "source": {
+        "type": "netcdf",
+        "path": "wrfoutM1.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "dim": "time",
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": ""
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "RAINC",
+          "key": "RAINC"
+        },
+        {
+          "id": "RAINNC",
+          "key": "RAINNC"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          {
+            "data": "wrf",
+            "var": "RAINC"
+          },
+          {
+            "data": "wrf",
+            "var": "RAINNC"
+          }
+        ]
+      },
+      "out": {
+        "data": "rain"
+      }
+    },
+    {
+      "type": "derive",
+      "expr": {
+        "op": "gt",
+        "args": [
+          {
+            "data": "rain"
+          },
+          {
+            "const": 50
+          }
+        ]
+      },
+      "out": {
+        "data": "exceeds"
+      }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "avg",
+        "args": [
+          {
+            "data": "exceeds"
+          }
+        ]
+      },
+      "out": {
+        "data": "prob"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "prob",
+                "dims": {
+                  "time": [
+                    72
+                  ]
+                },
+                "var": "prob"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "prob",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Greens",
+                      "domain": [
+                        0,
+                        1
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 1,
+                    "step": 0.1
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

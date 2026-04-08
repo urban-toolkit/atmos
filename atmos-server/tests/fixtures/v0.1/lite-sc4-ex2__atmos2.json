@@ -1,0 +1,137 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "type": "collection",
+      "members": {
+        "count": 5,
+        "indexStart": 1,
+        "idPattern": "m{index}"
+      },
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "wrfoutM{index}.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "RAINC",
+          "key": "RAINC"
+        },
+        {
+          "id": "RAINNC",
+          "key": "RAINNC"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          {
+            "data": "wrf",
+            "var": "RAINC"
+          },
+          {
+            "data": "wrf",
+            "var": "RAINNC"
+          }
+        ]
+      },
+      "out": {
+        "data": "rain",
+        "var": "rain"
+      }
+    },
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "prob",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              {
+                "data": "rain",
+                "var": "rain"
+              },
+              {
+                "const": 50
+              }
+            ]
+          }
+        ]
+      },
+      "out": {
+        "data": "prob",
+        "var": "prob"
+      }
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "prob",
+                "var": "prob",
+                "dims": {
+                  "time": 72
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 1,
+                    "step": 0.1
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "prob",
+                    "scale": {
+                      "scheme": "Greens",
+                      "domain": [
+                        0,
+                        1
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

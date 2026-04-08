@@ -1,0 +1,129 @@
+{
+  "data": [
+    {
+      "id": "hrrr",
+      "source": {
+        "type": "netcdf",
+        "path": "tests/data/hrrr_20240923_20240927/hrrr.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "r",
+          "key": "r"
+        },
+        {
+          "id": "t",
+          "key": "t"
+        }
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "mesh",
+              "input": {
+                "data": "hrrr",
+                "var": "r"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "r",
+                    "scale": {
+                      "scheme": "Blues",
+                      "domain": [
+                        0,
+                        100
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "mask": {
+              "type": "bbox",
+              "bounds": {
+                "south": 28.28046,
+                "west": -94.58524,
+                "north": 42.05382,
+                "east": -76.16991
+              },
+              "interaction": {
+                "on": [
+                  "drag",
+                  "resize"
+                ]
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "mesh",
+              "input": {
+                "data": "hrrr",
+                "var": "t"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "t",
+                    "scale": {
+                      "scheme": "RdYlBu",
+                      "domain": [
+                        0,
+                        40
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              {
+                "view": "v1",
+                "layers": [
+                  "l1",
+                  "l2"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

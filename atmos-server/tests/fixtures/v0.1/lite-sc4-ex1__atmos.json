@@ -1,0 +1,203 @@
+{
+  "data": [
+    {
+      "id": "data",
+      "source": {
+        "type": "netcdf",
+        "path": "data.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "lat"
+        },
+        "lon": {
+          "key": "lng"
+        },
+        "time": {
+          "dim": "time",
+          "key": "time",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": ""
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "q25",
+          "key": "q25"
+        },
+        {
+          "id": "q50",
+          "key": "q50"
+        },
+        {
+          "id": "q75",
+          "key": "q75"
+        }
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "q25",
+                "dims": {
+                  "time": [
+                    72
+                  ]
+                },
+                "var": "q25"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q25",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "v2",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "q50",
+                "dims": {
+                  "time": [
+                    72
+                  ]
+                },
+                "var": "q50"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q50",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "v3",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l3",
+            "geometry": {
+              "type": "isoband",
+              "input": {
+                "data": "q75",
+                "dims": {
+                  "time": [
+                    72
+                  ]
+                },
+                "var": "q75"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "q75",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [
+                        0,
+                        160
+                      ],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": {
+                    "value": 1.0
+                  }
+                }
+              },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0,
+                    "stop": 160,
+                    "step": 10
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
