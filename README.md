@@ -12,8 +12,36 @@ The repository structure makes it easier to clone, install, and run both project
 ```text
 atmos/
 ├── atmos-server/
+│   ├── input/
+│   │   ├── chicago/
+│   │   ├── geo/
+│   │   ├── mrrj/
+│   │   └── hrrr/
 └── atmos-interface/
+    ├── public/
+    │   ├── examples/
+    │   │   └── atmos-lite/
 ```
+
+## Example data (optional)
+
+This repository includes an empty `input/` folder inside `atmos-server/` for local data. This folder is used by `atmos-server` to load local data sources referenced in Atmos specifications.
+
+Some Atmos examples require external datasets (e.g., NetCDF, CSV), which are not included in this repository due to their size.
+
+You can download example datasets here:
+
+- [Download example input data](<link>)
+
+After downloading, place the files inside:
+
+```text
+atmos-server/input/
+```
+Important: Preserve the folder structure inside input/ (including subfolders), as some specifications expect specific relative paths.
+
+The example specifications available in the frontend (public/examples/atmos-lite) are designed to work with this data. Once the files are in place, you can load and run those examples directly.
+
 
 ## Prerequisites
 
@@ -180,4 +208,3 @@ If port `8000` or `5173` is busy, stop the conflicting process or change the por
 
 - The server writes run outputs under `atmos-server/artifacts/runs/`.
 - The frontend README currently contains the default Vite template text, so this top-level README is the recommended place to start for repository setup.
-
