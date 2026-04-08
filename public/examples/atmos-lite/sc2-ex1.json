@@ -7,7 +7,7 @@
         "t",
         "gh"
       ],
-      "file": [{ "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" }]
+      "file": [{ "path": "input/hrrr/hrrr.nc" }]
     }
   ],
   "transform": [

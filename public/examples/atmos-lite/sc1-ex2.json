@@ -8,7 +8,7 @@
         "RAINNC",
         "T2"
       ],
-     "file": [{ "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" }]
+     "file": [{ "path": "input/mrrj/wrfout" }]
     }
   ],
    "transform": [

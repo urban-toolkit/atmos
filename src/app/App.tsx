@@ -103,13 +103,13 @@ type Manifest = {
 // const firstExamplePath = "/examples/atmos/paper-sc4-ex1-test-2.json"
 // const firstExamplePath = "/examples/atmos/paper-sc4-ex2.json"
 
-const firstExamplePath = "/examples/atmos-lite/sc1-ex1.json"
+// const firstExamplePath = "/examples/atmos-lite/sc1-ex1.json"
 // const firstExamplePath = "/examples/atmos-lite/sc1-ex2.json"
 // const firstExamplePath = "/examples/atmos-lite/sc2-ex1.json"
 // const firstExamplePath = "/examples/atmos-lite/sc2-ex2.json"
 // const firstExamplePath = "/examples/atmos-lite/sc4-ex1.json"
 // const firstExamplePath = "/examples/atmos-lite/sc4-ex2.json"
-// const firstExamplePath = "/examples/atmos-lite/sc4-ex3.json"
+const firstExamplePath = "/examples/atmos-lite/sc4-ex3.json"
 
 // const firstExamplePath = "/examples/atmos/spec.json"
 

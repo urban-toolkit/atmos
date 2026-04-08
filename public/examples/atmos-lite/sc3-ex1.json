@@ -12,7 +12,7 @@
       ],
       "file": [
         {
-          "path": "tests/data/stations.csv"
+          "path": "input/chicago/matched_station_wrf.csv"
         }
       ]
     },
@@ -28,7 +28,7 @@
       ],
       "file": [
         {
-          "path": "tests/data/wrfout_d03_2011-01-10_00_00_00"
+          "path": "input/chicago/wrfout_built.nc"
         }
       ]
     }

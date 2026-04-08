@@ -3,7 +3,7 @@
   "data": [
     {
       "id": "hrrr",
-      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
+      "source": { "type": "netcdf", "path": "input/hrrr/hrrr.nc" },
       "dims": {
         "lat": { "key": "latitude" },
         "lon": { "key": "longitude" },
@@ -21,7 +21,7 @@
     },
     {
       "id": "us-states",
-      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
+      "source": { "type": "geojson", "path": "input/geo/us_state.json" },
       "dims": {
         "id": { "key": "GEOID" }
       }

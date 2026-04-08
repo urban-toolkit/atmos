@@ -12,11 +12,11 @@
         "RAINNC"
       ],
       "file": [
-        { "path": "tests/data/ens/m0/wrfout_d03_2011-01-10_00_00_00" },
-        { "path": "tests/data/ens/m1/wrfout_d03_2011-01-10_00_00_00" },
-        { "path": "tests/data/ens/m2/wrfout_d03_2011-01-10_00_00_00" },
-        { "path": "tests/data/ens/m3/wrfout_d03_2011-01-10_00_00_00" },
-        { "path": "tests/data/ens/m4/wrfout_d03_2011-01-10_00_00_00" }
+        { "path": "input/mrrj/ensemble/m0/wrfout" },
+        { "path": "input/mrrj/ensemble/m1/wrfout" },
+        { "path": "input/mrrj/ensemble/m2/wrfout" },
+        { "path": "input/mrrj/ensemble/m3/wrfout" },
+        { "path": "input/mrrj/ensemble/m4/wrfout" }
       ]
     }
   ],

@@ -12,7 +12,7 @@
 
       "sourceTemplate": {
         "type": "netcdf",
-        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
+        "pathTemplate": "tests/data/ens/{id}/wrfout"
       },
 
       "grid": {

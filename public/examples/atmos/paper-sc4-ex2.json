@@ -9,9 +9,10 @@
         "indexStart": 0,
         "idPattern": "m{index}"
       },
+
       "sourceTemplate": {
         "type": "netcdf",
-        "pathTemplate": "tests/data/ens/{id}/wrfout_d03_2011-01-10_00_00_00"
+        "pathTemplate": "input/mrrj/ensemble/{id}/wrfout"
       },
 
       "grid": {
@@ -29,15 +30,17 @@
           "format": "WRF_Times"
         }
       },
+
       "vars": [
         { "id": "rainnc", "key": "RAINNC" },
         { "id": "rainc", "key": "RAINC" },
         { "id": "t2", "key": "T2" }
       ]
     },
+
     {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "source": { "type": "geojson", "path": "input/geo/grid3P.geojson" },
       "dims": {
         "id": { "key": "GEOID" }
       }

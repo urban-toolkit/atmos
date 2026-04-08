@@ -3,7 +3,7 @@
   "data": [
     {
       "id": "hrrr",
-      "source": { "type": "netcdf", "path": "tests/data/hrrr_20240923_20240927/hrrr.nc" },
+      "source": { "type": "netcdf", "path": "input/hrrr/hrrr.nc" },
       "dims": {
         "lat": { "key": "latitude" },
         "lon": { "key": "longitude" },
@@ -22,7 +22,7 @@
     },
     {
       "id": "t2WRFUS",
-      "source": { "type": "netcdf", "path": "tests/data/chicago/t2_reconstructed.nc" },
+      "source": { "type": "netcdf", "path": "input/chicago/wrfout_built.nc" },
       "dims": {
         "lat": { "key": "XLAT" },
         "lon": { "key": "XLONG" },
@@ -42,7 +42,7 @@
       "type": "dataset",
       "source": {
         "type": "csv",
-        "path": "tests/data/chicago/matched_station_wrf.csv"
+        "path": "input/chicago/matched_station_wrf.csv"
       },
 
       "grid": {
@@ -67,14 +67,14 @@
      },
      {
       "id": "boundaries",
-      "source": { "type": "geojson", "path": "tests/data/geo/cb_2018_us_county_20m.geojson" },
+      "source": { "type": "geojson", "path": "input/geo/chicago_county.geojson" },
       "dims": {
         "id": { "key": "GEOID" }
       }
     },
     {
       "id": "us-states",
-      "source": { "type": "geojson", "path": "tests/data/chicago/us_state.json" },
+      "source": { "type": "geojson", "path": "input/geo/us_state.json" },
       "dims": {
         "id": { "key": "GEOID" }
       }

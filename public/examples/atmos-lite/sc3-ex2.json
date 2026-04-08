@@ -12,7 +12,7 @@
       ],
       "file": [
         {
-          "path": "wrfout.nc"
+          "path": "input/chicago/wrfout_built.nc"
         }
       ]
     },
@@ -28,7 +28,7 @@
       ],
       "file": [
         {
-          "path": "stations.csv"
+          "path": "input/chicago/matched_station_wrf.csv"
         }
       ]
     }
