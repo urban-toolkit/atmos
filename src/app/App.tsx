@@ -103,11 +103,13 @@ type Manifest = {
 // const firstExamplePath = "/examples/atmos/paper-sc4-ex1-test-2.json"
 // const firstExamplePath = "/examples/atmos/paper-sc4-ex2.json"
 
-// const firstExamplePath = "/examples/atmos-lite/sc1-ex1.json"
+const firstExamplePath = "/examples/atmos-lite/sc1-ex1.json"
 // const firstExamplePath = "/examples/atmos-lite/sc1-ex2.json"
 // const firstExamplePath = "/examples/atmos-lite/sc2-ex1.json"
 // const firstExamplePath = "/examples/atmos-lite/sc2-ex2.json"
-const firstExamplePath = "/examples/atmos-lite/sc4-ex1.json"
+// const firstExamplePath = "/examples/atmos-lite/sc4-ex1.json"
+// const firstExamplePath = "/examples/atmos-lite/sc4-ex2.json"
+// const firstExamplePath = "/examples/atmos-lite/sc4-ex3.json"
 
 // const firstExamplePath = "/examples/atmos/spec.json"
 
@@ -146,27 +148,6 @@ function findArtifactForLegendSource(
     }) ?? null
   )
 }
-
-// function getLegendPaintSpec(manifest: Manifest | null) {
-//   const legend = getCompositionLegend(manifest)
-//   const src = legend?.resolvedSource?.[0]
-//   const artifact = findArtifactForLegendSource(manifest, src)
-//   const md = artifact?.metadata ?? {}
-//   const render = md.render ?? {}
-//   const paint = render.paint ?? {}
-
-//   if (src?.channel === "fill") {
-//     return paint["fill-color"] ?? null
-//   }
-//   if (src?.channel === "stroke") {
-//     return paint["line-color"] ?? null
-//   }
-//   if (src?.channel === "opacity") {
-//     return paint["fill-opacity"] ?? paint["line-opacity"] ?? null
-//   }
-
-//   return null
-// }
 
 function getCompositionLegends(manifest: Manifest | null) {
   return manifest?.composition?.context?.legends ?? []
@@ -208,7 +189,7 @@ function getViewManifestEntry(manifest: Manifest | null, viewId: string) {
 
 function getViewTitle(manifest: Manifest | null, viewId: string) {
   const v = getViewManifestEntry(manifest, viewId)
-  return v?.context?.title?.text ?? viewId
+  return v?.context?.title?.text ?? `View: ${viewId}`
 }
 
 function getViewSubtitle(manifest: Manifest | null, viewId: string) {
@@ -300,25 +281,26 @@ export default function App() {
 
   const timeMax = (manifest as any)?.uiState?.timeMax ?? 0
   const hasTimeSlider =
-    (hasTimeInteraction(appliedSpec) || !!getTimeBinding(appliedSpec)) &&
+    // (hasTimeInteraction(appliedSpec) || !!getTimeBinding(appliedSpec)) &&
     timeMax > 0
 
-  const columns = appliedSpec?.composition?.layout?.columns ?? 1
-
+  // const columns = appliedSpec?.composition?.layout?.columns ?? 1
+  
+  
   const compositionTitle = manifest?.composition?.context?.title?.text ?? "Atmos Interface"
-
+  
   function handleMapFeatureClick(viewId: string, info: {
     layerId: string
     properties: Record<string, any>
   }) {
     if (viewId !== "view1") return
     if (info.layerId !== "stations") return
-
+    
     const clickedId = info.properties?.id
     if (clickedId == null) return
-
+    
     setSelectedStationId(String(clickedId))
-
+    
     setClosedFloatingViews((prev) => ({
       ...prev,
       view2: false,
@@ -510,12 +492,52 @@ export default function App() {
     )
   }
 
-  async function handleApply(nextSpec: any,  runtimeState?: {
-    timeIndex?: number
-    selections?: Record<string, Record<string, any>>
-  }) {
+  // async function handleApply(nextSpec: any,  runtimeState?: {
+  //   timeIndex?: number
+  //   selections?: Record<string, Record<string, any>>
+  // }) {
+  //   try {
+  //     const result = await runSpec(nextSpec, "v0.1", runtimeState)
+  //     const nextBaseUrl = result.baseUrl ?? baseUrl
+
+  //     setBaseUrl(nextBaseUrl)
+  //     setManifest(result.manifest)
+
+  //     const layers = interpretManifestToMapLayers(result.manifest, nextBaseUrl)
+  //     setMapLayers(layers)
+  //     setGeoByLayerKey({})
+
+  //     const chartViews = interpretManifestToCharts(result.manifest, nextBaseUrl)
+  //     setCharts(chartViews)
+
+  //     setAppliedSpec(nextSpec)
+  //     setShowAlert(false)
+  //   } catch (e) {
+  //     console.error(e)
+  //     setShowAlert(true)
+  //   }
+  // }
+
+  async function handleApply(
+    nextSpec: any,
+    runtimeState?: {
+      timeIndex?: number
+      selections?: Record<string, Record<string, any>>
+    }
+  ) {
     try {
-      const result = await runSpec(nextSpec, "v0.1", runtimeState)
+      const binding = getTimeBinding(nextSpec)
+      const wantsTime = hasTimeInteraction(nextSpec)
+
+      const effectiveRuntimeState =
+        runtimeState ??
+        (binding
+          ? { timeIndex: binding.value }
+          : wantsTime
+            ? { timeIndex: 0 }
+            : undefined)
+
+      const result = await runSpec(nextSpec, "v0.1", effectiveRuntimeState)
       const nextBaseUrl = result.baseUrl ?? baseUrl
 
       setBaseUrl(nextBaseUrl)
@@ -529,6 +551,13 @@ export default function App() {
       setCharts(chartViews)
 
       setAppliedSpec(nextSpec)
+
+      if (effectiveRuntimeState?.timeIndex != null) {
+        setTimeValue(effectiveRuntimeState.timeIndex)
+      } else {
+        setTimeValue(0)
+      }
+
       setShowAlert(false)
     } catch (e) {
       console.error(e)
@@ -734,6 +763,7 @@ export default function App() {
   // const n = maps.length
   // const n = tiles.length
   const n = gridTiles.length
+  const columns = appliedSpec?.composition?.layout?.columns ?? Math.max(1, gridTiles.length)
   const cols = Math.max(1, columns)
   const rows = Math.max(1, Math.ceil(n / cols))
 

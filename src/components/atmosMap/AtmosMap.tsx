@@ -1642,9 +1642,28 @@ export default function AtmosMap({
   }, [mapStyle, initialViewState, onViewStateChange])
 
   useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    // ResizeObserver fires whenever the container's pixel size changes —
+    // including the initial CSS-grid layout pass that happens right after
+    // the first paint. This is critical for specs with a single fast fetch
+    // (e.g. spec.json) where geo data arrives before the browser has
+    // finished computing the grid cell's height, causing MapLibre to render
+    // into an effectively 0-height viewport until resize() is called.
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.resize()
+    })
+    ro.observe(container)
+
+    // Keep the window-resize listener for fullscreen / devtools scenarios.
     const onResize = () => mapRef.current?.resize()
     window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", onResize)
+    }
   }, [])
 
   useEffect(() => {

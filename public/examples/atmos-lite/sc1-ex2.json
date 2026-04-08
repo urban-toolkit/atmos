@@ -1,27 +1,31 @@
 {
   "data": [
-    {
-      "id": "hrrr",
-      "dims": {
-        "lat": "latitude",
-        "lng": "longitude",
-        "time": "time"
-      },
+     {
+      "id": "wrf",
+      "dims": { "lat": "XLAT", "lng": "XLONG", "time": "Time" },
       "variables": [
-        "r", "t"
+        "RAINC",
+        "RAINNC",
+        "T2"
       ],
-      "file": [
-        {
-          "path": "tests/data/hrrr_20240923_20240927/hrrr.nc"
-        }
-      ]
+     "file": [{ "path": "tests/data/wrfout_d03_2011-01-10_00_00_00" }]
     }
   ],
    "transform": [
     {
       "derive": {
+        "op": "add",
+        "left": "wrf.RAINC",
+        "right": "wrf.RAINNC"
+      },
+      "id_out": [
+        "rain"
+      ]
+    },
+    {
+      "derive": {
         "op": "sub",
-        "left": "hrrr.t",
+        "left": "wrf.T2",
         "right": 273.15
       },
       "id_out": [
@@ -41,13 +45,13 @@
               "mark": {
                 "type": "heatmap"
               },
-              "data": "hrrr.r",
+              "data": "rain",
               "encoding": {
                 "color_scale": {
-                  "palette": "Blues",
+                  "palette": "YlGnBu",
                   "domain": [
                     0,
-                    100
+                    160
                   ]
                 }
               }
@@ -65,7 +69,7 @@
                   "palette": "RdYlBu",
                   "domain": [
                     0,
-                    40
+                    30
                   ]
                 }
               }
@@ -73,10 +77,10 @@
             "mask": {
               "type": "bbox",
               "bounds": {
-                "south": 30,
-                "west": -100,
-                "north": 45,
-                "east": -80
+                "south": -22.38,
+                "west": -42.68,
+                "north": -22.21,
+                "east": -42.4
               },
               "lens": true
             }

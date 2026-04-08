@@ -5,28 +5,18 @@
       "dims": {
         "lat": "XLAT",
         "lng": "XLONG",
-        "time": "Time"
+        "time": "Times"
       },
       "variables": [
         "RAINC",
         "RAINNC"
       ],
       "file": [
-        {
-          "path": "tests/data/wrfoutM1.nc"
-        },
-        {
-          "path": "tests/data/wrfoutM2.nc"
-        },
-        {
-          "path": "tests/data/wrfoutM3.nc"
-        },
-        {
-          "path": "tests/data/wrfoutM4.nc"
-        },
-        {
-          "path": "tests/data/wrfoutM5.nc"
-        }
+        { "path": "tests/data/ens/m0/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m1/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m2/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m3/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m4/wrfout_d03_2011-01-10_00_00_00" }
       ]
     }
   ],
@@ -73,6 +63,23 @@
     }
   ],
   "composition": {
+     "interaction": [
+      {
+        "type": "slider",
+        "targets": [
+          {
+            "view": "v1", "layers": ["l1"]
+          },
+          {
+            "view": "v2", "layers": ["l2"]
+          },
+          {
+            "view": "v3", "layers": ["l3"]
+          }
+        ],
+        "select": "time"
+      }
+    ],
     "views": [
       {
         "id": "v1",

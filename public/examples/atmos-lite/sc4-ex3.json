@@ -3,30 +3,20 @@
     {
       "id": "wrf",
       "dims": {
-        "lat": "lat",
-        "lng": "lng",
-        "time": "time"
+        "lat": "XLAT",
+        "lng": "XLONG",
+        "time": "Times"
       },
       "variables": [
         "RAINC",
         "RAINNC"
       ],
       "file": [
-        {
-          "path": "wrfoutM1.nc"
-        },
-        {
-          "path": "wrfoutM2.nc"
-        },
-        {
-          "path": "wrfoutM3.nc"
-        },
-        {
-          "path": "wrfoutM4.nc"
-        },
-        {
-          "path": "wrfoutM5.nc"
-        }
+        { "path": "tests/data/ens/m0/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m1/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m2/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m3/wrfout_d03_2011-01-10_00_00_00" },
+        { "path": "tests/data/ens/m4/wrfout_d03_2011-01-10_00_00_00" }
       ]
     }
   ],
@@ -63,6 +53,17 @@
     }
   ],
   "composition": {
+    "interaction": [
+      {
+        "type": "slider",
+        "targets": [
+          {
+            "view": "v1", "layers": ["l1"]
+          }
+        ],
+        "select": "time"
+      }
+    ],
     "views": [
       {
         "id": "v1",
