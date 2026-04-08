@@ -1,0 +1,103 @@
+{
+  "data": [
+     {
+      "id": "wrf",
+      "dims": { "lat": "XLAT", "lng": "XLONG", "time": "Time" },
+      "variables": [
+        "RAINC",
+        "RAINNC",
+        "T2"
+      ],
+     "file": [{ "path": "input/mrrj/wrfout" }]
+    }
+  ],
+   "transform": [
+    {
+      "derive": {
+        "op": "add",
+        "left": "wrf.RAINC",
+        "right": "wrf.RAINNC"
+      },
+      "id_out": [
+        "rain"
+      ]
+    },
+    {
+      "derive": {
+        "op": "sub",
+        "left": "wrf.T2",
+        "right": 273.15
+      },
+      "id_out": [
+        "t_c"
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": {
+                "type": "heatmap"
+              },
+              "data": "rain",
+              "encoding": {
+                "color_scale": {
+                  "palette": "YlGnBu",
+                  "domain": [
+                    0,
+                    160
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "mark": {
+                "type": "heatmap"
+              },
+              "data": "t_c",
+              "encoding": {
+                "color_scale": {
+                  "palette": "RdYlBu",
+                  "domain": [
+                    0,
+                    30
+                  ]
+                }
+              }
+            },
+            "mask": {
+              "type": "bbox",
+              "bounds": {
+                "south": -22.38,
+                "west": -42.68,
+                "north": -22.21,
+                "east": -42.4
+              },
+              "lens": true
+            }
+          }
+        ]
+      }
+    ],
+    "interaction": [
+      {
+        "type": "slider",
+        "targets": [
+          {
+            "view": "v1", "layers": ["l1", "l2"]
+          }
+        ],
+        "select": "time"
+      }
+    ]
+  }
+}

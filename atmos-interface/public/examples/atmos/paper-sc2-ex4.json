@@ -1,0 +1,157 @@
+{
+  "format": "atmos",
+  "data": [
+    {
+      "id": "wrfR001",
+      "source": { "type": "netcdf", "path": "input/mrrj/wrfout" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "u10", "key": "U10" },
+        { "id": "v10", "key": "V10" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "input/geo/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+   "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "diagnostic.wind.polar",
+        "args": [
+          {"data": "wrfR001", "var": "u10", "role": "u" },
+          {"data": "wrfR001", "var": "v10", "role": "v" }
+        ]
+      },
+      "out": {
+        "data": "r001Wind10",
+        "var": "wind10"
+      }
+    }
+  ],
+  
+  "composition": {
+    "context": {
+      "title": {
+        "text": "Wind 10m (m/s)"
+      },
+       "legends": [
+        {
+          "title": "Wind speed 10m (m/s)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+
+    "views": [
+      {
+        "id": "v1",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
+
+        "layers": [
+
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": {"data": "r001Wind10", "var": "wind10.speed", "dims": { "time": [70]} },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                  }
+              }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "wind10.speed",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 10],
+                      "reverse": false,
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#FFFFFF"}
+                }
+              }
+            }
+          },
+                    {
+            "id": "l3",
+            "geometry": {
+              "type": "vector",
+              "input": { "data": "r001Wind10", "var": "wind10", "dims": { "time": [70]} },
+              "sampling": {
+                "skip": 2
+              },
+              "encoding": {
+                "channels": {
+                  "stroke": { "value": "#FFFFFF" },
+                  "size": {
+                    "field": "wind10.speed",
+                    "scale": {
+                      "type": "linear",
+                      "domain": { "type": "extent" },
+                      "range": { "values": [5, 10] }
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                },
+                "style": { 
+                  "glyph": {
+                    "type":"barb",
+                    "scale": 1.0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

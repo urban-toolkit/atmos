@@ -1,0 +1,86 @@
+{
+  "format": "atmos",
+  "data": [
+    {
+      "id": "hrrr",
+      "source": {
+        "type": "netcdf",
+        "path": "tests/data/hrrr_20240923_20240927/hrrr.nc"
+      },
+      "dims": {
+        "lat": {
+          "key": "latitude"
+        },
+        "lon": {
+          "key": "longitude"
+        },
+        "time": {
+          "key": "time"
+        }
+      },
+      "grid": {
+        "type": "curvilinear"
+      },
+      "vars": [
+        {
+          "id": "r",
+          "key": "r"
+        }
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "frame": {
+          "type": "map"
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "mesh",
+              "input": {
+                "data": "hrrr",
+                "var": "r"
+              },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "r",
+                    "scale": {
+                      "scheme": "Blues",
+                      "domain": [
+                        0,
+                        100
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              {
+                "view": "v1",
+                "layers": [
+                  "l1"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

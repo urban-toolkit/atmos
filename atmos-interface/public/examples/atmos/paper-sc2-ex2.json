@@ -1,0 +1,137 @@
+{
+  "format": "atmos",
+  "data": [
+    {
+      "id": "wrfR001",
+      "source": { "type": "netcdf", "path": "input/mrrj/wrfout" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "WRF_Times" }
+      },
+      
+      "grid": {
+        "type": "curvilinear"
+      },
+
+      "vars": [
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "input/geo/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          { "data": "wrfR001", "var": "rainnc" },
+          { "data": "wrfR001", "var": "rainc" }
+        ]
+      },
+      "out": { "data": "wrfR001Rain", "var": "accRain" }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 2
+    },
+    "context": {
+      "title": {
+        "text": "Accumulated Rain (mm)"
+      },
+      "legends": [
+        {
+          "title": "Accumulated Rain (mm)",
+          "type": "color",
+          "source": [
+            {
+              "view": "v1",
+              "layers": ["l1"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              { "view": "v1", "layers": ["l1"] }
+            ]
+          }
+        }
+      }
+    ],
+
+    "views": [
+      {
+        "id": "v1",
+        "frame": { "type": "map" },
+         "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfR001Rain", "var": "accRain" },
+              "build": [
+                {
+                  "levels": {
+                    "type": "step",
+                    "start": 0, "stop": 160, "step": 2
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "accRain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "YlGnBu",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 1.0 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

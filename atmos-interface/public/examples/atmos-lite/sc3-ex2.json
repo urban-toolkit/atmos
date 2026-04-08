@@ -1,0 +1,141 @@
+{
+  "data": [
+    {
+      "id": "wrf",
+      "dims": {
+        "lat": "lat",
+        "lng": "lng",
+        "time": "time"
+      },
+      "variables": [
+        "T2"
+      ],
+      "file": [
+        {
+          "path": "input/chicago/wrfout_built.nc"
+        }
+      ]
+    },
+    {
+      "id": "stations",
+      "dims": {
+        "lat": "lat",
+        "lng": "lng",
+        "time": "time"
+      },
+      "variables": [
+        "temp"
+      ],
+      "file": [
+        {
+          "path": "input/chicago/matched_station_wrf.csv"
+        }
+      ]
+    }
+  ],
+  "transform": [
+    {
+      "aggregate": {
+        "data": "stations.temp",
+        "across": "time",
+        "op": "mean",
+        "frequency": {
+          "n": 1,
+          "unit": "H"
+        }
+      },
+      "id_out": [
+        "obs_h"
+      ]
+    },
+    {
+      "join": {
+        "data1": "obs_h",
+        "data2": "wrf.T2",
+        "relationship": "nearest"
+      },
+      "id_out": [
+        "dataobs",
+        "dataforecast"
+      ]
+    }
+  ],
+  "composition": {
+    "views": [
+      {
+        "id": "v1",
+        "type": "map",
+        "layers": [
+          {
+            "id": "l1",
+            "geometry": {
+              "mark": {
+                "type": "point"
+              },
+              "data": "dataobs",
+              "encoding": {
+                "color_scale": {
+                  "palette": "RdYlBu",
+                  "domain": [
+                    0,
+                    40
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": "l2",
+            "geometry": {
+              "mark": {
+                "type": "isoband",
+                "steps": [
+                  0,
+                  40,
+                  2
+                ]
+              },
+              "data": "dataforecast",
+              "encoding": {
+                "color_scale": {
+                  "palette": "RdYlBu",
+                  "domain": [
+                    0,
+                    40
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "v2",
+        "type": "chart",
+        "data": [
+          "dataobs",
+          "dataforecast"
+        ],
+        "spec": "vega-lite",
+        "floating": true
+      }
+    ],
+    "interaction": [
+      {
+        "type": "click",
+        "sources": [
+          {
+            "view": "v1",
+            "layers": [
+              "l2"
+            ]
+          }
+        ],
+        "target": {
+          "view": "v2"
+        },
+        "select": "station_id"
+      }
+    ]
+  }
+}

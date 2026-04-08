@@ -1,0 +1,141 @@
+{
+  "data": [
+    {
+      "id": "r001",
+      "source": { "type": "netcdf", "path": "tests/data/wrfout" },
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": { "dim": "Time", "key": "Times", "type": "datetime", "timezone": "UTC", "format": "" }
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+      
+      "vars": [
+        { "id": "temp2m", "key": "T2" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          {
+            "op": "mul",
+            "args": [
+              {
+                "op": "sub",
+                "args": [
+                  { "data": "r001", "var": "temp2m" },
+                  { "const": 273.15 }
+                ]
+              },
+              { "const": 1.8 }
+            ]
+          },
+          { "const": 32 }
+        ]
+      },
+      "out": {
+        "data": "r001temp2m", "var": "temp2mF" 
+      }
+    }
+  ],
+  
+  "composition": {
+    "layout": {
+      "columns": 1
+    },
+    "context": {
+      "title": {
+        "text": "Temperature 2m (F)"
+      },
+      "legends": [
+        {
+          "title": "Temperature 2m (F)",
+          "type": "color",
+          "source": [
+            {
+              "view": "view1",
+              "layers": ["temp"],
+              "channel": "fill"
+            }
+          ]
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "type": "slider",
+        "action": {
+          "select": {
+            "dim": "time",
+            "target": [
+              { "view": "view1", "layers": ["temp"] }
+            ]
+          }
+        }
+      }
+    ],
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "context": {
+          "title": {
+            "template": "Time Step {time}"
+          }
+        },
+        "layers": [
+          {
+            "id": "temp",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "r001temp2m", "var": "temp2mF" },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "temp2mF",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "interpolateRdYlBu",
+                      "domain": [60, 80],
+                      "reverse": true,
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

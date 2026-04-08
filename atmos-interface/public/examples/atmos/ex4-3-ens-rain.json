@@ -1,0 +1,116 @@
+{
+  "data": [
+    {
+      "id": "wrfEns",
+      "type": "collection",
+
+      "members": {
+        "count": 4,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout"
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
+      },
+
+      "vars": [
+        { "id": "rainnc", "key": "RAINNC" },
+        { "id": "rainc", "key": "RAINC" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "derive",
+      "expr": {
+        "op": "add",
+        "args": [
+          { "data": "wrfEns", "var": "rainnc" },
+          { "data": "wrfEns", "var": "rainc" }
+        ]
+      },
+      "out": { "data": "wrfEnsRain", "var": "accRain" }
+    }
+  ],
+  "composition": {
+    "layout": {
+      "columns": 2
+    },
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "lrain",
+            "geometry": {
+              "type": "isoband",
+              "input": { "data": "wrfEnsRain", "var": "accRain", "dims": { "time": 60, "member": [0, 1, 2, 3] } },
+              "build": [
+                {
+                  "levels": {
+                    "type": "explicit",
+                    "values": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+                  }
+                }
+              ],
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "accRain",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Viridis",
+                      "domain": [0, 160],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

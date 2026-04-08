@@ -1,0 +1,111 @@
+{
+  "data": [
+    {
+      "id": "wrfEns",
+      "type": "collection",
+
+      "members": {
+        "count": 4,
+        "indexStart": 0,
+        "idPattern": "m{index}"
+      },
+
+      "sourceTemplate": {
+        "type": "netcdf",
+        "pathTemplate": "tests/data/ens/{id}/wrfout"
+      },
+
+      "grid": {
+        "type": "curvilinear"
+      },
+
+      "dims": {
+        "lat": { "key": "XLAT" },
+        "lon": { "key": "XLONG" },
+        "time": {
+          "dim": "Time",
+          "key": "Times",
+          "type": "datetime",
+          "timezone": "UTC",
+          "format": "WRF_Times"
+        }
+      },
+
+      "vars": [
+        { "id": "t2m", "key": "T2" }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "source": { "type": "geojson", "path": "tests/data/grid3P.geojson" },
+      "dims": {
+        "id": { "key": "GEOID" }
+      }
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "reduce",
+      "across": "member",
+      "expr": {
+        "op": "mean",
+        "args": [
+          { "data": "wrfEns", "var": "t2m" }
+        ]
+      },
+      "out": {
+        "data": "ensT2mMean",
+        "var": "t2mMean"
+      }
+    }
+  ],
+  "composition": {
+    "layout": {
+      "columns": 2
+    },
+
+    "views": [
+      {
+        "id": "view1",
+        "frame": { "type": "map" },
+        "layers": [
+          {
+            "id": "temp",
+            "geometry": {
+              "type": "mesh",
+              "input": { "data": "ensT2mMean", "var": "t2mMean", "dims": { "time": [40, 50, 60, 70] } },
+              "encoding": {
+                "channels": {
+                  "fill": {
+                    "field": "t2mMean",
+                    "scale": {
+                      "type": "sequential",
+                      "scheme": "Inferno",
+                      "domain": [290, 294],
+                      "clamp": false
+                    }
+                  },
+                  "opacity": { "value": 0.9 }
+                }
+              }
+            }
+          },
+          {
+            "id": "bound",
+            "geometry": {
+              "type": "polygon",
+              "input": { "data": "boundaries" },
+              "encoding": {
+                "channels": {
+                  "fill": { "value": "transparent"},
+                  "stroke": {"value": "#000000"}
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
