@@ -219,14 +219,31 @@ def _detect_path_pattern(paths: list[str]) -> tuple[str, int]:
 
 def _dims(d: dict) -> dict:
     out: dict[str, Any] = {}
+
     if "lat" in d:
         out["lat"] = {"key": d["lat"]}
+
     if "lng" in d:
         out["lon"] = {"key": d["lng"]}
+
     if "time" in d:
-        out["time"] = {"key": d["time"]}
+        time_key = d["time"]
+
+        # WRF-style time convention
+        if time_key == "Times":
+            out["time"] = {
+                "dim": "Time",
+                "key": "Times",
+                "type": "datetime",
+                "timezone": "UTC",
+                "format": "WRF_Times",
+            }
+        else:
+            out["time"] = {"key": time_key}
+
     if "level" in d:
         out["level"] = {"key": d["level"]}
+
     return out
 
 
